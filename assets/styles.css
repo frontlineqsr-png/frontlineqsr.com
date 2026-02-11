@@ -6,9 +6,10 @@
   --bg1:#0b1b36;
   --text:#eef3fb;
   --muted:rgba(238,243,251,.74);
+  --fine:rgba(238,243,251,.60);
   --line:rgba(255,255,255,.12);
 
-  --primary:#2ed573;      /* calm “go” */
+  --primary:#2ed573;
   --primaryText:#061225;
 
   --btnBorder:rgba(255,255,255,.18);
@@ -23,10 +24,41 @@ body{
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   color:var(--text);
   background:
-    radial-gradient(1200px 600px at 50% 20%, rgba(255,255,255,.06), transparent 60%),
+    radial-gradient(1200px 600px at 50% 18%, rgba(255,255,255,.06), transparent 60%),
     linear-gradient(180deg, var(--bg0), var(--bg1));
 }
 
+/* Top minimal nav (white text links above logo) */
+.top-nav{
+  position: absolute;
+  top: 22px;
+  right: 34px;
+  z-index: 10;
+  font-size: 13px;
+  letter-spacing: .25px;
+}
+
+.nav-inner{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.nav-link{
+  color: rgba(255,255,255,.86);
+  text-decoration:none;
+  transition: opacity .12s ease;
+}
+
+.nav-link:hover{
+  opacity:.72;
+}
+
+.divider{
+  color: rgba(255,255,255,.50);
+}
+
+/* Main layout */
 .page{
   min-height:100vh;
   display:flex;
@@ -36,7 +68,7 @@ body{
   text-align:center;
 }
 
-.hero-inner{
+.hero{
   width:100%;
   max-width:900px;
   display:flex;
@@ -45,15 +77,17 @@ body{
   gap:18px;
 }
 
+/* Logo */
 .logo{
   width:100%;
   max-width:720px;
   height:auto;
   margin:0 0 6px;
-  /* Subtle confidence: no big glow, just a light lift */
+  /* Subtle confidence: remove excessive glow */
   filter: drop-shadow(0 10px 28px rgba(0,0,0,.35));
 }
 
+/* Single calm anchor line */
 .anchor{
   margin:0;
   max-width:72ch;
@@ -63,6 +97,7 @@ body{
   letter-spacing:.2px;
 }
 
+/* Buttons */
 .button-group{
   display:flex;
   gap:14px;
@@ -108,17 +143,26 @@ body{
   border-color: rgba(255,255,255,.26);
 }
 
+/* Footer line (minimal, centered, subtle) */
 .fine{
   margin-top:16px;
   font-size:12.5px;
   line-height:1.6;
-  color:rgba(238,243,251,.60);
+  color:var(--fine);
   max-width:90ch;
 }
 
-@media (max-width:720px){
+/* Mobile adjustments */
+@media (max-width: 720px){
   .page{padding:44px 16px}
   .logo{max-width:640px}
   .btn{min-width:160px}
   .anchor{font-size:15px}
+
+  /* keep top links accessible on mobile */
+  .top-nav{
+    right: 18px;
+    top: 16px;
+    font-size: 12.5px;
+  }
 }
