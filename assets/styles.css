@@ -1,168 +1,91 @@
-/* Restaurant Excellence System™ — Commercial Gateway
-   Premium, calm, executive tone. No gimmicks. */
+/* Executive Centered Layout */
 
-:root{
-  --bg0:#071225;
-  --bg1:#0b1b36;
-  --text:#eef3fb;
-  --muted:rgba(238,243,251,.74);
-  --fine:rgba(238,243,251,.60);
-  --line:rgba(255,255,255,.12);
-
-  --primary:#2ed573;
-  --primaryText:#061225;
-
-  --btnBorder:rgba(255,255,255,.18);
-  --hover:rgba(255,255,255,.08);
+html, body {
+  height: 100%;
+  margin: 0;
 }
 
-*{box-sizing:border-box}
-html,body{height:100%}
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: linear-gradient(180deg, #071225, #0b1b36);
+  color: white;
 
-body{
-  margin:0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  color:var(--text);
-  background:
-    radial-gradient(1200px 600px at 50% 18%, rgba(255,255,255,.06), transparent 60%),
-    linear-gradient(180deg, var(--bg0), var(--bg1));
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
 }
 
-/* Top minimal nav (white text links above logo) */
-.top-nav{
-  position: absolute;
-  top: 22px;
-  right: 34px;
-  z-index: 10;
-  font-size: 13px;
-  letter-spacing: .25px;
+/* Container */
+.page {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-.nav-inner{
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
+.hero {
+  max-width: 900px;
+  padding: 40px 20px;
 
-.nav-link{
-  color: rgba(255,255,255,.86);
-  text-decoration:none;
-  transition: opacity .12s ease;
-}
-
-.nav-link:hover{
-  opacity:.72;
-}
-
-.divider{
-  color: rgba(255,255,255,.50);
-}
-
-/* Main layout */
-.page{
-  min-height:100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:56px 20px;
-  text-align:center;
-}
-
-.hero{
-  width:100%;
-  max-width:900px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* Logo */
-.logo{
-  width:100%;
-  max-width:720px;
-  height:auto;
-  margin:0 0 6px;
-  /* Subtle confidence: remove excessive glow */
-  filter: drop-shadow(0 10px 28px rgba(0,0,0,.35));
+.logo {
+  max-width: 700px;
+  width: 100%;
+  margin-bottom: 25px;
 }
 
-/* Single calm anchor line */
-.anchor{
-  margin:0;
-  max-width:72ch;
-  font-size:16px;
-  line-height:1.6;
-  color:var(--muted);
-  letter-spacing:.2px;
+/* Anchor line */
+.anchor {
+  font-size: 16px;
+  opacity: 0.75;
+  max-width: 700px;
+  margin-bottom: 30px;
 }
 
 /* Buttons */
-.button-group{
-  display:flex;
-  gap:14px;
-  justify-content:center;
-  flex-wrap:wrap;
-  margin-top:8px;
+.button-group {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 25px;
 }
 
-.btn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:12px 18px;
-  border-radius:10px;
-  text-decoration:none;
-  font-weight:650;
-  letter-spacing:.2px;
-  transition: transform .12s ease, background .12s ease, border-color .12s ease, opacity .12s ease;
-  border:1px solid transparent;
-  min-width:180px;
+.btn {
+  padding: 12px 26px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: 0.2s ease;
 }
 
-.btn.primary{
-  background:var(--primary);
-  color:var(--primaryText);
-  border-color:transparent;
+.btn.primary {
+  background: #2ed573;
+  color: #071225;
 }
 
-.btn.primary:hover{
-  transform: translateY(-1px);
-  opacity:.98;
+.btn.primary:hover {
+  background: #1dd1a1;
 }
 
-.btn.secondary{
-  background:transparent;
-  color:var(--text);
-  border-color:var(--btnBorder);
+.btn.secondary {
+  border: 1px solid rgba(255,255,255,0.4);
+  color: white;
 }
 
-.btn.secondary:hover{
-  transform: translateY(-1px);
-  background: var(--hover);
-  border-color: rgba(255,255,255,.26);
+.btn.secondary:hover {
+  background: rgba(255,255,255,0.1);
 }
 
-/* Footer line (minimal, centered, subtle) */
-.fine{
-  margin-top:16px;
-  font-size:12.5px;
-  line-height:1.6;
-  color:var(--fine);
-  max-width:90ch;
-}
-
-/* Mobile adjustments */
-@media (max-width: 720px){
-  .page{padding:44px 16px}
-  .logo{max-width:640px}
-  .btn{min-width:160px}
-  .anchor{font-size:15px}
-
-  /* keep top links accessible on mobile */
-  .top-nav{
-    right: 18px;
-    top: 16px;
-    font-size: 12.5px;
-  }
+/* Footer */
+.fine {
+  font-size: 13px;
+  opacity: 0.6;
+  max-width: 750px;
 }
