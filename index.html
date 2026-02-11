@@ -1,104 +1,43 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Restaurant Excellence System™ | FrontlineQSR</title>
-
-  <!-- Canonical Domain -->
-  <link rel="canonical" href="https://frontlineqsr.com/" />
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="./assets/home.css?v=20260210c" />
-
-  <!-- Keep private until ready -->
+  <title>Restaurant Excellence System™</title>
+  <link rel="stylesheet" href="assets/styles.css" />
   <meta name="robots" content="noindex" />
 </head>
-
 <body>
-  <div class="wrap">
 
-    <!-- TOP BAR -->
-    <header class="topbar">
-      <div class="brand">
-        <img
-          class="brandLogo"
-          src="./assets/restaurant-excellence-system.png?v=20260210c"
-          alt="Restaurant Excellence System™ — Powered by FrontlineQSR"
-          onerror="
-            this.style.display='none';
-            document.getElementById('brandFallback').style.display='block';
-          "
-        />
-        <div id="brandFallback" class="brandText" style="display:none;">
-          RESTAURANT EXCELLENCE SYSTEM™
-          <div style="font-size:12px;opacity:.7;margin-top:4px;">
-            Powered by FrontlineQSR
-          </div>
-        </div>
-      </div>
+  <div class="container">
 
-      <div class="topActions">
-        <!-- CHANGE THIS if portal URL changes -->
-        <a class="pillBtn" href="https://flqsr.com/login.html">
-          Client Login
-        </a>
-      </div>
-    </header>
+    <img 
+      src="assets/restaurant-excellence-system.png" 
+      alt="Restaurant Excellence System™ Powered by FrontlineQSR"
+      class="logo"
+    />
 
-    <!-- MAIN SECTION -->
-    <section class="card hero">
-      <div class="heroGrid">
+    <div class="button-group">
+      <!-- 🔒 CHANGE THIS to your real portal login URL -->
+      <a href="https://flqsr.com/login.html" class="btn primary">
+        Client Login
+      </a>
 
-        <div>
-          <h1 class="hTitle">
-            Restaurant Excellence System™
-          </h1>
-
-          <p class="hSub">
-            Hosted at <strong>frontlineqsr.com</strong>, this is the official client access point
-            for the Restaurant Excellence System™ — a governed execution decision system powered by FrontlineQSR.
-          </p>
-
-          <ul class="bullets">
-            <li>Approved data becomes execution truth</li>
-            <li>Shift and system visibility — not individual blame</li>
-            <li>Leadership clarity without reporting noise</li>
-          </ul>
-
-          <div class="ctaRow">
-            <a class="btn primary" href="https://flqsr.com/login.html">
-              Continue to Secure Portal
-            </a>
-            <a class="btn" href="./contact.html">
-              Start a conversation
-            </a>
-          </div>
-
-          <div class="heroNote small">
-            The portal runs separately from this domain to preserve governance and data integrity.
-          </div>
-        </div>
-
-        <div class="card soft aboutBox">
-          <div class="aboutTitle">System Integrity</div>
-          <p class="aboutText">
-            Once approved, execution data becomes immutable system truth.
-            Corrections are limited to technical adjustments through a formal process.
-            Visibility increases with responsibility, and authority remains closest to execution.
-          </p>
-          <div class="aboutTag">
-            Powered by FrontlineQSR
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <div class="footerLine">
-      © 2026 FrontlineQSR | frontlineqsr.com
+      <a href="contact.html" class="btn secondary">
+        Start a Conversation
+      </a>
     </div>
 
+    <p class="description">
+      Restaurant Excellence System™ is a governed execution decision system. 
+      Access is issued directly to participating clients.
+    </p>
+
+    <p class="powered">
+      Powered by <strong>FrontlineQSR</strong>
+    </p>
+
   </div>
+
 </body>
 </html>
