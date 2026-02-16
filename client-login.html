@@ -1,1 +1,40 @@
-login
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Client Login | FrontlineQSR</title>
+
+  <link rel="stylesheet" href="./assets/styles.css" />
+</head>
+<body>
+  <main class="auth-wrap">
+    <section class="auth-card">
+      <h1>Client Login</h1>
+      <p class="muted">Access is issued directly to participating clients.</p>
+
+      <form id="loginForm" autocomplete="on">
+        <label>
+          Email
+          <input id="email" type="email" autocomplete="email" required />
+        </label>
+
+        <label>
+          Password
+          <input id="password" type="password" autocomplete="current-password" required />
+        </label>
+
+        <button id="loginBtn" type="submit">Sign in</button>
+
+        <div class="auth-row">
+          <button id="forgotBtn" type="button" class="link-btn">Forgot password?</button>
+        </div>
+
+        <p id="msg" class="msg" aria-live="polite"></p>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="./assets/client-auth.js?v=1"></script>
+</body>
+</html>
