@@ -1,1 +1,63 @@
-test
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FrontlineQSR | Client Login</title>
+
+  <link rel="stylesheet" href="./assets/styles.css?v=force-1" />
+
+  <style>
+    .authWrap{ max-width:520px; margin:0 auto; }
+    .authTitle{ font-size:28px; font-weight:900; margin:0; }
+    .authSub{ opacity:.8; margin-top:8px; }
+    .authRow{ margin-top:12px; }
+    .authActions{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:14px; }
+    .linkBtn{ background:transparent; border:0; padding:0; color:inherit; opacity:.85; text-decoration:underline; cursor:pointer; }
+  </style>
+
+  <!-- Auth logic -->
+  <script type="module" src="./assets/commercial-auth.js?v=force-1"></script>
+</head>
+
+<body>
+  <div class="shell">
+    <main class="content" style="max-width:980px;margin:0 auto;">
+      <div class="topbar" style="justify-content:space-between;">
+        <div>
+          <div class="authTitle">Client Login</div>
+          <div class="authSub">Access your FrontlineQSR dashboard.</div>
+        </div>
+        <a class="btn" href="./index.html">Back</a>
+      </div>
+
+      <section class="card authWrap">
+        <form id="loginForm">
+          <div class="authRow">
+            <label class="small" style="opacity:.8;">Email</label>
+            <input id="email" class="input" type="email" autocomplete="email" required />
+          </div>
+
+          <div class="authRow">
+            <label class="small" style="opacity:.8;">Password</label>
+            <input id="password" class="input" type="password" autocomplete="current-password" required />
+          </div>
+
+          <div class="authActions">
+            <button class="btn" type="button" id="resetBtn">Forgot password</button>
+            <button class="btn primary" type="submit">Login</button>
+          </div>
+
+          <div class="small" id="loginMsg" style="margin-top:12px;opacity:.9;"></div>
+        </form>
+
+        <div class="hr"></div>
+
+        <div class="small" style="opacity:.75;">
+          Password reset emails come from Firebase. If you don’t see it, check spam/promotions.
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
