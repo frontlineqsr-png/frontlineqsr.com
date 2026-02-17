@@ -1,6 +1,6 @@
 // /assets/core-kpi-engine.js
-// Shared KPI math + formatting engine (single source of truth)
-// KEEP MATH CONSISTENT ACROSS PILOT (flqsr.com) + COMMERCIAL (frontlineqsr.com)
+// Shared KPI engine (Pilot + Commercial)
+// NO KPI MATH CHANGES — engine only centralizes existing logic.
 
 export const BASELINE_WEEKS_EQUIV = 4;
 
@@ -8,18 +8,18 @@ function normKey(s) {
   return String(s || "").trim().toLowerCase().replace(/\s+/g, "");
 }
 
-export function parseNumber(v) {
+function parseNumber(v) {
   if (v === "" || v === null || v === undefined) return NaN;
   if (typeof v === "number") return v;
   const cleaned = String(v).replace(/[$,%\s,]/g, "");
   return Number(cleaned);
 }
 
-export function getVal(row, aliases) {
+function getVal(row, aliases) {
   if (!row) return null;
   const keys = Object.keys(row);
   const map = {};
-  keys.forEach((k) => (map[normKey(k)] = k));
+  keys.forEach(k => (map[normKey(k)] = k));
 
   for (const a of aliases) {
     const k = map[normKey(a)];
@@ -31,7 +31,7 @@ export function getVal(row, aliases) {
   return null;
 }
 
-export function sumMetric(rows, aliases) {
+function sumMetric(rows, aliases) {
   if (!Array.isArray(rows)) return 0;
   let sum = 0;
   for (const r of rows) {
@@ -41,6 +41,11 @@ export function sumMetric(rows, aliases) {
   return sum;
 }
 
+// ✅ Matches your existing KPI logic:
+// - Sales: sum(Sales)
+// - Transactions: sum(Transactions)
+// - Labor$ if present; else weighted labor% if present
+// - laborPct is a PERCENT number (e.g., 23.45)
 export function computeKpisFromRows(rows) {
   const sales = sumMetric(rows, ["Sales", "Net Sales", "Revenue"]);
   const transactions = sumMetric(rows, ["Transactions", "Trans", "Tickets"]);
@@ -48,14 +53,13 @@ export function computeKpisFromRows(rows) {
 
   let laborPct = null;
 
-  // Preferred: compute from dollars if available
   if (sales > 0 && laborDollars > 0) {
     laborPct = (laborDollars / sales) * 100;
   } else {
-    // Fallback: weighted average of labor% by sales
+    // Weighted labor% fallback (no math change from your current approach)
     let weighted = 0;
     let wsum = 0;
-    for (const r of rows || []) {
+    for (const r of (rows || [])) {
       const s = getVal(r, ["Sales", "Net Sales", "Revenue"]);
       const lp = getVal(r, ["Labor%", "Labor %", "LaborPct", "Labor Pct"]);
       if (isFinite(s) && s > 0 && isFinite(lp)) {
@@ -66,72 +70,57 @@ export function computeKpisFromRows(rows) {
     if (wsum > 0) laborPct = weighted / wsum;
   }
 
-  const avgTicket = transactions > 0 ? sales / transactions : null;
+  const avgTicket = (transactions > 0) ? (sales / transactions) : null;
 
   return {
     sales,
     transactions,
     laborDollars: laborDollars || null,
     laborPct,
-    avgTicket,
+    avgTicket
   };
 }
 
-// Normalize baseline month totals to a weekly average.
-// IMPORTANT: Keep as-is (divide by 4) to match your current system direction.
-export function normalizeBaselineMonthToWeeklyAvg(baseMonth) {
+// ✅ Baseline month totals -> weekly equivalent (baseline_month_total / 4)
+// laborPct + avgTicket remain as-is (matches your current KPI behavior)
+export function normalizeBaselineMonthToWeeklyAvg(baseMonthKpis) {
+  const b = baseMonthKpis || {};
   return {
-    ...baseMonth,
-    sales: isFinite(baseMonth.sales) ? baseMonth.sales / BASELINE_WEEKS_EQUIV : baseMonth.sales,
-    transactions: isFinite(baseMonth.transactions)
-      ? baseMonth.transactions / BASELINE_WEEKS_EQUIV
-      : baseMonth.transactions,
-    laborDollars: isFinite(baseMonth.laborDollars)
-      ? baseMonth.laborDollars / BASELINE_WEEKS_EQUIV
-      : baseMonth.laborDollars,
-    // laborPct + avgTicket remain as-is
+    ...b,
+    sales: isFinite(b.sales) ? (b.sales / BASELINE_WEEKS_EQUIV) : b.sales,
+    transactions: isFinite(b.transactions) ? (b.transactions / BASELINE_WEEKS_EQUIV) : b.transactions,
+    laborDollars: isFinite(b.laborDollars) ? (b.laborDollars / BASELINE_WEEKS_EQUIV) : b.laborDollars
   };
 }
 
-// Universal delta color rule (business meaning):
-// - favorableDirection="up"   => delta > 0 is good
-// - favorableDirection="down" => delta < 0 is good
+// ✅ Business-meaning delta coloring
+// favorableDirection:
+// - "up": delta > 0 is good
+// - "down": delta < 0 is good
 export function deltaClass(delta, favorableDirection) {
   if (!isFinite(delta) || delta === 0) return "";
-  if (favorableDirection === "down") return delta < 0 ? "good" : "bad";
-  return delta > 0 ? "good" : "bad";
+  if (favorableDirection === "down") return (delta < 0) ? "good" : "bad";
+  return (delta > 0) ? "good" : "bad";
 }
 
-// Formatters (shared output)
+// ---------- Formatters (shared)
 export function fmtMoney(x) {
   const n = Number(x);
   if (!isFinite(n)) return "—";
-  return n.toLocaleString(undefined, {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  });
+  return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
-
 export function fmtMoney2(x) {
   const n = Number(x);
   if (!isFinite(n)) return "—";
-  return n.toLocaleString(undefined, {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
-  });
+  return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 }
-
 export function fmtNumber(x) {
   const n = Number(x);
   if (!isFinite(n)) return "—";
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
-
 export function fmtPct(x) {
   const n = Number(x);
   if (!isFinite(n)) return "—";
   return n.toFixed(2) + "%";
 }
-
