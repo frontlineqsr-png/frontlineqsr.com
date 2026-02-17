@@ -5,35 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Client Login | FrontlineQSR</title>
 
-  <link rel="stylesheet" href="./assets/styles.css" />
+  <style>
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#0b0d12;color:#eef1f6;}
+    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px;}
+    .card{width:min(440px,100%);border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);border-radius:18px;padding:18px;}
+    h1{margin:0 0 6px;font-size:22px;font-weight:900;}
+    .muted{opacity:.72;margin:0 0 14px;line-height:1.35;}
+    label{display:block;font-size:13px;opacity:.85;margin:12px 0 6px;}
+    input{width:100%;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#eef1f6;outline:none;}
+    input:focus{border-color:rgba(255,255,255,.25);}
+    .btn{width:100%;margin-top:14px;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);color:#eef1f6;font-weight:800;cursor:pointer;}
+    .btn:disabled{opacity:.55;cursor:not-allowed;}
+    .row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:10px;flex-wrap:wrap;}
+    .link{background:none;border:none;color:#eef1f6;opacity:.80;cursor:pointer;padding:0;text-decoration:underline;}
+    .msg{margin-top:12px;font-size:13px;opacity:.9;}
+    .msg.error{color:rgba(239,68,68,.95);}
+    .msg.success{color:rgba(46,204,113,.95);}
+    .small{font-size:12px;opacity:.65;margin-top:10px;}
+  </style>
 </head>
+
 <body>
-  <main class="auth-wrap">
-    <section class="auth-card">
+  <div class="wrap">
+    <div class="card">
       <h1>Client Login</h1>
       <p class="muted">Access is issued directly to participating clients.</p>
 
       <form id="loginForm" autocomplete="on">
-        <label>
-          Email
-          <input id="email" type="email" autocomplete="email" required />
-        </label>
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" required />
 
-        <label>
-          Password
-          <input id="password" type="password" autocomplete="current-password" required />
-        </label>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required />
 
-        <button id="loginBtn" type="submit">Sign in</button>
+        <button id="loginBtn" class="btn" type="submit">Sign in</button>
 
-        <div class="auth-row">
-          <button id="forgotBtn" type="button" class="link-btn">Forgot password?</button>
+        <div class="row">
+          <button id="forgotBtn" class="link" type="button">Forgot password?</button>
         </div>
 
-        <p id="msg" class="msg" aria-live="polite"></p>
+        <div id="msg" class="msg" aria-live="polite"></div>
+        <div class="small">If you’re a participating client and can’t access your account, contact your company administrator.</div>
       </form>
-    </section>
-  </main>
+    </div>
+  </div>
 
   <script type="module" src="./assets/client-auth.js?v=1"></script>
 </body>
