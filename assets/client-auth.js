@@ -11,15 +11,18 @@ import {
   getDoc
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-/** ✅ Use the SAME Firebase project as flqsr.com */
+/**
+ * IMPORTANT:
+ * Use the SAME Firebase project as flqsr.com (shared backend).
+ * Users are separated by Firestore profile: users/{uid}.portal = "commercial" or "pilot"
+ */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_MEASUREMENT_ID"
+  apiKey: "PASTE_YOUR_API_KEY",
+  authDomain: "PASTE_YOUR_AUTH_DOMAIN",
+  projectId: "PASTE_YOUR_PROJECT_ID",
+  storageBucket: "PASTE_YOUR_STORAGE_BUCKET",
+  messagingSenderId: "PASTE_YOUR_SENDER_ID",
+  appId: "PASTE_YOUR_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -27,51 +30,28 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const $ = (id) => document.getElementById(id);
-
 const loginForm = $("loginForm");
 const loginBtn = $("loginBtn");
 const forgotBtn = $("forgotBtn");
 const msg = $("msg");
 
-function setMsg(text = "", type = "info") {
+function setMsg(text = "", type = "") {
   msg.textContent = text;
-  msg.className = `msg ${type}`;
+  msg.className = `msg ${type}`.trim();
+}
+function setBusy(b) {
+  loginBtn.disabled = b;
+  forgotBtn.disabled = b;
 }
 
-function setBusy(isBusy) {
-  loginBtn.disabled = isBusy;
-  forgotBtn.disabled = isBusy;
-}
-
-function routeCommercialByRole(profile) {
-  // You can adjust these routes to match your commercial pages.
-  // Keep users on frontlineqsr.com (no redirects to flqsr.com).
-  const role = (profile?.role || "").toLowerCase();
-
-  // Everyone lands on KPIs first screen, but scoped by role.
-  // Example pages:
-  // - /app/kpis.html
-  // - /app/progress.html
-  // - /app/action-plan.html
-  // - /app/org.html (only for VP/Owner/Regional/DM, if you enable it)
-
-  // Minimal routing: all roles go to KPIs first.
-  window.location.href = "/app/kpis.html";
-}
-
-/**
- * Expected Firestore user profile:
- * users/{uid} = {
- *   portal: "commercial" | "pilot",
- *   role: "store" | "dm" | "regional" | "owner" | "superadmin",
- *   companyId: "abc123",
- *   scope: { ... } // storeId/districtId/regionId/companyWide etc
- * }
- */
 async function getUserProfile(uid) {
-  const ref = doc(db, "users", uid);
-  const snap = await getDoc(ref);
+  const snap = await getDoc(doc(db, "users", uid));
   return snap.exists() ? snap.data() : null;
+}
+
+function goToAppHome() {
+  // Commercial portal landing page (KPIs first screen)
+  window.location.href = "/app/kpis.html";
 }
 
 loginForm.addEventListener("submit", async (e) => {
@@ -84,23 +64,17 @@ loginForm.addEventListener("submit", async (e) => {
     const password = $("password").value;
 
     const cred = await signInWithEmailAndPassword(auth, email, password);
-
     const profile = await getUserProfile(cred.user.uid);
 
-    if (!profile) {
-      // Profile missing = not provisioned properly
-      throw new Error("Account is not fully provisioned. Please contact your company administrator.");
-    }
+    if (!profile) throw new Error("Account is not fully provisioned.");
 
-    // ✅ Commercial access layer check
+    // ✅ Access layer: commercial only
     if (profile.portal !== "commercial") {
-      // Keep it clean and non-revealing (avoid telling them where they belong)
       throw new Error("This account does not have access to the client portal.");
     }
 
-    routeCommercialByRole(profile);
+    goToAppHome();
   } catch (err) {
-    // Keep messaging simple & executive
     setMsg(err?.message || "Unable to sign in. Please try again.", "error");
     setBusy(false);
   }
@@ -112,22 +86,20 @@ forgotBtn.addEventListener("click", async () => {
 
   try {
     const email = $("email").value.trim();
-
     if (!email) {
-      setMsg("Enter your email above, then click “Forgot password?”", "info");
+      setMsg("Enter your email above, then click “Forgot password?”", "");
       setBusy(false);
       return;
     }
 
-    // ✅ Keeps flow within commercial portal
-    // Also set this in Firebase Auth Templates: Action URL -> https://frontlineqsr.com/client-login.html
+    // ✅ Keeps reset flow returning to this commercial login page
     await sendPasswordResetEmail(auth, email, {
       url: "https://frontlineqsr.com/client-login.html"
     });
 
-    // Security best-practice: don’t confirm account existence
+    // Privacy/security: do not confirm account existence
     setMsg("If an account exists for this email, you’ll receive a reset link.", "success");
-  } catch (err) {
+  } catch {
     setMsg("If an account exists for this email, you’ll receive a reset link.", "success");
   } finally {
     setBusy(false);
