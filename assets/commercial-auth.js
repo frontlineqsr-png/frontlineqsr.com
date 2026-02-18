@@ -40,7 +40,6 @@ function errText(e) {
 // ✅ Super Admin override (commercial should always let you in)
 const SUPER_ADMIN_EMAILS = [
   "nrobinson@flqsr.com",
-  "robinson8605@gmail.com",
 ];
 
 function isSuperAdminEmail(email) {
