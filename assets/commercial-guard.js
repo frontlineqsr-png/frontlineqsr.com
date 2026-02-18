@@ -1,11 +1,6 @@
-// assets/commercial-guard.js (v1.0)
+// assets/commercial-guard.js (v1.1)
 // Commercial-only page gate (NO pilot data)
 // Requires FLQSR_COMM_SESSION set by commercial-auth.js
-// Usage (in any commercial page):
-//   <script type="module">
-//     import { requireCommercial } from "./assets/commercial-guard.js";
-//     requireCommercial({ allowRoles:["sm","dm","rm","vp","admin","super_admin"] });
-//   </script>
 
 const SESSION_KEY = "FLQSR_COMM_SESSION";
 
@@ -33,6 +28,7 @@ export function requireCommercial(opts = {}) {
 
   const s = getCommercialSession();
 
+  // must have session + commercialAccess
   if (!s?.uid || !s?.commercialAccess) {
     clearCommercialSession();
     location.replace(redirectTo);
@@ -41,17 +37,20 @@ export function requireCommercial(opts = {}) {
 
   const role = String(s.role || "").toLowerCase();
 
-  // super admin bypasses org requirement
-  if (requireOrg && !s.isSuperAdmin && !String(s.orgId || "").trim()) {
-    clearCommercialSession();
+  // role must be allowed
+  if (!allowRoles.includes(role)) {
     location.replace(redirectTo);
     return false;
   }
 
-  if (allowRoles && Array.isArray(allowRoles) && !allowRoles.includes(role)) {
-    // if role not permitted, route to the safest default
-    location.replace("./commercial-portal.html");
-    return false;
+  // org required unless admin/super_admin or requireOrg=false
+  const isPrivileged = role === "admin" || role === "super_admin" || !!s.isSuperAdmin;
+  if (requireOrg && !isPrivileged) {
+    const orgId = String(s.orgId || "").trim();
+    if (!orgId) {
+      location.replace(redirectTo);
+      return false;
+    }
   }
 
   return true;
