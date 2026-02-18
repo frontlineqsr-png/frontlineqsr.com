@@ -1,7 +1,9 @@
-// assets/commercial-auth.js (v1.3) — Commercial Login + Role Routing
-// Uses: ./firebase.js exports { app, auth, db }
-// Enforces: commercialAccess === true (unless super admin)
-// Routes by role to role landing pages
+// assets/commercial-auth.js (v1.4) — Commercial Login + Org-Layer Routing (NO PILOT DATA)
+// Requires:
+// - ./firebase.js exports { auth, db }
+// Firestore structure:
+// - commercial_users/{uid}  (directory: orgId, role, commercialAccess, isSuperAdmin)
+// - orgs/{orgId}/users/{uid} (org user profile: role, scopes, etc.)
 
 import { auth, db } from "./firebase.js";
 
@@ -20,6 +22,8 @@ import {
 
 const $ = (id) => document.getElementById(id);
 
+const SESSION_KEY = "FLQSR_COMM_SESSION"; // commercial-only session cache
+
 function setMsg(text, isError = false) {
   const el = $("msg");
   if (!el) return;
@@ -33,7 +37,7 @@ function errText(e) {
   return code ? `${code}\n${msg}` : msg;
 }
 
-// ✅ Super Admin override (commercial should always let you in)
+// Super Admin email hard override (always allowed)
 const SUPER_ADMIN_EMAILS = [
   "nrobinson@flqsr.com",
   "robinson8605@gmail.com",
@@ -46,82 +50,137 @@ function isSuperAdminEmail(email) {
 
 function normRole(role) {
   const r = String(role || "").trim().toLowerCase();
-
   if (r === "store_manager" || r === "sm") return "sm";
   if (r === "district_manager" || r === "dm") return "dm";
   if (r === "regional_manager" || r === "rm") return "rm";
   if (r === "vp" || r === "owner" || r === "vp_owner" || r === "vp/owner") return "vp";
   if (r === "admin") return "admin";
   if (r === "super_admin") return "super_admin";
-
-  // If you still have older "client" profiles, treat as SM for commercial routing
-  if (r === "client") return "sm";
-
+  if (r === "client") return "sm"; // legacy safety
   return r || "sm";
 }
 
-// Role → landing page (shell pages are fine; can be empty placeholders)
 function landingForRole(role) {
   const r = normRole(role);
-
   if (r === "super_admin" || r === "admin") return "./commercial-admin.html";
   if (r === "dm") return "./commercial-dm.html";
   if (r === "rm") return "./commercial-rm.html";
   if (r === "vp") return "./commercial-vp.html";
-
   return "./commercial-portal.html"; // SM default
+}
+
+function saveCommercialSession(session) {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(session || null)); } catch {}
+}
+function clearCommercialSession() {
+  try { localStorage.removeItem(SESSION_KEY); } catch {}
+}
+
+async function loadDirectory(uid) {
+  // Directory doc: commercial_users/{uid}
+  const snap = await getDoc(doc(db, "commercial_users", uid));
+  return snap.exists() ? (snap.data() || {}) : null;
+}
+
+async function loadOrgUser(orgId, uid) {
+  // Org-layer doc: orgs/{orgId}/users/{uid}
+  const snap = await getDoc(doc(db, "orgs", orgId, "users", uid));
+  return snap.exists() ? (snap.data() || {}) : null;
 }
 
 async function routeCommercial(user) {
   try {
     if (!user?.uid) {
-      location.href = "./commercial-portal.html";
+      location.href = "./client-login.html";
       return;
     }
 
+    const uid = user.uid;
     const email = user.email || "";
 
-    // ✅ Super Admin always allowed + always routes to commercial admin
+    // ✅ Hard super admin (always allowed)
     if (isSuperAdminEmail(email)) {
+      saveCommercialSession({
+        uid,
+        email,
+        role: "super_admin",
+        orgId: "",
+        commercialAccess: true,
+        isSuperAdmin: true,
+        at: new Date().toISOString(),
+      });
       location.href = "./commercial-admin.html";
       return;
     }
 
-    // ✅ Read profile (shared collection for now)
-    const snap = await getDoc(doc(db, "flqsr_users", user.uid));
-
-    if (!snap.exists()) {
-      setMsg("No profile found for this account. Contact admin.", true);
+    // ✅ Step 1: directory lookup
+    const dir = await loadDirectory(uid);
+    if (!dir) {
+      setMsg("No commercial directory profile found. Contact admin.", true);
       try { await signOut(auth); } catch {}
+      clearCommercialSession();
       return;
     }
 
-    const p = snap.data() || {};
+    const orgId = String(dir.orgId || dir.org_id || "").trim();
+    const commercialAccess = !!(dir.commercialAccess ?? dir.commercial_access ?? false);
+    const roleFromDir = normRole(dir.role || "sm");
+    const isSuperAdmin = !!(dir.isSuperAdmin ?? dir.is_super_admin ?? false);
 
-    const role = normRole(p.role || "sm");
-    const orgId = String(p.orgId || p.org_id || p.company_id || "").trim();
-    const commercialAccess = !!(p.commercialAccess ?? p.commercial_access ?? false);
-
-    // ✅ Enforce commercialAccess for everyone except super admin
     if (!commercialAccess) {
       setMsg("Commercial access is not enabled for this account.", true);
       try { await signOut(auth); } catch {}
+      clearCommercialSession();
       return;
     }
 
-    // ✅ Enforce orgId for non-admin
-    if (role !== "admin" && !orgId) {
-      setMsg("Profile missing orgId. Contact admin.", true);
+    if (!orgId && !isSuperAdmin) {
+      setMsg("Directory profile missing orgId. Contact admin.", true);
       try { await signOut(auth); } catch {}
+      clearCommercialSession();
       return;
     }
+
+    // ✅ Step 2: org-layer user doc (authoritative for scopes/role inside org)
+    let orgUser = null;
+    if (orgId) orgUser = await loadOrgUser(orgId, uid);
+
+    // If org doc missing, we can still route using directory role,
+    // but you probably want to require it. I’m requiring it for enterprise integrity.
+    if (orgId && !orgUser && !isSuperAdmin) {
+      setMsg("Org user profile missing under orgs/{orgId}/users/{uid}. Contact admin.", true);
+      try { await signOut(auth); } catch {}
+      clearCommercialSession();
+      return;
+    }
+
+    const role = normRole(orgUser?.role || roleFromDir);
+
+    // ✅ Save commercial-only session for later pages
+    saveCommercialSession({
+      uid,
+      email,
+      role,
+      orgId,
+      commercialAccess,
+      isSuperAdmin,
+      at: new Date().toISOString(),
+      // include scopes if you want them later:
+      scopes: orgUser?.scopes || orgUser?.assigned_scopes || null,
+      assigned_store_ids: orgUser?.assigned_store_ids || [],
+      districts: orgUser?.districts || [],
+      regions: orgUser?.regions || [],
+    });
 
     // ✅ Route
-    location.href = landingForRole(role);
+    location.href = landingForRole(isSuperAdmin ? "super_admin" : role);
 
   } catch (e) {
     console.error("[commercial-auth] routeCommercial error:", e);
-    location.href = "./commercial-portal.html";
+    // fallback: stay on login and show error
+    setMsg("Routing failed ❌\n" + errText(e), true);
+    try { await signOut(auth); } catch {}
+    clearCommercialSession();
   }
 }
 
