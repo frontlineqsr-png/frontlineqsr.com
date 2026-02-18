@@ -1,1 +1,37 @@
-dash
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FrontlineQSR | Dashboard</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+  <meta name="robots" content="noindex" />
+  <style>
+    .card { max-width: 720px; margin: 40px auto; padding: 18px; border: 1px solid rgba(0,0,0,.08); border-radius: 14px; background: rgba(255,255,255,.92); }
+    .btnx { padding:12px 14px; border-radius:10px; border:1px solid rgba(0,0,0,.12); background:#111827; color:#fff; cursor:pointer; font-weight:700; }
+    .small { font-size:12px; opacity:.75; }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero" style="padding-top:24px;">
+      <p class="anchor">Client Dashboard (Commercial)</p>
+
+      <div class="card">
+        <h2 style="margin:0 0 8px 0;">You’re logged in</h2>
+        <div class="small" id="who"></div>
+
+        <div style="height:14px;"></div>
+
+        <button class="btnx" id="logoutBtn" type="button">Logout</button>
+
+        <div style="margin-top:14px;" class="small">
+          Next: we’ll add role-based routing (SM/DM/RM/VP) + real pages.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="assets/commercial-auth.js?v=1"></script>
+</body>
+</html>
