@@ -1,146 +1,56 @@
-// /assets/profile.js
-// FrontlineQSR user profile helpers (Firestore)
-// - Used by commercial-auth.js + admin tooling
-// - Provides role/store access + super admin override
-// - NO KPI math / NO governance changes
+// assets/profile.js
+// Firestore user profiles (roles + store assignments)
+// Collection: flqsr_users (doc id = uid)
 
 import { app } from "./firebase.js";
+
 import {
   getFirestore,
   doc,
   getDoc,
   setDoc,
-  serverTimestamp
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-/**
- * Firestore collection that stores user profiles.
- * Document id = Firebase Auth uid
- *
- * Shape (recommended):
- * {
- *   uid: string,
- *   email: string,
- *   role: "client" | "admin" | "super_admin",
- *   company_id: string,
- *   assigned_store_ids: string[],
- *   updatedAt: serverTimestamp()
- * }
- */
-const DB = getFirestore(app);
-const COL = "flqsr_users";
+const db = getFirestore(app);
 
-/**
- * ✅ Super Admin allowlist
- * Put YOUR super admin email(s) here (lowercase).
- * You can add multiple.
- */
+// Optional: super admin by email list (always overrides)
 const SUPER_ADMIN_EMAILS = [
-  // Example:
-  // "nrobinson@flqsr.com",
+  "nrobinson@flqsr.com",
+  "robinson8605@gmail.com",
 ];
 
-/** Normalize email for comparison */
-function normEmail(email) {
-  return String(email || "").trim().toLowerCase();
-}
-
-/** Normalize role to allowed set */
-function normRole(role) {
-  const r = String(role || "").trim().toLowerCase();
-  if (r === "super_admin" || r === "superadmin" || r === "super-admin") return "super_admin";
-  if (r === "admin") return "admin";
-  return "client";
-}
-
-/** Normalize store id list */
-function normStores(stores) {
-  const arr = Array.isArray(stores) ? stores : [];
-  return arr
-    .map(s => String(s || "").trim())
-    .filter(Boolean);
-}
-
-/**
- * True if email is a super admin email.
- */
 export function isSuperAdminEmail(email) {
-  const e = normEmail(email);
-  if (!e) return false;
-  return SUPER_ADMIN_EMAILS.includes(e);
+  const e = String(email || "").trim().toLowerCase();
+  return SUPER_ADMIN_EMAILS.map(x => x.toLowerCase()).includes(e);
 }
 
-/**
- * Returns a synthetic profile object for super admins.
- * This bypasses Firestore profile requirements.
- */
-export function superAdminProfile(email) {
-  const e = normEmail(email);
-  return {
-    uid: "super_admin",
-    email: e,
-    role: "super_admin",
-    company_id: "",
-    assigned_store_ids: [], // super admin should be treated as "all access" at gate level
-    _source: "super_admin_override"
-  };
-}
-
-/**
- * Fetch a user profile by uid from Firestore.
- * Returns null if missing.
- */
 export async function fetchUserProfile(uid) {
-  const id = String(uid || "").trim();
-  if (!id) return null;
-
-  try {
-    const ref = doc(DB, COL, id);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
-
-    const data = snap.data() || {};
-    return {
-      uid: id,
-      email: String(data.email || "").trim(),
-      role: normRole(data.role),
-      company_id: String(data.company_id || data.companyId || "").trim(),
-      assigned_store_ids: normStores(data.assigned_store_ids || data.assignedStores || data.stores),
-      _source: "firestore"
-    };
-  } catch (e) {
-    console.error("[profile] fetchUserProfile failed:", e);
-    return null;
-  }
+  if (!uid) return null;
+  const snap = await getDoc(doc(db, "flqsr_users", uid));
+  return snap.exists() ? snap.data() : null;
 }
 
-/**
- * Create/update a user profile record.
- * Used by Admin Review User Management (pilot-safe).
- */
 export async function upsertUserProfile(profile) {
-  const p = profile && typeof profile === "object" ? profile : {};
-  const uid = String(p.uid || "").trim();
-  const email = String(p.email || "").trim();
-
-  if (!uid) throw new Error("upsertUserProfile: uid is required");
-  if (!email) throw new Error("upsertUserProfile: email is required");
+  const uid = String(profile?.uid || "").trim();
+  if (!uid) throw new Error("upsertUserProfile: missing uid");
 
   const payload = {
     uid,
-    email,
-    role: normRole(p.role),
-    company_id: String(p.company_id || "").trim(),
-    assigned_store_ids: normStores(p.assigned_store_ids),
-    updatedAt: serverTimestamp()
+    email: String(profile?.email || "").trim(),
+    role: String(profile?.role || "client").trim(),
+    company_id: String(profile?.company_id || "").trim(),
+    assigned_store_ids: Array.isArray(profile?.assigned_store_ids)
+      ? profile.assigned_store_ids.map(x => String(x).trim()).filter(Boolean)
+      : [],
+    updated_at: serverTimestamp(),
   };
 
-  // Never allow writing super_admin through UI unless it is on the allowlist
-  if (payload.role === "super_admin" && !isSuperAdminEmail(payload.email)) {
-    payload.role = "admin";
-  }
+  // Only set created_at on first write (safe merge)
+  await setDoc(doc(db, "flqsr_users", uid), {
+    ...payload,
+    created_at: serverTimestamp(),
+  }, { merge: true });
 
-  const ref = doc(DB, COL, uid);
-  await setDoc(ref, payload, { merge: true });
   return payload;
 }
