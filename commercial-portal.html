@@ -3,9 +3,34 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FrontlineQSR | Portal</title>
+  <title>FrontlineQSR | Commercial Portal</title>
   <link rel="stylesheet" href="assets/styles.css" />
   <meta name="robots" content="noindex" />
+
+  <!-- Commercial Access Guard -->
+  <script type="module">
+    import { requireCommercial, getCommercialSession, clearCommercialSession } 
+      from "./assets/commercial-guard.js";
+
+    const ok = requireCommercial({
+      allowRoles: ["sm","admin","super_admin"]
+    });
+
+    if (ok) {
+      const s = getCommercialSession();
+      window.addEventListener("DOMContentLoaded", () => {
+        const el = document.getElementById("sessionInfo");
+        if (el && s) {
+          el.textContent = `Org: ${s.orgId || "N/A"} | Role: ${s.role}`;
+        }
+
+        document.getElementById("logoutBtn")?.addEventListener("click", () => {
+          clearCommercialSession();
+          location.href = "./client-login.html";
+        });
+      });
+    }
+  </script>
 </head>
 
 <body>
@@ -14,32 +39,19 @@
       <p class="anchor">Commercial Portal</p>
 
       <div class="card" style="max-width:720px;margin:40px auto;padding:18px;border-radius:14px;background:rgba(255,255,255,.92);">
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;">
-          <h2 style="margin:0;">You’re logged in ✅</h2>
-          <button class="btn secondary" id="logoutBtn" type="button">Logout</button>
-        </div>
+        <h2 style="margin:0 0 10px 0;">Store Manager View ✅</h2>
 
-        <p class="small" style="opacity:.8;margin:10px 0 0 0;">
-          This is the commercial side (frontlineqsr.com). Next we’ll wire role routing + store access here.
+        <p id="sessionInfo" class="small" style="opacity:.8;margin:0;">
+          Loading session…
         </p>
 
-        <div class="hr" style="margin:14px 0;"></div>
-
-        <div class="small" style="opacity:.85;">
-          <div><b>Session</b></div>
-          <div id="sessionLine" style="margin-top:6px;white-space:pre-wrap;">Loading…</div>
-        </div>
-
-        <div class="hr" style="margin:14px 0;"></div>
-
-        <div class="small" style="opacity:.75;">
-          Next: Store list → baseline required → weekly uploads → KPIs (engine unchanged).
+        <div style="margin-top:16px;">
+          <button class="btn secondary" id="logoutBtn">
+            Logout
+          </button>
         </div>
       </div>
     </section>
   </main>
-
-  <!-- Guard + logout -->
-  <script type="module" src="assets/commercial-portal.js?v=1"></script>
 </body>
 </html>
