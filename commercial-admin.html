@@ -7,20 +7,40 @@
   <link rel="stylesheet" href="assets/styles.css" />
   <meta name="robots" content="noindex" />
 </head>
+
 <body>
   <main class="page">
     <section class="hero" style="padding-top:24px;">
       <p class="anchor">Commercial Admin</p>
+
       <div class="card" style="max-width:720px;margin:40px auto;padding:18px;border-radius:14px;background:rgba(255,255,255,.92);">
-        <h2 style="margin:0 0 10px 0;">Admin access ✅</h2>
-        <p class="small" style="opacity:.8;margin:0;">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;">
+          <h2 style="margin:0;">Admin access ✅</h2>
+          <button class="btn secondary" id="logoutBtn" type="button">Logout</button>
+        </div>
+
+        <p class="small" style="opacity:.8;margin:10px 0 0 0;">
           Super Admin / Admin routed correctly on commercial login.
         </p>
-        <div style="margin-top:14px;">
-          <a class="btn secondary" href="./login.html" style="text-decoration:none;">Back to Login</a>
+
+        <div class="hr" style="margin:14px 0;"></div>
+
+        <div class="small" style="opacity:.85;">
+          <div><b>Session</b></div>
+          <div id="sessionLine" style="margin-top:6px;white-space:pre-wrap;">Loading…</div>
+        </div>
+
+        <div class="hr" style="margin:14px 0;"></div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <a class="btn secondary" href="./commercial-portal.html" style="text-decoration:none;">Go to Portal</a>
+          <a class="btn secondary" href="./client-login.html" style="text-decoration:none;">Back to Login</a>
         </div>
       </div>
     </section>
   </main>
+
+  <!-- Guard + logout -->
+  <script type="module" src="assets/commercial-admin.js?v=1"></script>
 </body>
 </html>
