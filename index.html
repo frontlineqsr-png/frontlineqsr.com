@@ -4,42 +4,50 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Restaurant Excellence System™</title>
+
   <link rel="stylesheet" href="assets/styles.css" />
   <meta name="robots" content="noindex" />
+
+  <style>
+    /* Safety layer to prevent click overlay issues */
+    .hero { position: relative; z-index: 1; }
+    .button-group { position: relative; z-index: 2; }
+    .btn { text-decoration: none; display: inline-block; }
+  </style>
 </head>
 <body>
 
   <main class="page">
     <section class="hero">
 
-      <!-- ANCHOR LINE -->
+      <!-- Anchor Line -->
       <p class="anchor">
         A governed execution decision system for leadership teams who need clarity at scale.
       </p>
 
-      <!-- LOGO -->
+      <!-- Logo (NOT wrapped in link to prevent click conflicts) -->
       <img
         src="assets/restaurant-excellence-system.png"
         alt="Restaurant Excellence System™ — Powered by FrontlineQSR"
         class="logo"
       />
 
-      <!-- BUTTONS -->
+      <!-- Buttons -->
       <div class="button-group">
 
-        <!-- Commercial CTA -->
-        <a class="btn primary" href="./contact.html">
+        <!-- Start a Conversation → Pilot System -->
+        <a class="btn primary" href="https://flqsr.com/">
           Start a Conversation
         </a>
 
-        <!-- COMMERCIAL LOGIN (local, NOT flqsr) -->
-        <a class="btn secondary" href="./login.html">
+        <!-- Client Login → Commercial Login Page -->
+        <a class="btn secondary" href="https://frontlineqsr.com/login.html">
           Client Login
         </a>
 
       </div>
 
-      <!-- FOOTER LINE -->
+      <!-- Footer Line -->
       <p class="fine">
         Restaurant Excellence System™ is a governed execution decision system.
         Access is issued directly to participating clients.
