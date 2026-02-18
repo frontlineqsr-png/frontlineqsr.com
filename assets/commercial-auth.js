@@ -1,4 +1,4 @@
-// assets/commercial-auth.js (v1.4) — Commercial Login + Org-Layer Routing (NO PILOT DATA)
+// assets/commercial-auth.js (v1.5) — Commercial Login + Org-Layer Routing (NO PILOT DATA)
 // Requires:
 // - ./firebase.js exports { auth, db }
 // Firestore structure:
@@ -13,16 +13,15 @@ import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   signOut,
+  onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-import {
-  doc,
-  getDoc,
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const $ = (id) => document.getElementById(id);
 
 const SESSION_KEY = "FLQSR_COMM_SESSION"; // commercial-only session cache
+let _routing = false;                     // prevent double-routing
 
 function setMsg(text, isError = false) {
   const el = $("msg");
@@ -33,19 +32,16 @@ function setMsg(text, isError = false) {
 
 function errText(e) {
   const code = e?.code ? String(e.code) : "";
-  const msg  = e?.message ? String(e.message) : String(e || "Unknown error");
+  const msg = e?.message ? String(e.message) : String(e || "Unknown error");
   return code ? `${code}\n${msg}` : msg;
 }
 
 // Super Admin email hard override (always allowed)
-const SUPER_ADMIN_EMAILS = [
-  "nrobinson@flqsr.com",
-  "robinson8605@gmail.com",
-];
+const SUPER_ADMIN_EMAILS = ["nrobinson@flqsr.com", "robinson8605@gmail.com"];
 
 function isSuperAdminEmail(email) {
   const e = String(email || "").trim().toLowerCase();
-  return SUPER_ADMIN_EMAILS.map(x => x.toLowerCase()).includes(e);
+  return SUPER_ADMIN_EMAILS.map((x) => x.toLowerCase()).includes(e);
 }
 
 function normRole(role) {
@@ -70,28 +66,42 @@ function landingForRole(role) {
 }
 
 function saveCommercialSession(session) {
-  try { localStorage.setItem(SESSION_KEY, JSON.stringify(session || null)); } catch {}
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session || null));
+  } catch {}
 }
+
 function clearCommercialSession() {
-  try { localStorage.removeItem(SESSION_KEY); } catch {}
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {}
+}
+
+function getCommercialSession() {
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+  } catch {
+    return null;
+  }
 }
 
 async function loadDirectory(uid) {
-  // Directory doc: commercial_users/{uid}
   const snap = await getDoc(doc(db, "commercial_users", uid));
-  return snap.exists() ? (snap.data() || {}) : null;
+  return snap.exists() ? snap.data() || {} : null;
 }
 
 async function loadOrgUser(orgId, uid) {
-  // Org-layer doc: orgs/{orgId}/users/{uid}
   const snap = await getDoc(doc(db, "orgs", orgId, "users", uid));
-  return snap.exists() ? (snap.data() || {}) : null;
+  return snap.exists() ? snap.data() || {} : null;
 }
 
 async function routeCommercial(user) {
+  if (_routing) return;
+  _routing = true;
+
   try {
     if (!user?.uid) {
-      location.href = "./client-login.html";
+      location.replace("./client-login.html");
       return;
     }
 
@@ -109,11 +119,11 @@ async function routeCommercial(user) {
         isSuperAdmin: true,
         at: new Date().toISOString(),
       });
-      location.href = "./commercial-admin.html";
+      location.replace("./commercial-admin.html");
       return;
     }
 
-    // ✅ Step 1: directory lookup
+    // ✅ Step 1: directory lookup (commercial_users/{uid})
     const dir = await loadDirectory(uid);
     if (!dir) {
       setMsg("No commercial directory profile found. Contact admin.", true);
@@ -141,12 +151,10 @@ async function routeCommercial(user) {
       return;
     }
 
-    // ✅ Step 2: org-layer user doc (authoritative for scopes/role inside org)
+    // ✅ Step 2: org-layer doc (orgs/{orgId}/users/{uid}) — required for enterprise integrity
     let orgUser = null;
     if (orgId) orgUser = await loadOrgUser(orgId, uid);
 
-    // If org doc missing, we can still route using directory role,
-    // but you probably want to require it. I’m requiring it for enterprise integrity.
     if (orgId && !orgUser && !isSuperAdmin) {
       setMsg("Org user profile missing under orgs/{orgId}/users/{uid}. Contact admin.", true);
       try { await signOut(auth); } catch {}
@@ -156,7 +164,7 @@ async function routeCommercial(user) {
 
     const role = normRole(orgUser?.role || roleFromDir);
 
-    // ✅ Save commercial-only session for later pages
+    // ✅ Save commercial-only session
     saveCommercialSession({
       uid,
       email,
@@ -165,7 +173,6 @@ async function routeCommercial(user) {
       commercialAccess,
       isSuperAdmin,
       at: new Date().toISOString(),
-      // include scopes if you want them later:
       scopes: orgUser?.scopes || orgUser?.assigned_scopes || null,
       assigned_store_ids: orgUser?.assigned_store_ids || [],
       districts: orgUser?.districts || [],
@@ -173,18 +180,19 @@ async function routeCommercial(user) {
     });
 
     // ✅ Route
-    location.href = landingForRole(isSuperAdmin ? "super_admin" : role);
-
+    location.replace(landingForRole(isSuperAdmin ? "super_admin" : role));
   } catch (e) {
     console.error("[commercial-auth] routeCommercial error:", e);
-    // fallback: stay on login and show error
     setMsg("Routing failed ❌\n" + errText(e), true);
     try { await signOut(auth); } catch {}
     clearCommercialSession();
+  } finally {
+    // allow re-route if user comes back to login page
+    setTimeout(() => { _routing = false; }, 250);
   }
 }
 
-async function doLogin() {
+async function doLoginFromForm() {
   try {
     setMsg("");
 
@@ -199,7 +207,6 @@ async function doLogin() {
 
     setMsg("Login success ✅ Redirecting…", false);
     await routeCommercial(cred.user);
-
   } catch (e) {
     console.error("[commercial-auth] login failed:", e);
     setMsg("Login failed ❌\n" + errText(e), true);
@@ -215,7 +222,6 @@ async function doReset() {
 
     await sendPasswordResetEmail(auth, email);
     setMsg("Password reset email sent ✅ Check your inbox.", false);
-
   } catch (e) {
     console.error("[commercial-auth] reset failed:", e);
     setMsg("Reset failed ❌\n" + errText(e), true);
@@ -225,10 +231,21 @@ async function doReset() {
 window.addEventListener("DOMContentLoaded", () => {
   setMsg("Auth loaded ✅", false);
 
-  $("loginBtn")?.addEventListener("click", doLogin);
+  // ✅ Form submit (Enter key + button)
+  const form = $("loginForm");
+  form?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    doLoginFromForm();
+  });
+
+  // ✅ Reset
   $("resetBtn")?.addEventListener("click", doReset);
 
-  $("password")?.addEventListener("keydown", (ev) => {
-    if (ev.key === "Enter") doLogin();
+  // ✅ If already signed-in AND session missing/outdated, route automatically
+  onAuthStateChanged(auth, (user) => {
+    const s = getCommercialSession();
+    if (user?.uid && (!s?.uid || s.uid !== user.uid)) {
+      routeCommercial(user);
+    }
   });
 });
