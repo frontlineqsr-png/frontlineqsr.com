@@ -1,166 +1,62 @@
-// assets/commercial-auth.js (v1.1)
-// Commercial login controller for frontlineqsr.com
-// - Uses same Firebase project + profile rules as flqsr.com
-// - Builds FLQSR_SESSION locally
-// - Routes to commercial pages (NOT flqsr.com)
-// Requirements:
-//   - assets/firebase.js exists and exports { auth }
-//   - assets/profile.js exists and exports { isSuperAdminEmail, superAdminProfile, fetchUserProfile }
-
+// /assets/commercial-auth.js
 import { auth } from "./firebase.js";
-import { isSuperAdminEmail, superAdminProfile, fetchUserProfile } from "./profile.js";
 
 import {
-  setPersistence,
   browserLocalPersistence,
+  setPersistence,
   signInWithEmailAndPassword,
   sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-const SESSION_KEY = "FLQSR_SESSION";
-
 const $ = (id) => document.getElementById(id);
 
-function safeParse(raw, fallback) { try { return JSON.parse(raw); } catch { return fallback; } }
-function saveSession(s) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(s || null)); } catch {} }
-function loadSession() { return safeParse(localStorage.getItem(SESSION_KEY) || "null", null); }
-
-function setMsg(text, isError = false) {
+function setMsg(text, isError) {
   const el = $("msg");
   if (!el) return;
   el.textContent = text || "";
   el.style.color = isError ? "#b91c1c" : "#065f46";
 }
 
-function nowISO() { return new Date().toISOString(); }
-
-// ---- Build session (same pattern as pilot auth.js)
-async function buildSessionFromUser(user) {
-  if (!user) return null;
-
-  const uid = user.uid;
-  const email = user.email || "";
-
-  // 1) SUPER ADMIN OVERRIDE
-  if (isSuperAdminEmail?.(email)) {
-    return {
-      ...superAdminProfile(uid, email),
-      at: nowISO(),
-      profile_status: "super_admin"
-    };
-  }
-
-  // 2) Firestore profile
-  let profile = null;
-  try { profile = await fetchUserProfile(uid); }
-  catch (e) { console.warn("[COMM AUTH] profile fetch failed:", e); }
-
-  if (!profile) {
-    return {
-      uid,
-      email,
-      role: "client",
-      company_id: "",
-      assigned_store_ids: [],
-      at: nowISO(),
-      profile_status: "pending"
-    };
-  }
-
-  const role = String(profile.role || "client").toLowerCase();
-  const normalizedRole =
-    role === "admin" ? "admin" :
-    role === "super_admin" ? "super_admin" :
-    "client";
-
-  return {
-    uid,
-    email: profile.email || email,
-    role: normalizedRole,
-    company_id: profile.company_id || "",
-    assigned_store_ids: Array.isArray(profile.assigned_store_ids) ? profile.assigned_store_ids : [],
-    at: nowISO(),
-    profile_status: "ok"
-  };
-}
-
-async function initPersistence() {
-  try { await setPersistence(auth, browserLocalPersistence); }
-  catch (e) { console.warn("[COMM AUTH] persistence failed:", e?.message || e); }
-}
-
-function routeAfterLogin(session) {
-  const role = String(session?.role || "").toLowerCase();
-
-  // ✅ Commercial routes only (never flqsr.com)
-  if (role === "super_admin" || role === "admin") {
-    location.replace("./commercial-admin.html");
-    return;
-  }
-
-  if (session?.profile_status === "pending") {
-    // If you want a pending page later, swap this.
-    setMsg("Your account is pending activation. Contact your admin.", true);
-    return;
-  }
-
-  location.replace("./commercial-portal.html");
-}
-
-// ---- Handlers
-async function handleLogin() {
-  setMsg("");
-
-  const email = String($("email")?.value || "").trim();
-  const password = String($("password")?.value || "");
-
-  if (!email) return setMsg("Enter your email.", true);
-  if (!password) return setMsg("Enter your password.", true);
-
+async function doLogin() {
   try {
-    await initPersistence();
-    const cred = await signInWithEmailAndPassword(auth, email, password);
+    setMsg("");
+    const email = String($("email")?.value || "").trim();
+    const password = String($("password")?.value || "").trim();
 
-    const session = await buildSessionFromUser(cred.user);
-    saveSession(session);
+    if (!email) throw new Error("Enter your email.");
+    if (!password) throw new Error("Enter your password.");
 
-    if (!session?.uid) throw new Error("session_missing_uid");
+    await setPersistence(auth, browserLocalPersistence);
+    await signInWithEmailAndPassword(auth, email, password);
 
-    routeAfterLogin(session);
+    // ✅ After login, send to commercial portal/dashboard (adjust if you want a different file)
+    location.href = "./commercial-portal.html";
   } catch (e) {
     console.error(e);
-    // Common Firebase errors are in e.code
-    const code = e?.code || e?.message || "Login failed.";
-    setMsg(code, true);
+    setMsg(e?.message || "Login failed.", true);
   }
 }
 
-async function handleReset() {
-  setMsg("");
-
-  const email = String($("email")?.value || "").trim();
-  if (!email) return setMsg("Type your email first, then click Reset Password.", true);
-
+async function doReset() {
   try {
-    await initPersistence();
+    setMsg("");
+    const email = String($("email")?.value || "").trim();
+    if (!email) throw new Error("Enter your email first.");
+
     await sendPasswordResetEmail(auth, email);
-    setMsg("Password reset email sent. Check your inbox/spam.");
+    setMsg("✅ Password reset email sent. Check your inbox.");
   } catch (e) {
     console.error(e);
-    const code = e?.code || e?.message || "Reset failed.";
-    setMsg(code, true);
+    setMsg(e?.message || "Reset failed.", true);
   }
 }
 
-// ---- Wire buttons + auto-route if already logged in
 window.addEventListener("DOMContentLoaded", () => {
-  $("loginBtn")?.addEventListener("click", handleLogin);
-  $("resetBtn")?.addEventListener("click", handleReset);
+  $("loginBtn")?.addEventListener("click", doLogin);
+  $("resetBtn")?.addEventListener("click", doReset);
 
-  // If session already exists, route user without showing login again
-  const s = loadSession();
-  if (s?.uid) {
-    // Keep it simple: route based on stored role
-    routeAfterLogin(s);
-  }
+  // Enter key submits
+  $("password")?.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") doLogin();
+  });
 });
