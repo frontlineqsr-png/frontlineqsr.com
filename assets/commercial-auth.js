@@ -1,5 +1,5 @@
-// assets/commercial-auth.js (debug-stable)
-// Purpose: client-login.html auth wiring + visible status
+// assets/commercial-auth.js (role-routed)
+// Purpose: client-login.html auth wiring + role-based routing
 
 import { auth } from "./firebase.js";
 
@@ -9,6 +9,14 @@ import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+import {
+  getFirestore,
+  doc,
+  getDoc,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const db = getFirestore();
 
 const $ = (id) => document.getElementById(id);
 
@@ -25,6 +33,33 @@ function errText(e) {
   return code ? `${code}\n${msg}` : msg;
 }
 
+async function routeByRole(uid) {
+  try {
+    if (!uid) {
+      location.href = "./commercial-portal.html";
+      return;
+    }
+
+    const snap = await getDoc(doc(db, "flqsr_users", uid));
+
+    let role = "client";
+
+    if (snap.exists()) {
+      role = String(snap.data()?.role || "client").toLowerCase();
+    }
+
+    if (role === "admin" || role === "super_admin") {
+      location.href = "./commercial-admin.html";
+    } else {
+      location.href = "./commercial-portal.html";
+    }
+
+  } catch (e) {
+    console.error("Role routing error:", e);
+    location.href = "./commercial-portal.html";
+  }
+}
+
 async function doLogin() {
   try {
     setMsg("");
@@ -36,12 +71,12 @@ async function doLogin() {
     if (!password) throw new Error("Enter your password.");
 
     await setPersistence(auth, browserLocalPersistence);
-    await signInWithEmailAndPassword(auth, email, password);
+    const cred = await signInWithEmailAndPassword(auth, email, password);
 
     setMsg("Login success ✅ Redirecting…", false);
 
-    // Make sure this file exists at root: /commercial-portal.html
-    location.href = "./commercial-portal.html";
+    await routeByRole(cred.user.uid);
+
   } catch (e) {
     console.error("[commercial-auth] login failed:", e);
     setMsg("Login failed ❌\n" + errText(e), true);
@@ -57,6 +92,7 @@ async function doReset() {
 
     await sendPasswordResetEmail(auth, email);
     setMsg("Password reset email sent ✅ Check your inbox.", false);
+
   } catch (e) {
     console.error("[commercial-auth] reset failed:", e);
     setMsg("Reset failed ❌\n" + errText(e), true);
@@ -64,7 +100,6 @@ async function doReset() {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  // If you see this, the JS is running.
   setMsg("Auth loaded ✅", false);
 
   $("loginBtn")?.addEventListener("click", doLogin);
