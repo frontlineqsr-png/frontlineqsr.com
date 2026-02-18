@@ -9,31 +9,72 @@
   <meta name="robots" content="noindex" />
 
   <style>
+    /* ---- Commercial Login Polish (Mobile-first) ---- */
+
     .card {
-      max-width: 520px;
-      margin: 40px auto;
-      padding: 20px;
-      border: 1px solid rgba(0,0,0,.08);
-      border-radius: 14px;
-      background: rgba(255,255,255,.96);
+      width: min(520px, calc(100% - 32px));
+      margin: 28px auto;
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid rgba(0,0,0,.10);
+      background: rgba(255,255,255,.98);
+      box-shadow: 0 12px 30px rgba(0,0,0,.12);
+    }
+
+    .card h2 {
+      margin: 0 0 10px 0;
+      font-size: 22px;
+      line-height: 1.2;
+      color: #0f172a;
+      letter-spacing: .2px;
+    }
+
+    .small {
+      font-size: 12px;
+      line-height: 1.35;
+      color: rgba(15,23,42,.70);
+      margin-bottom: 14px;
+    }
+
+    label.small {
+      display: block;
+      margin: 10px 0 6px 0;
+      color: rgba(15,23,42,.75);
+      font-weight: 600;
     }
 
     .input {
       width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      border: 1px solid rgba(0,0,0,.15);
-      font-size: 14px;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(15,23,42,.18);
+      background: #ffffff;
+      color: #0f172a;
+      font-size: 16px; /* prevents iOS zoom on focus */
+      outline: none;
+    }
+
+    .input:focus {
+      border-color: rgba(37,99,235,.45);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
+    }
+
+    .btnRow {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
     }
 
     .btnx {
       padding: 12px 14px;
-      border-radius: 10px;
-      border: 1px solid rgba(0,0,0,.12);
+      border-radius: 12px;
+      border: 1px solid rgba(15,23,42,.14);
       background: #111827;
       color: #fff;
       cursor: pointer;
-      font-weight: 700;
+      font-weight: 800;
+      font-size: 14px;
     }
 
     .btnx.secondary {
@@ -41,57 +82,59 @@
       color: #111827;
     }
 
-    .small {
-      font-size: 12px;
-      opacity: .75;
+    .btnLink {
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .msg {
       margin-top: 12px;
       font-size: 13px;
+      line-height: 1.35;
       white-space: pre-wrap;
-      min-height: 20px;
+      min-height: 18px;
+      color: #065f46;
+      font-weight: 700;
     }
+
+    @media (max-width: 420px) {
+      .card { padding: 16px; }
+      .btnRow { flex-direction: column; }
+      .btnx, .btnLink { width: 100%; }
+    }
+
+    .page { padding-bottom: env(safe-area-inset-bottom); }
   </style>
 </head>
-<body>
 
+<body>
   <main class="page">
     <section class="hero" style="padding-top:24px;">
       <p class="anchor">Client Access</p>
 
       <div class="card">
-        <h2 style="margin:0 0 10px 0;">Login</h2>
+        <h2>Login</h2>
 
-        <div class="small" style="margin-bottom:16px;">
+        <div class="small">
           Commercial access (frontlineqsr.com)
         </div>
 
-        <!-- FORM wrapper ensures Enter key works -->
         <form id="loginForm">
+          <label class="small" for="email">Email</label>
+          <input class="input" id="email" name="email" type="email" autocomplete="username" required />
 
-          <label class="small">Email</label>
-          <input class="input" id="email" type="email" autocomplete="username" required />
+          <label class="small" for="password">Password</label>
+          <input class="input" id="password" name="password" type="password" autocomplete="current-password" required />
 
-          <div style="height:12px;"></div>
-
-          <label class="small">Password</label>
-          <input class="input" id="password" type="password" autocomplete="current-password" required />
-
-          <div style="height:18px;"></div>
-
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <div class="btnRow">
             <button class="btnx" id="loginBtn" type="submit">Login</button>
             <button class="btnx secondary" id="resetBtn" type="button">Reset Password</button>
-            <a class="btnx secondary"
-               href="https://frontlineqsr.com/"
-               style="text-decoration:none; display:inline-flex; align-items:center;">
-               Back
-            </a>
+            <a class="btnx secondary btnLink" href="https://frontlineqsr.com/">Back</a>
           </div>
 
           <div class="msg" id="msg">Loading auth…</div>
-
         </form>
 
         <div style="margin-top:14px;" class="small">
@@ -101,7 +144,6 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-auth.js?v=prod-1"></script>
-
+  <script type="module" src="assets/commercial-auth.js?v=prod-2"></script>
 </body>
 </html>
