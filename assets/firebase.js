@@ -1,12 +1,10 @@
 // assets/firebase.js
-// FrontlineQSR Production Firebase Config
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAXNtxbSP4UMmEmrOKH8wn2UhR2GUmWiYc",
+  apiKey: "AIzaSyANTxxbSP4UMmEmrOKH8wn2UhR2GUmWiYc",
   authDomain: "frontlineqsr-prod.firebaseapp.com",
   projectId: "frontlineqsr-prod",
   storageBucket: "frontlineqsr-prod.firebasestorage.app",
