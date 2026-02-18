@@ -1,28 +1,27 @@
-// assets/commercial-auth.js (v1.0) — FrontlineQSR Commercial Login + Reset
-// Uses Firebase Auth. No pilot storage keys. No flqsr.com redirects.
+// assets/commercial-auth.js (frontlineqsr.com)
+// Minimal commercial auth: login + reset + logout + protect dashboard
+// No pilot governance logic. No KPI math. Just auth plumbing.
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
   getAuth,
   setPersistence,
   browserLocalPersistence,
+  onAuthStateChanged,
   signInWithEmailAndPassword,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-// ✅ IMPORTANT:
-// Use the SAME Firebase project as pilot if you want shared users,
-// OR create a separate Firebase project for commercial later.
-// For now, paste your existing config (from pilot firebase.js) here.
-
+// ✅ Use the SAME Firebase project as flqsr (you already shared this config)
 const firebaseConfig = {
-  apiKey: "PASTE_YOURS",
-  authDomain: "PASTE_YOURS",
-  projectId: "PASTE_YOURS",
-  storageBucket: "PASTE_YOURS",
-  messagingSenderId: "PASTE_YOURS",
-  appId: "PASTE_YOURS",
-  measurementId: "PASTE_YOURS"
+  apiKey: "AIzaSyANTxxbSP4UMmEmrOKH8wn2UhR2GUmWiYc",
+  authDomain: "frontlineqsr-prod.firebaseapp.com",
+  projectId: "frontlineqsr-prod",
+  storageBucket: "frontlineqsr-prod.firebasestorage.app",
+  messagingSenderId: "114632679759",
+  appId: "1:114632679759:web:6e207548b5a29fcecaa53a",
+  measurementId: "G-8KFEXHE1TR"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -30,48 +29,71 @@ const auth = getAuth(app);
 
 async function init() {
   try { await setPersistence(auth, browserLocalPersistence); } catch {}
+}
 
-  const form = document.getElementById("loginForm");
-  const msg = document.getElementById("loginMsg");
-  const emailEl = document.getElementById("email");
-  const passEl = document.getElementById("password");
-  const resetBtn = document.getElementById("resetBtn");
+function $(id){ return document.getElementById(id); }
 
-  function setMsg(t) { if (msg) msg.textContent = t || ""; }
+function setMsg(text, isBad=false){
+  const el = $("msg");
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.color = isBad ? "#b91c1c" : "#065f46";
+}
 
-  resetBtn?.addEventListener("click", async () => {
+function isDashboard(){
+  return /\/dashboard\.html/i.test(location.pathname);
+}
+function isLogin(){
+  return /\/login\.html/i.test(location.pathname);
+}
+
+init();
+
+// ---- Login page wiring
+if (isLogin()) {
+  $("loginBtn")?.addEventListener("click", async () => {
     try {
       setMsg("");
-      const email = String(emailEl?.value || "").trim();
-      if (!email) {
-        setMsg("Enter your email first, then click Forgot password.");
-        return;
-      }
-      await sendPasswordResetEmail(auth, email);
-      setMsg("✅ Password reset email sent.");
+      const email = String($("email")?.value || "").trim();
+      const password = String($("password")?.value || "");
+      if (!email) return setMsg("Enter email.", true);
+      if (!password) return setMsg("Enter password.", true);
+
+      await signInWithEmailAndPassword(auth, email, password);
+      location.replace("./dashboard.html?v=1");
     } catch (e) {
-      console.error(e);
-      setMsg("❌ " + (e?.code || e?.message || "Could not send reset email."));
+      setMsg(e?.message || "Login failed.", true);
     }
   });
 
-  form?.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  $("resetBtn")?.addEventListener("click", async () => {
     try {
       setMsg("");
-      const email = String(emailEl?.value || "").trim();
-      const password = String(passEl?.value || "");
-
-      await signInWithEmailAndPassword(auth, email, password);
-
-      // ✅ Commercial routing destination:
-      // Create this page next (portal.html), or change to whatever you want.
-      location.replace("./portal.html");
-    } catch (err) {
-      console.error(err);
-      setMsg("❌ " + (err?.code || err?.message || "Login failed."));
+      const email = String($("email")?.value || "").trim();
+      if (!email) return setMsg("Enter your email first, then click Reset Password.", true);
+      await sendPasswordResetEmail(auth, email);
+      setMsg("✅ Password reset email sent. Check inbox/spam.");
+    } catch (e) {
+      setMsg(e?.message || "Reset failed.", true);
     }
   });
 }
 
-init();
+// ---- Dashboard protection + logout
+if (isDashboard()) {
+  const who = $("who");
+  const logoutBtn = $("logoutBtn");
+
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      location.replace("./login.html?v=1");
+      return;
+    }
+    if (who) who.textContent = `Signed in as: ${user.email || user.uid}`;
+  });
+
+  logoutBtn?.addEventListener("click", async () => {
+    try { await signOut(auth); } catch {}
+    location.replace("./login.html?v=1");
+  });
+}
