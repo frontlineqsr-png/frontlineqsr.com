@@ -95,7 +95,7 @@
             <div class="row">
               <button class="btnx" id="loginBtn" type="submit">Login</button>
               <button class="btnx secondary" id="resetBtn" type="button">Reset Password</button>
-              <a class="btnx secondary" href="https://frontlineqsr.com/" aria-label="Back">Back</a>
+              <a class="btnx secondary" href="./index.html" aria-label="Back">Back</a>
             </div>
 
             <div class="msg" id="msg">Loading auth…</div>
@@ -109,10 +109,18 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-auth.js?v=prod-2"></script>
   <script>
-    // Make Enter work even if button styles change
-    document.getElementById("loginForm")?.addEventListener("submit", (e) => e.preventDefault());
+    // Optional: show why the user was redirected here
+    try {
+      const reason = sessionStorage.getItem("FLQSR_COMM_REDIRECT_REASON");
+      if (reason) {
+        const el = document.getElementById("msg");
+        if (el) el.textContent = reason;
+        sessionStorage.removeItem("FLQSR_COMM_REDIRECT_REASON");
+      }
+    } catch {}
   </script>
+
+  <script type="module" src="assets/commercial-auth.js?v=prod-2"></script>
 </body>
 </html>
