@@ -2,7 +2,7 @@
 // Step 1 — Org + Store + User Assignment (Commercial)
 // NO PILOT DATA. NO KPI MATH.
 
-import { getCommercialSession, clearCommercialSession } from "./commercial-guard.js";
+import { requireCommercial } from "./commercial-guard.js";
 import { createOrg, createStore, upsertUserAccess, listOrgs, listStores } from "./commercial-db.js";
 
 const $ = (id) => document.getElementById(id);
@@ -21,27 +21,22 @@ function parseCsvIds(s){
     .filter(Boolean);
 }
 
-function requireSession(){
-  const s = getCommercialSession();
-  if (!s?.uid) throw new Error("Missing commercial session. Re-login.");
-  return s;
-}
+let SESSION = null;
 
 async function onCreateOrg(){
   try {
-    const s = requireSession();
     const name = String($("orgName")?.value || "").trim();
     if (!name) throw new Error("Org Name required.");
 
     msg("orgMsg", "Creating org…");
-    const orgId = await createOrg({ name, createdByUid: s.uid, createdByEmail: s.email });
+    const orgId = await createOrg({ name, createdByUid: SESSION.uid, createdByEmail: SESSION.email });
     msg("orgMsg", "✅ Org created.");
-    $("orgIdOut").textContent = `orgId: ${orgId}`;
+    if ($("orgIdOut")) $("orgIdOut").value = orgId;
 
     // convenience fill
-    $("storeOrgId").value = orgId;
-    $("u_orgId").value = orgId;
-    $("listOrgId").value = orgId;
+    if ($("storeOrgId")) $("storeOrgId").value = orgId;
+    if ($("u_orgId")) $("u_orgId").value = orgId;
+    if ($("listOrgId")) $("listOrgId").value = orgId;
 
   } catch (e) {
     console.error(e);
@@ -70,14 +65,14 @@ async function onCreateStore(){
 
 async function onSaveUser(){
   try {
-    const s = requireSession();
-
     const uid = String($("u_uid")?.value || "").trim();
     const email = String($("u_email")?.value || "").trim().toLowerCase();
     const orgId = String($("u_orgId")?.value || "").trim();
     const role = String($("u_role")?.value || "SM").trim().toUpperCase();
-    const commercialAccess = !!$("u_commercial")?.checked;
-    const active = !!$("u_active")?.checked;
+
+    // IMPORTANT: your HTML uses <select> for these, not checkboxes
+    const commercialAccess = String($("u_commercial")?.value || "false") === "true";
+    const active = String($("u_active")?.value || "true") === "true";
 
     const assignedStoreIds = parseCsvIds($("u_storeIds")?.value || "");
 
@@ -114,14 +109,16 @@ async function refreshLists(){
   try {
     msg("globalMsg", "Refreshing…");
     const orgs = await listOrgs();
-    $("orgList").textContent = orgs.map(o => `${o.id}  |  ${o.name}  |  active=${!!o.active}`).join("\n") || "(none)";
+    if ($("orgList")) $("orgList").textContent =
+      orgs.map(o => `${o.id}  |  ${o.name}  |  active=${!!o.active}`).join("\n") || "(none)";
 
     const orgId = String($("listOrgId")?.value || "").trim();
     if (orgId) {
       const stores = await listStores(orgId);
-      $("storeList").textContent = stores.map(st => `${st.id}  |  ${st.name}  |  baselineLocked=${!!st.baselineLocked}`).join("\n") || "(none)";
+      if ($("storeList")) $("storeList").textContent =
+        stores.map(st => `${st.id}  |  ${st.name}  |  baselineLocked=${!!st.baselineLocked}`).join("\n") || "(none)";
     } else {
-      $("storeList").textContent = "(enter orgId to list stores)";
+      if ($("storeList")) $("storeList").textContent = "(enter orgId to list stores)";
     }
 
     msg("globalMsg", "✅ Refreshed.");
@@ -132,11 +129,14 @@ async function refreshLists(){
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+  // Admin-only gate (build stage)
+  SESSION = requireCommercial({ allowRoles: ["admin","super_admin"], requireOrg: false });
+  if (!SESSION) return; // redirected already
+
   $("createOrgBtn")?.addEventListener("click", onCreateOrg);
   $("createStoreBtn")?.addEventListener("click", onCreateStore);
   $("saveUserBtn")?.addEventListener("click", onSaveUser);
   $("refreshBtn")?.addEventListener("click", refreshLists);
 
-  // initial
   refreshLists().catch(() => {});
 });
