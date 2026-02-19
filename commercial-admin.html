@@ -7,29 +7,21 @@ import { db } from "./firebase.js";
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
   setDoc,
   addDoc,
   serverTimestamp,
   query,
-  orderBy
+  orderBy,
+  limit
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* =========================================================
    Helpers
 ========================================================= */
 
-function cleanId(s) {
-  return String(s || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]/g, "_")
-    .replace(/_+/g, "_");
-}
-
-function now() {
-  return serverTimestamp();
+function nowIso() {
+  return new Date().toISOString();
 }
 
 /* =========================================================
@@ -37,25 +29,27 @@ function now() {
 ========================================================= */
 
 export async function createOrg({ name, createdByUid, createdByEmail }) {
-  if (!name) throw new Error("Org name required.");
+  const orgName = String(name || "").trim();
+  if (!orgName) throw new Error("Org name required.");
   if (!createdByUid) throw new Error("Missing creator UID.");
 
-  const orgRef = doc(collection(db, "orgs"));
-  const orgId = orgRef.id;
-
-  await setDoc(orgRef, {
-    name,
-    createdAt: now(),
-    createdByUid,
-    createdByEmail,
+  // auto-id doc
+  const orgRef = await addDoc(collection(db, "orgs"), {
+    name: orgName,
+    createdAt: serverTimestamp(),
+    createdAtIso: nowIso(),
+    createdByUid: String(createdByUid || "").trim(),
+    createdByEmail: String(createdByEmail || "").trim(),
     active: true
   });
 
-  return orgId;
+  return orgRef.id;
 }
 
 export async function listOrgs() {
-  const snap = await getDocs(query(collection(db, "orgs"), orderBy("createdAt", "desc")));
+  const snap = await getDocs(
+    query(collection(db, "orgs"), orderBy("createdAtIso", "desc"), limit(100))
+  );
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
@@ -64,31 +58,33 @@ export async function listOrgs() {
 ========================================================= */
 
 export async function createStore({ orgId, name, regionId, districtId }) {
-  if (!orgId) throw new Error("Org ID required.");
-  if (!name) throw new Error("Store name required.");
+  const oid = String(orgId || "").trim();
+  const storeName = String(name || "").trim();
 
-  const storeId = cleanId(name);
+  if (!oid) throw new Error("Org ID required.");
+  if (!storeName) throw new Error("Store name required.");
 
-  const storeRef = doc(db, "orgs", orgId, "stores", storeId);
-
-  await setDoc(storeRef, {
-    name,
-    regionId: regionId || null,
-    districtId: districtId || null,
+  // auto-id so no collisions / overwrites
+  const storeRef = await addDoc(collection(db, "orgs", oid, "stores"), {
+    name: storeName,
+    regionId: String(regionId || "").trim() || null,
+    districtId: String(districtId || "").trim() || null,
     baselineApproved: false,
     baselineLocked: false,
     active: true,
-    createdAt: now()
+    createdAt: serverTimestamp(),
+    createdAtIso: nowIso()
   });
 
-  return storeId;
+  return storeRef.id;
 }
 
 export async function listStores(orgId) {
-  if (!orgId) throw new Error("Org ID required.");
+  const oid = String(orgId || "").trim();
+  if (!oid) throw new Error("Org ID required.");
 
   const snap = await getDocs(
-    query(collection(db, "orgs", orgId, "stores"), orderBy("createdAt", "desc"))
+    query(collection(db, "orgs", oid, "stores"), orderBy("createdAtIso", "desc"), limit(200))
   );
 
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -113,32 +109,38 @@ export async function upsertUserAccess({
   assignedRegionIds,
   isSuperAdmin
 }) {
-  if (!uid) throw new Error("UID required.");
-  if (!email) throw new Error("Email required.");
+  const _uid = String(uid || "").trim();
+  const _email = String(email || "").trim().toLowerCase();
+  const _orgId = String(orgId || "").trim();
 
-  // 1️⃣ Global directory
-  const dirRef = doc(db, "commercial_users", uid);
-  await setDoc(dirRef, {
-    email,
-    orgId: orgId || null,
-    role,
+  if (!_uid) throw new Error("UID required.");
+  if (!_email) throw new Error("Email required.");
+
+  // 1) Global directory
+  await setDoc(doc(db, "commercial_users", _uid), {
+    uid: _uid,
+    email: _email,
+    orgId: _orgId || "",
+    role: String(role || "SM").trim().toUpperCase(),
     commercialAccess: !!commercialAccess,
     isSuperAdmin: !!isSuperAdmin,
     active: !!active,
-    updatedAt: now()
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso()
   }, { merge: true });
 
-  // 2️⃣ Org subcollection (skip for super admin without org)
-  if (orgId) {
-    const orgUserRef = doc(db, "orgs", orgId, "users", uid);
-
-    await setDoc(orgUserRef, {
-      role,
-      assignedStoreIds: assignedStoreIds || [],
-      assignedDistrictIds: assignedDistrictIds || [],
-      assignedRegionIds: assignedRegionIds || [],
+  // 2) Org subcollection (skip if no orgId)
+  if (_orgId) {
+    await setDoc(doc(db, "orgs", _orgId, "users", _uid), {
+      uid: _uid,
+      email: _email,
+      role: String(role || "SM").trim().toUpperCase(),
+      assignedStoreIds: Array.isArray(assignedStoreIds) ? assignedStoreIds : [],
+      assignedDistrictIds: Array.isArray(assignedDistrictIds) ? assignedDistrictIds : [],
+      assignedRegionIds: Array.isArray(assignedRegionIds) ? assignedRegionIds : [],
       active: !!active,
-      updatedAt: now()
+      updatedAt: serverTimestamp(),
+      updatedAtIso: nowIso()
     }, { merge: true });
   }
 
