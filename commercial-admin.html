@@ -7,52 +7,189 @@
   <link rel="stylesheet" href="assets/styles.css" />
   <meta name="robots" content="noindex" />
 
-  <!-- Commercial Admin Guard -->
+  <style>
+    .card { max-width: 980px; margin: 22px auto; padding: 18px; border-radius: 14px; background: rgba(255,255,255,.92); border: 1px solid rgba(0,0,0,.08); }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 900px){ .grid { grid-template-columns: 1fr; } }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
+    .input { width:100%; padding:12px; border-radius:10px; border:1px solid rgba(0,0,0,.15); font-size:14px; }
+    .btnx { padding:12px 14px; border-radius:10px; border:1px solid rgba(0,0,0,.12); background:#111827; color:#fff; cursor:pointer; font-weight:800; }
+    .btnx.secondary { background:#fff; color:#111827; }
+    .small { font-size:12px; opacity:.75; }
+    .msg { margin-top:10px; font-size:13px; white-space:pre-wrap; min-height: 18px; }
+    .hr { height:1px; background: rgba(0,0,0,.08); margin: 12px 0; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; }
+  </style>
+
+  <!-- Guard: admin/super_admin only -->
   <script type="module">
-    import { requireCommercial, getCommercialSession, clearCommercialSession } 
-      from "./assets/commercial-guard.js";
-
-    const ok = requireCommercial({
-      allowRoles: ["admin","super_admin"],
-      requireOrg: false
-    });
-
-    if (ok) {
-      const s = getCommercialSession();
-      window.addEventListener("DOMContentLoaded", () => {
-        const el = document.getElementById("sessionInfo");
-        if (el && s) {
-          el.textContent = `Admin Access | Role: ${s.role}`;
-        }
-
-        document.getElementById("logoutBtn")?.addEventListener("click", () => {
-          clearCommercialSession();
-          location.href = "./client-login.html";
-        });
-      });
-    }
+    import { requireCommercial } from "./assets/commercial-guard.js";
+    requireCommercial({ allowRoles: ["admin","super_admin"], requireOrg: false, redirectTo: "./client-login.html" });
   </script>
 </head>
 
 <body>
   <main class="page">
     <section class="hero" style="padding-top:24px;">
-      <p class="anchor">Commercial Admin</p>
+      <p class="anchor">Commercial Admin — Org Structure Setup</p>
 
-      <div class="card" style="max-width:720px;margin:40px auto;padding:18px;border-radius:14px;background:rgba(255,255,255,.92);">
-        <h2 style="margin:0 0 10px 0;">Admin Dashboard ✅</h2>
-
-        <p id="sessionInfo" class="small" style="opacity:.8;margin:0;">
-          Loading session…
-        </p>
-
-        <div style="margin-top:16px;">
-          <button class="btn secondary" id="logoutBtn">
-            Logout
-          </button>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <h2 style="margin:0;">Enterprise Structure (Step 1)</h2>
+            <div class="small">Org → Stores → Users (no dashboards yet). Firestore org-layer only.</div>
+          </div>
+          <div class="row">
+            <a class="btnx secondary" href="./client-login.html" style="text-decoration:none;">Back</a>
+          </div>
         </div>
+
+        <div class="hr"></div>
+
+        <div class="grid">
+          <!-- ORG -->
+          <div>
+            <h3 style="margin:0 0 8px 0;">Create Org</h3>
+            <label class="small">Org Name</label>
+            <input class="input" id="orgName" placeholder="e.g., Filibertos QSR" />
+
+            <div style="height:10px;"></div>
+            <button class="btnx" id="createOrgBtn" type="button">Create Org</button>
+
+            <div class="msg" id="orgMsg"></div>
+            <div class="small mono" id="orgIdOut"></div>
+          </div>
+
+          <!-- STORE -->
+          <div>
+            <h3 style="margin:0 0 8px 0;">Create Store (under selected Org)</h3>
+
+            <label class="small">Org Id</label>
+            <input class="input mono" id="storeOrgId" placeholder="org_..." />
+
+            <div style="height:10px;"></div>
+
+            <label class="small">Store Name</label>
+            <input class="input" id="storeName" placeholder="e.g., Store 101 - Fountain Hills" />
+
+            <div style="height:10px;"></div>
+
+            <div class="row">
+              <div style="flex:1;">
+                <label class="small">Region Id (optional)</label>
+                <input class="input mono" id="regionId" placeholder="region_..." />
+              </div>
+              <div style="flex:1;">
+                <label class="small">District Id (optional)</label>
+                <input class="input mono" id="districtId" placeholder="district_..." />
+              </div>
+            </div>
+
+            <div style="height:10px;"></div>
+            <button class="btnx" id="createStoreBtn" type="button">Create Store</button>
+
+            <div class="msg" id="storeMsg"></div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+
+        <!-- USER ACCESS -->
+        <div>
+          <h3 style="margin:0 0 8px 0;">Assign User Access (Directory + Org User)</h3>
+          <div class="small">
+            Requires Firebase Auth UID. (Web client cannot create Auth users; you paste UID.)
+          </div>
+
+          <div style="height:10px;"></div>
+
+          <div class="grid">
+            <div>
+              <label class="small">User UID</label>
+              <input class="input mono" id="u_uid" placeholder="Firebase Auth UID" />
+            </div>
+            <div>
+              <label class="small">Email</label>
+              <input class="input" id="u_email" placeholder="user@company.com" />
+            </div>
+          </div>
+
+          <div style="height:10px;"></div>
+
+          <div class="grid">
+            <div>
+              <label class="small">Org Id (blank allowed only for SUPER_ADMIN)</label>
+              <input class="input mono" id="u_orgId" placeholder="org_..." />
+            </div>
+            <div>
+              <label class="small">Role</label>
+              <select class="input" id="u_role">
+                <option>SM</option>
+                <option>DM</option>
+                <option>RM</option>
+                <option>VP</option>
+                <option>OWNER</option>
+                <option>SUPER_ADMIN</option>
+                <option>ADMIN</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="height:10px;"></div>
+
+          <div class="grid">
+            <div>
+              <label class="small">Assigned Store Ids (comma separated)</label>
+              <input class="input mono" id="u_storeIds" placeholder="store_..., store_..." />
+            </div>
+            <div class="row">
+              <label class="small" style="display:flex;gap:8px;align-items:center;">
+                <input type="checkbox" id="u_commercial" checked />
+                commercialAccess = true
+              </label>
+              <label class="small" style="display:flex;gap:8px;align-items:center;">
+                <input type="checkbox" id="u_active" checked />
+                active = true
+              </label>
+            </div>
+          </div>
+
+          <div style="height:10px;"></div>
+
+          <button class="btnx" id="saveUserBtn" type="button">Save User Access</button>
+          <div class="msg" id="userMsg"></div>
+        </div>
+
+        <div class="hr"></div>
+
+        <!-- LIST -->
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <h3 style="margin:0 0 8px 0;">Verify Structure</h3>
+            <div class="small">Lists orgs + stores (read-only verification).</div>
+          </div>
+          <div class="row">
+            <button class="btnx secondary" id="refreshBtn" type="button">Refresh Lists</button>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div>
+            <div class="small">Orgs</div>
+            <pre class="mono" id="orgList" style="margin:8px 0 0 0; white-space:pre-wrap;"></pre>
+          </div>
+          <div>
+            <div class="small">Stores (for Org Id below)</div>
+            <input class="input mono" id="listOrgId" placeholder="org_..." />
+            <pre class="mono" id="storeList" style="margin:8px 0 0 0; white-space:pre-wrap;"></pre>
+          </div>
+        </div>
+
+        <div class="msg" id="globalMsg"></div>
       </div>
     </section>
   </main>
+
+  <script type="module" src="./assets/commercial-admin.js?v=step1-1"></script>
 </body>
 </html>
