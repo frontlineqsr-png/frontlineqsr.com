@@ -1,148 +1,131 @@
-// /assets/commercial-db.js
-// Commercial Firestore org-layer DB helpers
-// NO PILOT DATA. NO KPI MATH.
-// Enterprise-only structure.
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FrontlineQSR | Commercial Admin</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+  <meta name="robots" content="noindex" />
+</head>
 
-import { db } from "./firebase.js";
-import {
-  collection,
-  doc,
-  getDocs,
-  setDoc,
-  addDoc,
-  serverTimestamp,
-  query,
-  orderBy,
-  limit
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+<body>
+  <main class="page">
+    <section class="hero" style="padding-top:24px;">
+      <p class="anchor">Commercial Admin — Org Structure</p>
 
-/* =========================================================
-   Helpers
-========================================================= */
+      <div class="card" style="max-width:980px;margin:28px auto;padding:18px;border-radius:14px;background:rgba(255,255,255,.92);">
+        <div class="row" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;">
 
-function nowIso() {
-  return new Date().toISOString();
-}
+          <!-- ORG -->
+          <div style="flex:1;min-width:280px;">
+            <h3 style="margin:0 0 10px 0;">Create Org</h3>
+            <label class="small">Org Name</label>
+            <input class="input" id="orgName" placeholder="Example: Filiberto’s QSR" />
 
-/* =========================================================
-   ORGS
-========================================================= */
+            <div style="height:10px;"></div>
+            <button class="btn primary" id="createOrgBtn" type="button">Create Org</button>
 
-export async function createOrg({ name, createdByUid, createdByEmail }) {
-  const orgName = String(name || "").trim();
-  if (!orgName) throw new Error("Org name required.");
-  if (!createdByUid) throw new Error("Missing creator UID.");
+            <div class="small" id="orgMsg" style="margin-top:10px;white-space:pre-wrap;"></div>
+            <div class="small" id="orgIdOut" style="margin-top:8px;opacity:.8;"></div>
+          </div>
 
-  // auto-id doc
-  const orgRef = await addDoc(collection(db, "orgs"), {
-    name: orgName,
-    createdAt: serverTimestamp(),
-    createdAtIso: nowIso(),
-    createdByUid: String(createdByUid || "").trim(),
-    createdByEmail: String(createdByEmail || "").trim(),
-    active: true
-  });
+          <!-- STORE -->
+          <div style="flex:1;min-width:280px;">
+            <h3 style="margin:0 0 10px 0;">Create Store</h3>
+            <label class="small">Org Id</label>
+            <input class="input" id="storeOrgId" placeholder="Paste orgId" />
 
-  return orgRef.id;
-}
+            <div style="height:10px;"></div>
+            <label class="small">Store Name</label>
+            <input class="input" id="storeName" placeholder="Example: Mesa #12" />
 
-export async function listOrgs() {
-  const snap = await getDocs(
-    query(collection(db, "orgs"), orderBy("createdAtIso", "desc"), limit(100))
-  );
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
+            <div style="height:10px;"></div>
+            <label class="small">Region Id (optional)</label>
+            <input class="input" id="regionId" placeholder="Example: region_01" />
 
-/* =========================================================
-   STORES (org subcollection)
-========================================================= */
+            <div style="height:10px;"></div>
+            <label class="small">District Id (optional)</label>
+            <input class="input" id="districtId" placeholder="Example: district_04" />
 
-export async function createStore({ orgId, name, regionId, districtId }) {
-  const oid = String(orgId || "").trim();
-  const storeName = String(name || "").trim();
+            <div style="height:10px;"></div>
+            <button class="btn primary" id="createStoreBtn" type="button">Create Store</button>
 
-  if (!oid) throw new Error("Org ID required.");
-  if (!storeName) throw new Error("Store name required.");
+            <div class="small" id="storeMsg" style="margin-top:10px;white-space:pre-wrap;"></div>
+          </div>
 
-  // auto-id so no collisions / overwrites
-  const storeRef = await addDoc(collection(db, "orgs", oid, "stores"), {
-    name: storeName,
-    regionId: String(regionId || "").trim() || null,
-    districtId: String(districtId || "").trim() || null,
-    baselineApproved: false,
-    baselineLocked: false,
-    active: true,
-    createdAt: serverTimestamp(),
-    createdAtIso: nowIso()
-  });
+          <!-- USER -->
+          <div style="flex:1;min-width:300px;">
+            <h3 style="margin:0 0 10px 0;">User Access</h3>
 
-  return storeRef.id;
-}
+            <label class="small">User UID</label>
+            <input class="input" id="u_uid" placeholder="Firebase Auth UID" />
 
-export async function listStores(orgId) {
-  const oid = String(orgId || "").trim();
-  if (!oid) throw new Error("Org ID required.");
+            <div style="height:10px;"></div>
+            <label class="small">Email</label>
+            <input class="input" id="u_email" placeholder="user@company.com" />
 
-  const snap = await getDocs(
-    query(collection(db, "orgs", oid, "stores"), orderBy("createdAtIso", "desc"), limit(200))
-  );
+            <div style="height:10px;"></div>
+            <label class="small">Org Id</label>
+            <input class="input" id="u_orgId" placeholder="Paste orgId" />
 
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
+            <div style="height:10px;"></div>
+            <label class="small">Role</label>
+            <select class="input" id="u_role">
+              <option>SM</option>
+              <option>DM</option>
+              <option>RM</option>
+              <option>VP</option>
+              <option>OWNER</option>
+              <option>ADMIN</option>
+              <option>SUPER_ADMIN</option>
+            </select>
 
-/* =========================================================
-   USER ACCESS
-   Writes to:
-   1) /commercial_users/{uid}
-   2) /orgs/{orgId}/users/{uid}
-========================================================= */
+            <div style="height:10px;"></div>
+            <label class="small">Assigned Store IDs (comma separated)</label>
+            <input class="input" id="u_storeIds" placeholder="storeId1, storeId2" />
 
-export async function upsertUserAccess({
-  uid,
-  email,
-  orgId,
-  role,
-  commercialAccess,
-  active,
-  assignedStoreIds,
-  assignedDistrictIds,
-  assignedRegionIds,
-  isSuperAdmin
-}) {
-  const _uid = String(uid || "").trim();
-  const _email = String(email || "").trim().toLowerCase();
-  const _orgId = String(orgId || "").trim();
+            <div style="height:10px;"></div>
+            <label class="small" style="display:flex;gap:10px;align-items:center;">
+              <input type="checkbox" id="u_commercial" checked />
+              Commercial Access
+            </label>
 
-  if (!_uid) throw new Error("UID required.");
-  if (!_email) throw new Error("Email required.");
+            <label class="small" style="display:flex;gap:10px;align-items:center;margin-top:6px;">
+              <input type="checkbox" id="u_active" checked />
+              Active
+            </label>
 
-  // 1) Global directory
-  await setDoc(doc(db, "commercial_users", _uid), {
-    uid: _uid,
-    email: _email,
-    orgId: _orgId || "",
-    role: String(role || "SM").trim().toUpperCase(),
-    commercialAccess: !!commercialAccess,
-    isSuperAdmin: !!isSuperAdmin,
-    active: !!active,
-    updatedAt: serverTimestamp(),
-    updatedAtIso: nowIso()
-  }, { merge: true });
+            <div style="height:10px;"></div>
+            <button class="btn primary" id="saveUserBtn" type="button">Save User</button>
 
-  // 2) Org subcollection (skip if no orgId)
-  if (_orgId) {
-    await setDoc(doc(db, "orgs", _orgId, "users", _uid), {
-      uid: _uid,
-      email: _email,
-      role: String(role || "SM").trim().toUpperCase(),
-      assignedStoreIds: Array.isArray(assignedStoreIds) ? assignedStoreIds : [],
-      assignedDistrictIds: Array.isArray(assignedDistrictIds) ? assignedDistrictIds : [],
-      assignedRegionIds: Array.isArray(assignedRegionIds) ? assignedRegionIds : [],
-      active: !!active,
-      updatedAt: serverTimestamp(),
-      updatedAtIso: nowIso()
-    }, { merge: true });
-  }
+            <div class="small" id="userMsg" style="margin-top:10px;white-space:pre-wrap;"></div>
+          </div>
 
-  return true;
-}
+        </div>
+
+        <div class="hr" style="margin:18px 0;"></div>
+
+        <!-- LISTS -->
+        <div>
+          <h3 style="margin:0 0 10px 0;">Lists</h3>
+
+          <label class="small">Org Id to list stores</label>
+          <input class="input" id="listOrgId" placeholder="Paste orgId" />
+
+          <div style="height:10px;"></div>
+          <button class="btn secondary" id="refreshBtn" type="button">Refresh Lists</button>
+          <div class="small" id="globalMsg" style="margin-top:10px;white-space:pre-wrap;"></div>
+
+          <div class="row" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;">
+            <pre class="card" style="flex:1;min-width:280px;padding:12px;background:rgba(0,0,0,.04);" id="orgList">(orgs load here)</pre>
+            <pre class="card" style="flex:1;min-width:280px;padding:12px;background:rgba(0,0,0,.04);" id="storeList">(stores load here)</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- IMPORTANT: this loads your admin logic -->
+  <script type="module" src="assets/commercial-admin.js?v=1"></script>
+</body>
+</html>
