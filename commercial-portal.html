@@ -7,50 +7,36 @@
   <link rel="stylesheet" href="assets/styles.css" />
   <meta name="robots" content="noindex" />
 
-  <!-- Commercial Access Guard -->
   <script type="module">
-    import { requireCommercial, clearCommercialSession } from "./assets/commercial-guard.js";
-    import { auth } from "./assets/firebase.js";
-    import { signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { bootCommercialPage } from "./assets/commercial-page-boot.js";
 
-    const session = requireCommercial({
+    bootCommercialPage({
       allowRoles: ["sm","admin","super_admin"],
       requireOrg: true
     });
-
-    if (session) {
-      window.addEventListener("DOMContentLoaded", () => {
-        const el = document.getElementById("sessionInfo");
-        if (el) {
-          el.textContent = `Org: ${session.orgId || "N/A"} | Role: ${session.role}`;
-        }
-
-        document.getElementById("logoutBtn")?.addEventListener("click", async () => {
-          try { await signOut(auth); } catch {}
-          clearCommercialSession();
-          location.replace("./client-login.html");
-        });
-      });
-    }
   </script>
 </head>
 
 <body>
   <main class="page">
     <section class="hero" style="padding-top:24px;">
-      <p class="anchor">Commercial Portal</p>
+      <p class="anchor">Commercial — Store Manager</p>
 
-      <div class="card" style="max-width:720px;margin:40px auto;padding:18px;border-radius:14px;background:rgba(255,255,255,.92);">
-        <h2 style="margin:0 0 10px 0;">Store Manager View ✅</h2>
+      <div class="card" style="max-width:760px;margin:40px auto;padding:18px;border-radius:14px;background:rgba(255,255,255,.92);">
+        <h2 style="margin:0 0 10px 0;">SM View (Store Manager)</h2>
 
         <p id="sessionInfo" class="small" style="opacity:.8;margin:0;">
           Loading session…
         </p>
 
+        <div class="hr" style="margin:16px 0;"></div>
+
+        <p class="small" style="margin:0;opacity:.85;">
+          Upcoming: Store KPI dashboard, weekly upload controls, baseline visibility.
+        </p>
+
         <div style="margin-top:16px;">
-          <button class="btn secondary" id="logoutBtn" type="button">
-            Logout
-          </button>
+          <button class="btn secondary" id="logoutBtn" type="button">Logout</button>
         </div>
       </div>
     </section>
