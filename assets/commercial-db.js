@@ -24,6 +24,12 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function normalizeIds(v) {
+  if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean);
+  if (typeof v === "string") return v.split(",").map(x => x.trim()).filter(Boolean);
+  return [];
+}
+
 /* =========================================================
    ORGS
 ========================================================= */
@@ -33,7 +39,6 @@ export async function createOrg({ name, createdByUid, createdByEmail }) {
   if (!orgName) throw new Error("Org name required.");
   if (!createdByUid) throw new Error("Missing creator UID.");
 
-  // auto-id doc
   const orgRef = await addDoc(collection(db, "orgs"), {
     name: orgName,
     createdAt: serverTimestamp(),
@@ -48,7 +53,7 @@ export async function createOrg({ name, createdByUid, createdByEmail }) {
 
 export async function listOrgs() {
   const snap = await getDocs(
-    query(collection(db, "orgs"), orderBy("createdAtIso", "desc"), limit(100))
+    query(collection(db, "orgs"), orderBy("createdAt", "desc"), limit(100))
   );
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
@@ -64,7 +69,6 @@ export async function createStore({ orgId, name, regionId, districtId }) {
   if (!oid) throw new Error("Org ID required.");
   if (!storeName) throw new Error("Store name required.");
 
-  // auto-id so no collisions / overwrites
   const storeRef = await addDoc(collection(db, "orgs", oid, "stores"), {
     name: storeName,
     regionId: String(regionId || "").trim() || null,
@@ -84,7 +88,7 @@ export async function listStores(orgId) {
   if (!oid) throw new Error("Org ID required.");
 
   const snap = await getDocs(
-    query(collection(db, "orgs", oid, "stores"), orderBy("createdAtIso", "desc"), limit(200))
+    query(collection(db, "orgs", oid, "stores"), orderBy("createdAt", "desc"), limit(200))
   );
 
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -120,7 +124,7 @@ export async function upsertUserAccess({
   await setDoc(doc(db, "commercial_users", _uid), {
     uid: _uid,
     email: _email,
-    orgId: _orgId || "",
+    orgId: _orgId || null,
     role: String(role || "SM").trim().toUpperCase(),
     commercialAccess: !!commercialAccess,
     isSuperAdmin: !!isSuperAdmin,
@@ -135,9 +139,11 @@ export async function upsertUserAccess({
       uid: _uid,
       email: _email,
       role: String(role || "SM").trim().toUpperCase(),
-      assignedStoreIds: Array.isArray(assignedStoreIds) ? assignedStoreIds : [],
-      assignedDistrictIds: Array.isArray(assignedDistrictIds) ? assignedDistrictIds : [],
-      assignedRegionIds: Array.isArray(assignedRegionIds) ? assignedRegionIds : [],
+      commercialAccess: !!commercialAccess,
+      isSuperAdmin: !!isSuperAdmin,
+      assignedStoreIds: normalizeIds(assignedStoreIds),
+      assignedDistrictIds: normalizeIds(assignedDistrictIds),
+      assignedRegionIds: normalizeIds(assignedRegionIds),
       active: !!active,
       updatedAt: serverTimestamp(),
       updatedAtIso: nowIso()
