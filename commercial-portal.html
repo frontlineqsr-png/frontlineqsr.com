@@ -9,24 +9,26 @@
 
   <!-- Commercial Access Guard -->
   <script type="module">
-    import { requireCommercial, getCommercialSession, clearCommercialSession } 
-      from "./assets/commercial-guard.js";
+    import { requireCommercial, clearCommercialSession } from "./assets/commercial-guard.js";
+    import { auth } from "./assets/firebase.js";
+    import { signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-    const ok = requireCommercial({
-      allowRoles: ["sm","admin","super_admin"]
+    const session = requireCommercial({
+      allowRoles: ["sm","admin","super_admin"],
+      requireOrg: true
     });
 
-    if (ok) {
-      const s = getCommercialSession();
+    if (session) {
       window.addEventListener("DOMContentLoaded", () => {
         const el = document.getElementById("sessionInfo");
-        if (el && s) {
-          el.textContent = `Org: ${s.orgId || "N/A"} | Role: ${s.role}`;
+        if (el) {
+          el.textContent = `Org: ${session.orgId || "N/A"} | Role: ${session.role}`;
         }
 
-        document.getElementById("logoutBtn")?.addEventListener("click", () => {
+        document.getElementById("logoutBtn")?.addEventListener("click", async () => {
+          try { await signOut(auth); } catch {}
           clearCommercialSession();
-          location.href = "./client-login.html";
+          location.replace("./client-login.html");
         });
       });
     }
@@ -46,7 +48,7 @@
         </p>
 
         <div style="margin-top:16px;">
-          <button class="btn secondary" id="logoutBtn">
+          <button class="btn secondary" id="logoutBtn" type="button">
             Logout
           </button>
         </div>
