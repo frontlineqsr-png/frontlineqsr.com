@@ -1,4 +1,4 @@
-// assets/commercial-guard.js (v1.1)
+// assets/commercial-guard.js (v1.2)
 // Commercial-only page gate (NO pilot data)
 // Requires FLQSR_COMM_SESSION set by commercial-auth.js
 
@@ -27,31 +27,34 @@ export function requireCommercial(opts = {}) {
   } = opts;
 
   const s = getCommercialSession();
+  const role = String(s?.role || "").trim().toLowerCase();
 
-  // must have session + commercialAccess
-  if (!s?.uid || !s?.commercialAccess) {
+  const isPrivileged =
+    role === "admin" ||
+    role === "super_admin" ||
+    !!s?.isSuperAdmin;
+
+  // must have session + commercialAccess (unless privileged)
+  if (!s?.uid || (!s?.commercialAccess && !isPrivileged)) {
     clearCommercialSession();
     location.replace(redirectTo);
-    return false;
+    return null;
   }
-
-  const role = String(s.role || "").toLowerCase();
 
   // role must be allowed
   if (!allowRoles.includes(role)) {
     location.replace(redirectTo);
-    return false;
+    return null;
   }
 
-  // org required unless admin/super_admin or requireOrg=false
-  const isPrivileged = role === "admin" || role === "super_admin" || !!s.isSuperAdmin;
+  // org required unless privileged or requireOrg=false
   if (requireOrg && !isPrivileged) {
     const orgId = String(s.orgId || "").trim();
     if (!orgId) {
       location.replace(redirectTo);
-      return false;
+      return null;
     }
   }
 
-  return true;
+  return s; // return session for page use
 }
