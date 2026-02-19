@@ -8,27 +8,12 @@
   <meta name="robots" content="noindex" />
 
   <script type="module">
-    import { requireCommercial, clearCommercialSession } from "./assets/commercial-guard.js";
-    import { auth } from "./assets/firebase.js";
-    import { signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+    import { bootCommercialPage } from "./assets/commercial-page-boot.js";
 
-    const session = requireCommercial({
+    bootCommercialPage({
       allowRoles: ["dm","admin","super_admin"],
       requireOrg: true
     });
-
-    if (session) {
-      window.addEventListener("DOMContentLoaded", () => {
-        const el = document.getElementById("sessionInfo");
-        if (el) el.textContent = `Org: ${session.orgId || "N/A"} | Role: ${session.role}`;
-
-        document.getElementById("logoutBtn")?.addEventListener("click", async () => {
-          try { await signOut(auth); } catch {}
-          clearCommercialSession();
-          location.replace("./client-login.html");
-        });
-      });
-    }
   </script>
 </head>
 
@@ -38,14 +23,16 @@
       <p class="anchor">Commercial — District Manager</p>
 
       <div class="card" style="max-width:760px;margin:40px auto;padding:18px;border-radius:14px;background:rgba(255,255,255,.92);">
-        <h2 style="margin:0 0 10px 0;">DM View (Placeholder)</h2>
+        <h2 style="margin:0 0 10px 0;">DM View</h2>
 
-        <p id="sessionInfo" class="small" style="opacity:.8;margin:0;">Loading session…</p>
+        <p id="sessionInfo" class="small" style="opacity:.8;margin:0;">
+          Loading session…
+        </p>
 
         <div class="hr" style="margin:16px 0;"></div>
 
         <p class="small" style="margin:0;opacity:.85;">
-          Next build: district rollups, store drill-down list, baseline lock status, week upload monitoring.
+          Upcoming: District rollups, store drill-down, baseline compliance monitoring.
         </p>
 
         <div style="margin-top:16px;">
@@ -56,4 +43,3 @@
   </main>
 </body>
 </html>
-
