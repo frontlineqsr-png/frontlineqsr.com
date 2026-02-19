@@ -1,91 +1,84 @@
-/* Executive Centered Layout */
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FrontlineQSR | Commercial VP</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+  <meta name="robots" content="noindex" />
 
-html, body {
-  height: 100%;
-  margin: 0;
-}
+  <style>
+    /* Page background + layout (commercial clean) */
+    .page{
+      min-height:100vh;
+      background:
+        radial-gradient(1200px 700px at 50% 0%, rgba(255,255,255,0.10), rgba(0,0,0,0) 60%),
+        linear-gradient(180deg, #0b1220 0%, #0a1020 55%, #070b14 100%);
+    }
+    .hero{ padding:28px 16px 60px; }
+    .anchor{
+      text-align:center;
+      letter-spacing:.2px;
+      font-weight:800;
+      opacity:.85;
+      margin:0 0 16px;
+    }
 
-body {
-  font-family: system-ui, -apple-system, sans-serif;
-  background: linear-gradient(180deg, #071225, #0b1b36);
-  color: white;
+    /* Card polish */
+    .vp-card{
+      max-width:760px;
+      margin:40px auto;
+      padding:22px;
+      border-radius:16px;
+      background:rgba(255,255,255,.94);
+      border:1px solid rgba(15,23,42,.12);
+      box-shadow:0 18px 50px rgba(0,0,0,.35);
+      color:#0f172a;
+    }
+    .vp-title{ margin:0 0 10px 0; font-weight:900; letter-spacing:.2px; }
+    .vp-sub{ margin:0; opacity:.78; color:rgba(15,23,42,.78); }
+    .hr{
+      height:1px;
+      background:rgba(15,23,42,.10);
+      border:0;
+      margin:16px 0;
+    }
 
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
+    /* Button spacing */
+    .actions{ margin-top:16px; display:flex; gap:10px; flex-wrap:wrap; }
+  </style>
 
-/* Container */
-.page {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+  <script type="module">
+    import { bootCommercialPage } from "./assets/commercial-page-boot.js";
 
-.hero {
-  max-width: 900px;
-  padding: 40px 20px;
+    bootCommercialPage({
+      allowRoles: ["vp","owner","admin","super_admin"],
+      requireOrg: true
+    });
+  </script>
+</head>
 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+<body>
+  <main class="page">
+    <section class="hero">
+      <p class="anchor">Commercial — VP / Owner</p>
 
-/* Logo */
-.logo {
-  max-width: 700px;
-  width: 100%;
-  margin-bottom: 25px;
-}
+      <div class="vp-card">
+        <h2 class="vp-title">VP / Owner View</h2>
 
-/* Anchor line */
-.anchor {
-  font-size: 16px;
-  opacity: 0.75;
-  max-width: 700px;
-  margin-bottom: 30px;
-}
+        <p id="sessionInfo" class="vp-sub">Loading session…</p>
 
-/* Buttons */
-.button-group {
-  display: flex;
-  gap: 18px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 25px;
-}
+        <div class="hr"></div>
 
-.btn {
-  padding: 12px 26px;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: 0.2s ease;
-}
+        <p class="vp-sub">
+          Upcoming: Enterprise rollups, ROI reporting, governance compliance dashboard.
+        </p>
 
-.btn.primary {
-  background: #2ed573;
-  color: #071225;
-}
-
-.btn.primary:hover {
-  background: #1dd1a1;
-}
-
-.btn.secondary {
-  border: 1px solid rgba(255,255,255,0.4);
-  color: white;
-}
-
-.btn.secondary:hover {
-  background: rgba(255,255,255,0.1);
-}
-
-/* Footer */
-.fine {
-  font-size: 13px;
-  opacity: 0.6;
-  max-width: 750px;
-}
+        <div class="actions">
+          <button class="btn secondary" id="logoutBtn" type="button">Logout</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
