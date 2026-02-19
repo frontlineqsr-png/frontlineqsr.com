@@ -9,103 +9,67 @@
   <meta name="robots" content="noindex" />
 
   <style>
-    /* ---- Commercial Login Polish (Mobile-first) ---- */
+    /* Page layout */
+    .login-wrap{
+      min-height: 100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 28px 16px;
+    }
 
-    .card {
-      width: min(520px, calc(100% - 32px));
-      margin: 28px auto;
+    /* Card polish */
+    .login-card{
+      width: 100%;
+      max-width: 520px;
       padding: 18px;
       border-radius: 16px;
-      border: 1px solid rgba(0,0,0,.10);
-      background: rgba(255,255,255,.98);
-      box-shadow: 0 12px 30px rgba(0,0,0,.12);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.08);
+      backdrop-filter: blur(10px);
     }
 
-    .card h2 {
-      margin: 0 0 10px 0;
-      font-size: 22px;
-      line-height: 1.2;
-      color: #0f172a;
-      letter-spacing: .2px;
-    }
+    .login-title{ margin:0 0 8px 0; font-weight: 900; letter-spacing:.2px; }
+    .login-sub{ margin:0 0 14px 0; font-size:12px; opacity:.78; }
 
-    .small {
-      font-size: 12px;
-      line-height: 1.35;
-      color: rgba(15,23,42,.70);
-      margin-bottom: 14px;
-    }
-
-    label.small {
-      display: block;
-      margin: 10px 0 6px 0;
-      color: rgba(15,23,42,.75);
-      font-weight: 600;
-    }
-
-    .input {
-      width: 100%;
+    /* Inputs (force readable on dark backgrounds) */
+    .in{
+      width:100%;
       padding: 12px 12px;
       border-radius: 12px;
-      border: 1px solid rgba(15,23,42,.18);
-      background: #ffffff;
-      color: #0f172a;
-      font-size: 16px; /* prevents iOS zoom on focus */
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.25);
+      color: rgba(255,255,255,.96);
+      font-size: 15px;
       outline: none;
     }
+    .in::placeholder{ color: rgba(255,255,255,.55); }
+    .in:focus{ border-color: rgba(46,204,113,.55); }
 
-    .input:focus {
-      border-color: rgba(37,99,235,.45);
-      box-shadow: 0 0 0 4px rgba(37,99,235,.12);
-    }
+    .lbl{ font-size:12px; opacity:.78; margin: 0 0 6px 2px; display:block; }
 
-    .btnRow {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 16px;
-    }
-
-    .btnx {
+    /* Buttons */
+    .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top: 14px; }
+    .btnx{
       padding: 12px 14px;
       border-radius: 12px;
-      border: 1px solid rgba(15,23,42,.14);
+      border: 1px solid rgba(255,255,255,.16);
       background: #111827;
       color: #fff;
-      cursor: pointer;
       font-weight: 800;
-      font-size: 14px;
+      cursor: pointer;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width: 120px;
+    }
+    .btnx.secondary{
+      background: rgba(255,255,255,.10);
+      color: rgba(255,255,255,.92);
     }
 
-    .btnx.secondary {
-      background: #fff;
-      color: #111827;
-    }
-
-    .btnLink {
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .msg {
-      margin-top: 12px;
-      font-size: 13px;
-      line-height: 1.35;
-      white-space: pre-wrap;
-      min-height: 18px;
-      color: #065f46;
-      font-weight: 700;
-    }
-
-    @media (max-width: 420px) {
-      .card { padding: 16px; }
-      .btnRow { flex-direction: column; }
-      .btnx, .btnLink { width: 100%; }
-    }
-
-    .page { padding-bottom: env(safe-area-inset-bottom); }
+    .msg{ margin-top: 12px; font-size:13px; white-space:pre-wrap; min-height: 18px; }
   </style>
 </head>
 
@@ -114,36 +78,41 @@
     <section class="hero" style="padding-top:24px;">
       <p class="anchor">Client Access</p>
 
-      <div class="card">
-        <h2>Login</h2>
+      <div class="login-wrap">
+        <div class="login-card">
+          <h2 class="login-title">Login</h2>
+          <p class="login-sub">Commercial access (frontlineqsr.com)</p>
 
-        <div class="small">
-          Commercial access (frontlineqsr.com)
-        </div>
+          <form id="loginForm">
+            <label class="lbl" for="email">Email</label>
+            <input class="in" id="email" type="email" autocomplete="username" placeholder="you@company.com" required />
 
-        <form id="loginForm">
-          <label class="small" for="email">Email</label>
-          <input class="input" id="email" name="email" type="email" autocomplete="username" required />
+            <div style="height:12px;"></div>
 
-          <label class="small" for="password">Password</label>
-          <input class="input" id="password" name="password" type="password" autocomplete="current-password" required />
+            <label class="lbl" for="password">Password</label>
+            <input class="in" id="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
 
-          <div class="btnRow">
-            <button class="btnx" id="loginBtn" type="submit">Login</button>
-            <button class="btnx secondary" id="resetBtn" type="button">Reset Password</button>
-            <a class="btnx secondary btnLink" href="https://frontlineqsr.com/">Back</a>
+            <div class="row">
+              <button class="btnx" id="loginBtn" type="submit">Login</button>
+              <button class="btnx secondary" id="resetBtn" type="button">Reset Password</button>
+              <a class="btnx secondary" href="https://frontlineqsr.com/" aria-label="Back">Back</a>
+            </div>
+
+            <div class="msg" id="msg">Loading auth…</div>
+          </form>
+
+          <div class="login-sub" style="margin-top:10px;">
+            Password reset sends an email link from Firebase.
           </div>
-
-          <div class="msg" id="msg">Loading auth…</div>
-        </form>
-
-        <div style="margin-top:14px;" class="small">
-          Password reset sends an email link from Firebase.
         </div>
       </div>
     </section>
   </main>
 
   <script type="module" src="assets/commercial-auth.js?v=prod-2"></script>
+  <script>
+    // Make Enter work even if button styles change
+    document.getElementById("loginForm")?.addEventListener("submit", (e) => e.preventDefault());
+  </script>
 </body>
 </html>
