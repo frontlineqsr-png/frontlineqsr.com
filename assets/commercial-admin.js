@@ -31,7 +31,8 @@ async function onCreateOrg(){
     msg("orgMsg", "Creating org…");
     const orgId = await createOrg({ name, createdByUid: SESSION.uid, createdByEmail: SESSION.email });
     msg("orgMsg", "✅ Org created.");
-    if ($("orgIdOut")) $("orgIdOut").value = orgId;
+
+    if ($("orgIdOut")) $("orgIdOut").textContent = orgId;
 
     // convenience fill
     if ($("storeOrgId")) $("storeOrgId").value = orgId;
@@ -70,9 +71,9 @@ async function onSaveUser(){
     const orgId = String($("u_orgId")?.value || "").trim();
     const role = String($("u_role")?.value || "SM").trim().toUpperCase();
 
-    // IMPORTANT: your HTML uses <select> for these, not checkboxes
-    const commercialAccess = String($("u_commercial")?.value || "false") === "true";
-    const active = String($("u_active")?.value || "true") === "true";
+    // ✅ HTML uses checkboxes
+    const commercialAccess = !!$("u_commercial")?.checked;
+    const active = !!$("u_active")?.checked;
 
     const assignedStoreIds = parseCsvIds($("u_storeIds")?.value || "");
 
