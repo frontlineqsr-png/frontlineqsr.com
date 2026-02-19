@@ -1,195 +1,146 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FrontlineQSR | Commercial Admin</title>
-  <link rel="stylesheet" href="assets/styles.css" />
-  <meta name="robots" content="noindex" />
+// /assets/commercial-db.js
+// Commercial Firestore org-layer DB helpers
+// NO PILOT DATA. NO KPI MATH.
+// Enterprise-only structure.
 
-  <style>
-    .card { max-width: 980px; margin: 22px auto; padding: 18px; border-radius: 14px; background: rgba(255,255,255,.92); border: 1px solid rgba(0,0,0,.08); }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    @media (max-width: 900px){ .grid { grid-template-columns: 1fr; } }
-    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:end; }
-    .input { width:100%; padding:12px; border-radius:10px; border:1px solid rgba(0,0,0,.15); font-size:14px; }
-    .btnx { padding:12px 14px; border-radius:10px; border:1px solid rgba(0,0,0,.12); background:#111827; color:#fff; cursor:pointer; font-weight:800; }
-    .btnx.secondary { background:#fff; color:#111827; }
-    .small { font-size:12px; opacity:.75; }
-    .msg { margin-top:10px; font-size:13px; white-space:pre-wrap; min-height: 18px; }
-    .hr { height:1px; background: rgba(0,0,0,.08); margin: 12px 0; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:12px; }
-  </style>
+import { db } from "./firebase.js";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  addDoc,
+  serverTimestamp,
+  query,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-  <!-- Guard: admin/super_admin only -->
-  <script type="module">
-    import { requireCommercial } from "./assets/commercial-guard.js";
-    requireCommercial({ allowRoles: ["admin","super_admin"], requireOrg: false, redirectTo: "./client-login.html" });
-  </script>
-</head>
+/* =========================================================
+   Helpers
+========================================================= */
 
-<body>
-  <main class="page">
-    <section class="hero" style="padding-top:24px;">
-      <p class="anchor">Commercial Admin — Org Structure Setup</p>
+function cleanId(s) {
+  return String(s || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "_")
+    .replace(/_+/g, "_");
+}
 
-      <div class="card">
-        <div class="row" style="justify-content:space-between;">
-          <div>
-            <h2 style="margin:0;">Enterprise Structure (Step 1)</h2>
-            <div class="small">Org → Stores → Users (no dashboards yet). Firestore org-layer only.</div>
-          </div>
-          <div class="row">
-            <a class="btnx secondary" href="./client-login.html" style="text-decoration:none;">Back</a>
-          </div>
-        </div>
+function now() {
+  return serverTimestamp();
+}
 
-        <div class="hr"></div>
+/* =========================================================
+   ORGS
+========================================================= */
 
-        <div class="grid">
-          <!-- ORG -->
-          <div>
-            <h3 style="margin:0 0 8px 0;">Create Org</h3>
-            <label class="small">Org Name</label>
-            <input class="input" id="orgName" placeholder="e.g., Filibertos QSR" />
+export async function createOrg({ name, createdByUid, createdByEmail }) {
+  if (!name) throw new Error("Org name required.");
+  if (!createdByUid) throw new Error("Missing creator UID.");
 
-            <div style="height:10px;"></div>
-            <button class="btnx" id="createOrgBtn" type="button">Create Org</button>
+  const orgRef = doc(collection(db, "orgs"));
+  const orgId = orgRef.id;
 
-            <div class="msg" id="orgMsg"></div>
-            <div class="small mono" id="orgIdOut"></div>
-          </div>
+  await setDoc(orgRef, {
+    name,
+    createdAt: now(),
+    createdByUid,
+    createdByEmail,
+    active: true
+  });
 
-          <!-- STORE -->
-          <div>
-            <h3 style="margin:0 0 8px 0;">Create Store (under selected Org)</h3>
+  return orgId;
+}
 
-            <label class="small">Org Id</label>
-            <input class="input mono" id="storeOrgId" placeholder="org_..." />
+export async function listOrgs() {
+  const snap = await getDocs(query(collection(db, "orgs"), orderBy("createdAt", "desc")));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
 
-            <div style="height:10px;"></div>
+/* =========================================================
+   STORES (org subcollection)
+========================================================= */
 
-            <label class="small">Store Name</label>
-            <input class="input" id="storeName" placeholder="e.g., Store 101 - Fountain Hills" />
+export async function createStore({ orgId, name, regionId, districtId }) {
+  if (!orgId) throw new Error("Org ID required.");
+  if (!name) throw new Error("Store name required.");
 
-            <div style="height:10px;"></div>
+  const storeId = cleanId(name);
 
-            <div class="row">
-              <div style="flex:1;">
-                <label class="small">Region Id (optional)</label>
-                <input class="input mono" id="regionId" placeholder="region_..." />
-              </div>
-              <div style="flex:1;">
-                <label class="small">District Id (optional)</label>
-                <input class="input mono" id="districtId" placeholder="district_..." />
-              </div>
-            </div>
+  const storeRef = doc(db, "orgs", orgId, "stores", storeId);
 
-            <div style="height:10px;"></div>
-            <button class="btnx" id="createStoreBtn" type="button">Create Store</button>
+  await setDoc(storeRef, {
+    name,
+    regionId: regionId || null,
+    districtId: districtId || null,
+    baselineApproved: false,
+    baselineLocked: false,
+    active: true,
+    createdAt: now()
+  });
 
-            <div class="msg" id="storeMsg"></div>
-          </div>
-        </div>
+  return storeId;
+}
 
-        <div class="hr"></div>
+export async function listStores(orgId) {
+  if (!orgId) throw new Error("Org ID required.");
 
-        <!-- USER ACCESS -->
-        <div>
-          <h3 style="margin:0 0 8px 0;">Assign User Access (Directory + Org User)</h3>
-          <div class="small">
-            Requires Firebase Auth UID. (Web client cannot create Auth users; you paste UID.)
-          </div>
+  const snap = await getDocs(
+    query(collection(db, "orgs", orgId, "stores"), orderBy("createdAt", "desc"))
+  );
 
-          <div style="height:10px;"></div>
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
 
-          <div class="grid">
-            <div>
-              <label class="small">User UID</label>
-              <input class="input mono" id="u_uid" placeholder="Firebase Auth UID" />
-            </div>
-            <div>
-              <label class="small">Email</label>
-              <input class="input" id="u_email" placeholder="user@company.com" />
-            </div>
-          </div>
+/* =========================================================
+   USER ACCESS
+   Writes to:
+   1) /commercial_users/{uid}
+   2) /orgs/{orgId}/users/{uid}
+========================================================= */
 
-          <div style="height:10px;"></div>
+export async function upsertUserAccess({
+  uid,
+  email,
+  orgId,
+  role,
+  commercialAccess,
+  active,
+  assignedStoreIds,
+  assignedDistrictIds,
+  assignedRegionIds,
+  isSuperAdmin
+}) {
+  if (!uid) throw new Error("UID required.");
+  if (!email) throw new Error("Email required.");
 
-          <div class="grid">
-            <div>
-              <label class="small">Org Id (blank allowed only for SUPER_ADMIN)</label>
-              <input class="input mono" id="u_orgId" placeholder="org_..." />
-            </div>
-            <div>
-              <label class="small">Role</label>
-              <select class="input" id="u_role">
-                <option>SM</option>
-                <option>DM</option>
-                <option>RM</option>
-                <option>VP</option>
-                <option>OWNER</option>
-                <option>SUPER_ADMIN</option>
-                <option>ADMIN</option>
-              </select>
-            </div>
-          </div>
+  // 1️⃣ Global directory
+  const dirRef = doc(db, "commercial_users", uid);
+  await setDoc(dirRef, {
+    email,
+    orgId: orgId || null,
+    role,
+    commercialAccess: !!commercialAccess,
+    isSuperAdmin: !!isSuperAdmin,
+    active: !!active,
+    updatedAt: now()
+  }, { merge: true });
 
-          <div style="height:10px;"></div>
+  // 2️⃣ Org subcollection (skip for super admin without org)
+  if (orgId) {
+    const orgUserRef = doc(db, "orgs", orgId, "users", uid);
 
-          <div class="grid">
-            <div>
-              <label class="small">Assigned Store Ids (comma separated)</label>
-              <input class="input mono" id="u_storeIds" placeholder="store_..., store_..." />
-            </div>
-            <div class="row">
-              <label class="small" style="display:flex;gap:8px;align-items:center;">
-                <input type="checkbox" id="u_commercial" checked />
-                commercialAccess = true
-              </label>
-              <label class="small" style="display:flex;gap:8px;align-items:center;">
-                <input type="checkbox" id="u_active" checked />
-                active = true
-              </label>
-            </div>
-          </div>
+    await setDoc(orgUserRef, {
+      role,
+      assignedStoreIds: assignedStoreIds || [],
+      assignedDistrictIds: assignedDistrictIds || [],
+      assignedRegionIds: assignedRegionIds || [],
+      active: !!active,
+      updatedAt: now()
+    }, { merge: true });
+  }
 
-          <div style="height:10px;"></div>
-
-          <button class="btnx" id="saveUserBtn" type="button">Save User Access</button>
-          <div class="msg" id="userMsg"></div>
-        </div>
-
-        <div class="hr"></div>
-
-        <!-- LIST -->
-        <div class="row" style="justify-content:space-between;">
-          <div>
-            <h3 style="margin:0 0 8px 0;">Verify Structure</h3>
-            <div class="small">Lists orgs + stores (read-only verification).</div>
-          </div>
-          <div class="row">
-            <button class="btnx secondary" id="refreshBtn" type="button">Refresh Lists</button>
-          </div>
-        </div>
-
-        <div class="grid">
-          <div>
-            <div class="small">Orgs</div>
-            <pre class="mono" id="orgList" style="margin:8px 0 0 0; white-space:pre-wrap;"></pre>
-          </div>
-          <div>
-            <div class="small">Stores (for Org Id below)</div>
-            <input class="input mono" id="listOrgId" placeholder="org_..." />
-            <pre class="mono" id="storeList" style="margin:8px 0 0 0; white-space:pre-wrap;"></pre>
-          </div>
-        </div>
-
-        <div class="msg" id="globalMsg"></div>
-      </div>
-    </section>
-  </main>
-
-  <script type="module" src="./assets/commercial-admin.js?v=step1-1"></script>
-</body>
-</html>
+  return true;
+}
