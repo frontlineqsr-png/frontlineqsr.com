@@ -1,11 +1,24 @@
-// assets/commercial-guard.js (v1.3)
+// assets/commercial-guard.js (v1.4)
 // Commercial-only page gate (NO pilot data)
 // Requires FLQSR_COMM_SESSION set by commercial-auth.js
+// ✅ Adds basic session age check
 
 const SESSION_KEY = "FLQSR_COMM_SESSION";
+const MAX_SESSION_HOURS = 12;
 
 function safeParse(raw, fallback) {
   try { return JSON.parse(raw); } catch { return fallback; }
+}
+
+function hoursSince(iso) {
+  const t = Date.parse(String(iso || ""));
+  if (!t) return Number.POSITIVE_INFINITY;
+  return (Date.now() - t) / (1000 * 60 * 60);
+}
+
+export function isSessionExpired(session, maxHours = MAX_SESSION_HOURS) {
+  if (!session?.at) return true;
+  return hoursSince(session.at) > maxHours;
 }
 
 export function getCommercialSession() {
@@ -13,6 +26,10 @@ export function getCommercialSession() {
     try { return localStorage.getItem(SESSION_KEY); } catch { return null; }
   })();
   return safeParse(raw || "null", null);
+}
+
+export function saveCommercialSession(session) {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(session || null)); } catch {}
 }
 
 export function clearCommercialSession() {
@@ -24,6 +41,7 @@ export function requireCommercial(opts = {}) {
     allowRoles = ["sm","dm","rm","vp","admin","super_admin"],
     requireOrg = true,
     redirectTo = "./client-login.html",
+    maxSessionHours = MAX_SESSION_HOURS,
   } = opts;
 
   const allow = (Array.isArray(allowRoles) ? allowRoles : [])
@@ -45,7 +63,14 @@ export function requireCommercial(opts = {}) {
     return null;
   }
 
-  // role must be allowed (if allow list provided)
+  // expire stale cached session
+  if (isSessionExpired(s, maxSessionHours)) {
+    clearCommercialSession();
+    location.replace(redirectTo);
+    return null;
+  }
+
+  // role must be allowed
   if (allow.length > 0 && !allow.includes(role)) {
     clearCommercialSession();
     location.replace(redirectTo);
@@ -62,5 +87,5 @@ export function requireCommercial(opts = {}) {
     }
   }
 
-  return s; // return session for page use
+  return s;
 }
