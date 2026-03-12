@@ -4,123 +4,58 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FrontlineQSR | Client Login</title>
-
   <link rel="stylesheet" href="assets/styles.css" />
   <meta name="robots" content="noindex" />
-
   <style>
-    /* Page layout */
-    .login-wrap{
-      min-height: 100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding: 28px 16px;
-    }
-
-    /* Card polish */
-    .login-card{
-      width: 100%;
-      max-width: 520px;
-      padding: 18px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.08);
-      backdrop-filter: blur(10px);
-    }
-
-    .login-title{ margin:0 0 8px 0; font-weight: 900; letter-spacing:.2px; }
-    .login-sub{ margin:0 0 14px 0; font-size:12px; opacity:.78; }
-
-    /* Inputs (force readable on dark backgrounds) */
-    .in{
-      width:100%;
-      padding: 12px 12px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.18);
-      background: rgba(0,0,0,.25);
-      color: rgba(255,255,255,.96);
-      font-size: 15px;
-      outline: none;
-    }
-    .in::placeholder{ color: rgba(255,255,255,.55); }
-    .in:focus{ border-color: rgba(46,204,113,.55); }
-
-    .lbl{ font-size:12px; opacity:.78; margin: 0 0 6px 2px; display:block; }
-
-    /* Buttons */
-    .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top: 14px; }
-    .btnx{
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.16);
-      background: #111827;
-      color: #fff;
-      font-weight: 800;
-      cursor: pointer;
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      min-width: 120px;
-    }
-    .btnx.secondary{
-      background: rgba(255,255,255,.10);
-      color: rgba(255,255,255,.92);
-    }
-
-    .msg{ margin-top: 12px; font-size:13px; white-space:pre-wrap; min-height: 18px; }
+    .card { max-width: 520px; margin: 40px auto; padding: 18px; border: 1px solid rgba(0,0,0,.08); border-radius: 14px; background: rgba(255,255,255,.92); }
+    .row { display:flex; gap:10px; flex-wrap:wrap; }
+    .input { width:100%; padding:12px 12px; border-radius:10px; border:1px solid rgba(0,0,0,.15); font-size:14px; }
+    .btnx { padding:12px 14px; border-radius:10px; border:1px solid rgba(0,0,0,.12); background:#111827; color:#fff; cursor:pointer; font-weight:700; }
+    .btnx.secondary { background:#fff; color:#111827; }
+    .small { font-size:12px; opacity:.75; }
+    .msg { margin-top:10px; font-size:13px; white-space:pre-wrap; }
+    a { color: inherit; }
   </style>
 </head>
-
 <body>
+
   <main class="page">
     <section class="hero" style="padding-top:24px;">
       <p class="anchor">Client Access</p>
 
-      <div class="login-wrap">
-        <div class="login-card">
-          <h2 class="login-title">Login</h2>
-          <p class="login-sub">Commercial access (frontlineqsr.com)</p>
+      <div class="card">
+        <h2 style="margin:0 0 10px 0;">Login</h2>
+        <div class="small" style="margin-bottom:12px;">
+          Commercial access (frontlineqsr.com). No redirect to flqsr.
+        </div>
 
-          <form id="loginForm">
-            <label class="lbl" for="email">Email</label>
-            <input class="in" id="email" type="email" autocomplete="username" placeholder="you@company.com" required />
+        <form id="loginForm" novalidate>
+          <label class="small" for="email">Email</label>
+          <input class="input" id="email" name="email" type="email" autocomplete="username" placeholder="you@company.com" />
 
-            <div style="height:12px;"></div>
+          <div style="height:10px;"></div>
 
-            <label class="lbl" for="password">Password</label>
-            <input class="in" id="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+          <label class="small" for="password">Password</label>
+          <input class="input" id="password" name="password" type="password" autocomplete="current-password" placeholder="••••••••" />
 
-            <div class="row">
-              <button class="btnx" id="loginBtn" type="submit">Login</button>
-              <button class="btnx secondary" id="resetBtn" type="button">Reset Password</button>
-              <a class="btnx secondary" href="./index.html" aria-label="Back">Back</a>
-            </div>
+          <div style="height:12px;"></div>
 
-            <div class="msg" id="msg">Loading auth…</div>
-          </form>
-
-          <div class="login-sub" style="margin-top:10px;">
-            Password reset sends an email link from Firebase.
+          <div class="row">
+            <button class="btnx" id="loginBtn" type="submit">Login</button>
+            <button class="btnx secondary" id="resetBtn" type="button">Reset Password</button>
+            <a class="btnx secondary" href="https://frontlineqsr.com/" style="text-decoration:none; display:inline-flex; align-items:center;">Back</a>
           </div>
+        </form>
+
+        <div class="msg" id="msg"></div>
+
+        <div style="margin-top:10px;" class="small">
+          Password reset sends an email link from Firebase (authorized domain required).
         </div>
       </div>
     </section>
   </main>
 
-  <script>
-    // Optional: show why the user was redirected here
-    try {
-      const reason = sessionStorage.getItem("FLQSR_COMM_REDIRECT_REASON");
-      if (reason) {
-        const el = document.getElementById("msg");
-        if (el) el.textContent = reason;
-        sessionStorage.removeItem("FLQSR_COMM_REDIRECT_REASON");
-      }
-    } catch {}
-  </script>
-
-  <script type="module" src="assets/commercial-auth.js?v=prod-2"></script>
+  <script type="module" src="assets/commercial-auth.js?v=1"></script>
 </body>
 </html>
