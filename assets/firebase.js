@@ -1,19 +1,12 @@
 // /assets/firebase.js
-// Single source of truth for Firebase config (Auth + Firestore)
-// + Auto-provision flqsr_users profile on first login
+// Commercial single source of truth for Firebase config (Auth + Firestore)
+// ✅ Shared Firebase project
+// ✅ NO pilot auto-provision
+// ✅ Commercial auth/session only
 
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { 
-  getAuth, 
-  onAuthStateChanged 
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { 
-  getFirestore, 
-  doc, 
-  getDoc, 
-  setDoc, 
-  serverTimestamp 
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyANTxxbSP4UMmEmrOKH8wn2UhR2GUmWiYc",
@@ -28,44 +21,3 @@ const firebaseConfig = {
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-
-/* =========================================
-   AUTO PROVISION flqsr_users PROFILE
-========================================= */
-
-async function ensurePilotUserProfile(user) {
-  if (!user) return;
-
-  const ref = doc(db, "flqsr_users", user.uid);
-  const snap = await getDoc(ref);
-
-  if (snap.exists()) return; // already provisioned
-
-  console.log("Auto-provisioning flqsr_users profile...");
-
-  const emailLower = (user.email || "").toLowerCase();
-
-  await setDoc(ref, {
-    email: emailLower,           // 🔥 add this
-    email_lower: emailLower,     // keep this
-    role: "client",              
-    company_id: "unassigned",    
-    assigned_store_ids: [],
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  });
-}
-
-/* =========================================
-   AUTH LISTENER
-========================================= */
-
-onAuthStateChanged(auth, async (user) => {
-  if (!user) return;
-
-  try {
-    await ensurePilotUserProfile(user);
-  } catch (err) {
-    console.error("Provisioning error:", err);
-  }
-});
