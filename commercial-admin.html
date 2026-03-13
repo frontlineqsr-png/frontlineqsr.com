@@ -6,126 +6,394 @@
   <title>FrontlineQSR | Commercial Admin</title>
   <link rel="stylesheet" href="assets/styles.css" />
   <meta name="robots" content="noindex" />
+
+  <style>
+    :root{
+      --bg-1:#0b1220;
+      --bg-2:#0a1020;
+      --bg-3:#070b14;
+      --card-bg:rgba(255,255,255,.95);
+      --card-border:rgba(15,23,42,.12);
+      --text:#0f172a;
+      --muted:rgba(15,23,42,.74);
+      --line:rgba(15,23,42,.10);
+      --shadow:0 18px 50px rgba(0,0,0,.35);
+      --radius:16px;
+      --brand-glow:rgba(80,200,255,.18);
+    }
+
+    body{
+      margin:0;
+      color:#fff;
+      background:
+        radial-gradient(1200px 700px at 50% 0%, rgba(255,255,255,0.10), rgba(0,0,0,0) 60%),
+        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 55%, var(--bg-3) 100%);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .page{ min-height:100vh; }
+    .hero{ padding:28px 16px 56px; }
+    .shell{ max-width:1120px; margin:0 auto; }
+
+    .brand-bar{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      margin-bottom:18px;
+      padding:12px 16px;
+      border-radius:14px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 10px 30px rgba(0,0,0,.20);
+      backdrop-filter:blur(6px);
+    }
+
+    .brand-mark{
+      width:42px;
+      height:42px;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      background:rgba(255,255,255,.10);
+      box-shadow:0 0 24px var(--brand-glow);
+      flex:0 0 auto;
+    }
+
+    .brand-mark img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      display:block;
+    }
+
+    .brand-copy{ min-width:0; }
+    .brand-title{
+      margin:0;
+      font-size:18px;
+      font-weight:800;
+      letter-spacing:.2px;
+      color:#fff;
+      line-height:1.1;
+    }
+    .brand-sub{
+      margin:3px 0 0;
+      font-size:12px;
+      line-height:1.3;
+      color:rgba(255,255,255,.76);
+      letter-spacing:.2px;
+    }
+
+    .anchor{
+      text-align:center;
+      letter-spacing:.2px;
+      font-weight:800;
+      opacity:.86;
+      margin:0 0 18px;
+      font-size:13px;
+    }
+
+    .admin-card{
+      max-width:980px;
+      margin:0 auto;
+      padding:22px;
+      border-radius:var(--radius);
+      background:var(--card-bg);
+      border:1px solid var(--card-border);
+      box-shadow:var(--shadow);
+      color:var(--text);
+    }
+
+    .admin-title{
+      margin:0 0 10px;
+      font-weight:900;
+      font-size:30px;
+      line-height:1.1;
+      letter-spacing:.2px;
+    }
+
+    .admin-sub{
+      margin:0;
+      color:var(--muted);
+      line-height:1.5;
+      font-size:15px;
+    }
+
+    .hr{
+      height:1px;
+      background:var(--line);
+      border:0;
+      margin:18px 0;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:16px;
+      align-items:start;
+    }
+
+    .panel{
+      padding:18px;
+      border-radius:14px;
+      background:rgba(15,23,42,.03);
+      border:1px solid rgba(15,23,42,.08);
+    }
+
+    .panel h3{
+      margin:0 0 12px 0;
+      font-size:24px;
+      line-height:1.1;
+    }
+
+    .small{
+      display:block;
+      font-size:12px;
+      color:var(--muted);
+      margin:0 0 6px;
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+
+    .input{
+      width:100%;
+      box-sizing:border-box;
+      padding:12px 13px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.14);
+      background:#fff;
+      color:var(--text);
+      font-size:15px;
+      outline:none;
+    }
+
+    .input:focus{
+      border-color:rgba(17,24,39,.45);
+      box-shadow:0 0 0 3px rgba(17,24,39,.08);
+    }
+
+    .space{ height:10px; }
+
+    .btnx{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:12px 16px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#111827;
+      color:#fff;
+      cursor:pointer;
+      font-weight:800;
+      font-size:14px;
+      transition:.15s ease;
+    }
+
+    .btnx:hover{ background:#0f172a; }
+
+    .btnx.secondary{
+      background:#fff;
+      color:#111827;
+    }
+
+    .btnx.secondary:hover{
+      background:#f8fafc;
+    }
+
+    .msg{
+      margin-top:10px;
+      font-size:13px;
+      line-height:1.45;
+      color:var(--muted);
+      white-space:pre-wrap;
+    }
+
+    .checkbox-row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      font-size:13px;
+      color:var(--text);
+      margin-top:6px;
+    }
+
+    .list-wrap{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:14px;
+      margin-top:12px;
+    }
+
+    .list-card{
+      margin:0;
+      padding:14px;
+      border-radius:14px;
+      background:rgba(15,23,42,.04);
+      border:1px solid rgba(15,23,42,.08);
+      color:var(--text);
+      min-height:180px;
+      overflow:auto;
+      white-space:pre-wrap;
+      word-break:break-word;
+      font-size:13px;
+      line-height:1.45;
+    }
+
+    @media (max-width: 980px){
+      .grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width: 640px){
+      .hero{ padding:22px 14px 44px; }
+      .brand-bar{ justify-content:flex-start; }
+      .admin-card{ padding:18px; }
+      .admin-title{ font-size:26px; }
+      .panel h3{ font-size:20px; }
+      .list-wrap{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
 </head>
 
 <body>
   <main class="page">
-    <section class="hero" style="padding-top:24px;">
-      <p class="anchor">Commercial Admin — Org Structure</p>
-
-      <div class="card" style="max-width:980px;margin:28px auto;padding:18px;border-radius:14px;background:rgba(255,255,255,.92);">
-        <div class="row" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;">
-
-          <!-- ORG -->
-          <div style="flex:1;min-width:280px;">
-            <h3 style="margin:0 0 10px 0;">Create Org</h3>
-            <label class="small">Org Name</label>
-            <input class="input" id="orgName" placeholder="Example: Filiberto’s QSR" />
-
-            <div style="height:10px;"></div>
-            <button class="btn primary" id="createOrgBtn" type="button">Create Org</button>
-
-            <div class="small" id="orgMsg" style="margin-top:10px;white-space:pre-wrap;"></div>
-            <div class="small" id="orgIdOut" style="margin-top:8px;opacity:.8;"></div>
+    <section class="hero">
+      <div class="shell">
+        <div class="brand-bar">
+          <div class="brand-mark">
+            <img src="assets/frontlineqsr-logo.png" alt="FrontlineQSR logo" onerror="this.style.display='none'; this.parentElement.textContent='F'; this.parentElement.style.fontWeight='900'; this.parentElement.style.fontSize='18px';" />
           </div>
-
-          <!-- STORE -->
-          <div style="flex:1;min-width:280px;">
-            <h3 style="margin:0 0 10px 0;">Create Store</h3>
-            <label class="small">Org Id</label>
-            <input class="input" id="storeOrgId" placeholder="Paste orgId" />
-
-            <div style="height:10px;"></div>
-            <label class="small">Store Name</label>
-            <input class="input" id="storeName" placeholder="Example: Mesa #12" />
-
-            <div style="height:10px;"></div>
-            <label class="small">Region Id (optional)</label>
-            <input class="input" id="regionId" placeholder="Example: region_01" />
-
-            <div style="height:10px;"></div>
-            <label class="small">District Id (optional)</label>
-            <input class="input" id="districtId" placeholder="Example: district_04" />
-
-            <div style="height:10px;"></div>
-            <button class="btn primary" id="createStoreBtn" type="button">Create Store</button>
-
-            <div class="small" id="storeMsg" style="margin-top:10px;white-space:pre-wrap;"></div>
+          <div class="brand-copy">
+            <p class="brand-title">FrontlineQSR</p>
+            <p class="brand-sub">Commercial admin workspace</p>
           </div>
-
-          <!-- USER -->
-          <div style="flex:1;min-width:300px;">
-            <h3 style="margin:0 0 10px 0;">User Access</h3>
-
-            <label class="small">User UID</label>
-            <input class="input" id="u_uid" placeholder="Firebase Auth UID" />
-
-            <div style="height:10px;"></div>
-            <label class="small">Email</label>
-            <input class="input" id="u_email" placeholder="user@company.com" />
-
-            <div style="height:10px;"></div>
-            <label class="small">Org Id</label>
-            <input class="input" id="u_orgId" placeholder="Paste orgId" />
-
-            <div style="height:10px;"></div>
-            <label class="small">Role</label>
-            <select class="input" id="u_role">
-              <option>SM</option>
-              <option>DM</option>
-              <option>RM</option>
-              <option>VP</option>
-              <option>OWNER</option>
-              <option>ADMIN</option>
-              <option>SUPER_ADMIN</option>
-            </select>
-
-            <div style="height:10px;"></div>
-            <label class="small">Assigned Store IDs (comma separated)</label>
-            <input class="input" id="u_storeIds" placeholder="storeId1, storeId2" />
-
-            <div style="height:10px;"></div>
-            <label class="small" style="display:flex;gap:10px;align-items:center;">
-              <input type="checkbox" id="u_commercial" checked />
-              Commercial Access
-            </label>
-
-            <label class="small" style="display:flex;gap:10px;align-items:center;margin-top:6px;">
-              <input type="checkbox" id="u_active" checked />
-              Active
-            </label>
-
-            <div style="height:10px;"></div>
-            <button class="btn primary" id="saveUserBtn" type="button">Save User</button>
-
-            <div class="small" id="userMsg" style="margin-top:10px;white-space:pre-wrap;"></div>
-          </div>
-
         </div>
 
-        <div class="hr" style="margin:18px 0;"></div>
+        <p class="anchor">Commercial Admin — Org Structure</p>
 
-        <!-- LISTS -->
-        <div>
-          <h3 style="margin:0 0 10px 0;">Lists</h3>
+        <div class="admin-card">
+          <h2 class="admin-title">Admin Hub</h2>
+          <p class="admin-sub">
+            Manage organizations, stores, user access, and commercial structure from one workspace.
+          </p>
 
-          <label class="small">Org Id to list stores</label>
-          <input class="input" id="listOrgId" placeholder="Paste orgId" />
+          <div class="hr"></div>
 
-          <div style="height:10px;"></div>
-          <button class="btn secondary" id="refreshBtn" type="button">Refresh Lists</button>
-          <div class="small" id="globalMsg" style="margin-top:10px;white-space:pre-wrap;"></div>
+          <div class="grid">
+            <!-- ORG -->
+            <div class="panel">
+              <h3>Create Org</h3>
 
-          <div class="row" style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;">
-            <pre class="card" style="flex:1;min-width:280px;padding:12px;background:rgba(0,0,0,.04);" id="orgList">(orgs load here)</pre>
-            <pre class="card" style="flex:1;min-width:280px;padding:12px;background:rgba(0,0,0,.04);" id="storeList">(stores load here)</pre>
+              <label class="small">Org Name</label>
+              <input class="input" id="orgName" placeholder="Example: Filiberto’s QSR" />
+
+              <div class="space"></div>
+              <button class="btnx" id="createOrgBtn" type="button">Create Org</button>
+
+              <div class="msg" id="orgMsg"></div>
+              <div class="msg" id="orgIdOut"></div>
+            </div>
+
+            <!-- STORE -->
+            <div class="panel">
+              <h3>Create Store</h3>
+
+              <label class="small">Org Id</label>
+              <input class="input" id="storeOrgId" placeholder="Paste orgId" />
+
+              <div class="space"></div>
+              <label class="small">Store Name</label>
+              <input class="input" id="storeName" placeholder="Example: Mesa #12" />
+
+              <div class="space"></div>
+              <label class="small">Region Id (optional)</label>
+              <input class="input" id="regionId" placeholder="Example: region_01" />
+
+              <div class="space"></div>
+              <label class="small">District Id (optional)</label>
+              <input class="input" id="districtId" placeholder="Example: district_04" />
+
+              <div class="space"></div>
+              <button class="btnx" id="createStoreBtn" type="button">Create Store</button>
+
+              <div class="msg" id="storeMsg"></div>
+            </div>
+
+            <!-- USER -->
+            <div class="panel">
+              <h3>User Access</h3>
+
+              <label class="small">User UID</label>
+              <input class="input" id="u_uid" placeholder="Firebase Auth UID" />
+
+              <div class="space"></div>
+              <label class="small">Email</label>
+              <input class="input" id="u_email" placeholder="user@company.com" />
+
+              <div class="space"></div>
+              <label class="small">Org Id</label>
+              <input class="input" id="u_orgId" placeholder="Paste orgId" />
+
+              <div class="space"></div>
+              <label class="small">Role</label>
+              <select class="input" id="u_role">
+                <option>SM</option>
+                <option>DM</option>
+                <option>RM</option>
+                <option>VP</option>
+                <option>OWNER</option>
+                <option>ADMIN</option>
+                <option>SUPER_ADMIN</option>
+              </select>
+
+              <div class="space"></div>
+              <label class="small">Assigned Store IDs (comma separated)</label>
+              <input class="input" id="u_storeIds" placeholder="storeId1, storeId2" />
+
+              <label class="checkbox-row">
+                <input type="checkbox" id="u_commercial" checked />
+                Commercial Access
+              </label>
+
+              <label class="checkbox-row">
+                <input type="checkbox" id="u_active" checked />
+                Active
+              </label>
+
+              <div class="space"></div>
+              <button class="btnx" id="saveUserBtn" type="button">Save User</button>
+
+              <div class="msg" id="userMsg"></div>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="panel">
+            <h3>Lists</h3>
+
+            <label class="small">Org Id to list stores</label>
+            <input class="input" id="listOrgId" placeholder="Paste orgId" />
+
+            <div class="space"></div>
+            <button class="btnx secondary" id="refreshBtn" type="button">Refresh Lists</button>
+            <div class="msg" id="globalMsg"></div>
+
+            <div class="list-wrap">
+              <pre class="list-card" id="orgList">(orgs load here)</pre>
+              <pre class="list-card" id="storeList">(stores load here)</pre>
+            </div>
           </div>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- IMPORTANT: this loads your admin logic -->
   <script type="module" src="assets/commercial-admin.js?v=1"></script>
 </body>
 </html>
