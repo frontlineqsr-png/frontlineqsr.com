@@ -485,6 +485,8 @@
             <div>
               <h2 class="title">District Manager Dashboard</h2>
               <p id="sessionInfo" class="sub">Loading session…</p>
+              <p id="dmContext" class="sub" style="margin-top:8px;"></p>
+              <p id="activeDistrict" class="sub" style="margin-top:8px;"></p>
 
               <div class="status-wrap">
                 <div class="status-pill">
@@ -668,7 +670,7 @@
                   <span class="card-badge">Drill-Down Ready</span>
                 </div>
 
-                <div class="table-wrap">
+                <div class="table-wrap" data-dm-store-table>
                   <table>
                     <thead>
                       <tr>
@@ -687,7 +689,7 @@
                         <td>Dinner shift volatility</td>
                         <td>Approved</td>
                         <td>2026 Active</td>
-                        <td>Open KPIs / Shift Insight</td>
+                        <td data-store-id="mesa_12">Open KPIs / Shift Insight</td>
                       </tr>
                       <tr>
                         <td><span class="store-name">Phoenix #4</span></td>
@@ -695,7 +697,7 @@
                         <td>Lunch transaction dip</td>
                         <td>Approved</td>
                         <td>2026 Active</td>
-                        <td>Open KPIs / Action Plan</td>
+                        <td data-store-id="phoenix_4">Open KPIs / Action Plan</td>
                       </tr>
                       <tr>
                         <td><span class="store-name">Tempe #2</span></td>
@@ -703,7 +705,7 @@
                         <td>None this week</td>
                         <td>Approved</td>
                         <td>2026 Active</td>
-                        <td>Open Store View</td>
+                        <td data-store-id="tempe_2">Open Store View</td>
                       </tr>
                       <tr>
                         <td><span class="store-name">Glendale #7</span></td>
@@ -711,7 +713,7 @@
                         <td>Awaiting approval</td>
                         <td>Pending</td>
                         <td>2026 Active</td>
-                        <td>Review Upload</td>
+                        <td data-store-id="glendale_7">Review Upload</td>
                       </tr>
                     </tbody>
                   </table>
@@ -755,5 +757,7 @@
       </div>
     </section>
   </main>
+
+  <script type="module" src="assets/commercial-dm.js?v=3"></script>
 </body>
 </html>
