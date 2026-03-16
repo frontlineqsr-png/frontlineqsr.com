@@ -258,6 +258,15 @@
       }
     }
   </style>
+
+  <script type="module">
+    import { bootCommercialPage } from "./assets/commercial-page-boot.js";
+
+    bootCommercialPage({
+      allowRoles: ["admin","super_admin"],
+      requireOrg: false
+    });
+  </script>
 </head>
 
 <body>
@@ -266,11 +275,11 @@
       <div class="shell">
         <div class="brand-bar">
           <div class="brand-mark">
-            <img src="assets/frontlineqsr-logo.png" alt="FrontlineQSR logo" onerror="this.style.display='none'; this.parentElement.textContent='F'; this.parentElement.style.fontWeight='900'; this.parentElement.style.fontSize='18px';" />
+            <img src="assets/restaurant-excellence-system.png" alt="Restaurant Excellence System logo" onerror="this.style.display='none'; this.parentElement.textContent='R'; this.parentElement.style.fontWeight='900'; this.parentElement.style.fontSize='18px';" />
           </div>
           <div class="brand-copy">
-            <p class="brand-title">FrontlineQSR</p>
-            <p class="brand-sub">Commercial admin workspace</p>
+            <p class="brand-title">Restaurant Excellence System™</p>
+            <p class="brand-sub">Powered by FrontlineQSR — Commercial admin workspace</p>
           </div>
         </div>
 
@@ -281,11 +290,12 @@
           <p class="admin-sub">
             Manage organizations, stores, user access, and commercial structure from one workspace.
           </p>
+          <p id="sessionInfo" class="admin-sub" style="margin-top:8px;">Loading session…</p>
+          <p id="adminContext" class="admin-sub" style="margin-top:8px;"></p>
 
           <div class="hr"></div>
 
           <div class="grid">
-            <!-- ORG -->
             <div class="panel">
               <h3>Create Org</h3>
 
@@ -299,7 +309,6 @@
               <div class="msg" id="orgIdOut"></div>
             </div>
 
-            <!-- STORE -->
             <div class="panel">
               <h3>Create Store</h3>
 
@@ -324,7 +333,6 @@
               <div class="msg" id="storeMsg"></div>
             </div>
 
-            <!-- USER -->
             <div class="panel">
               <h3>User Access</h3>
 
@@ -394,6 +402,6 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-admin.js?v=1"></script>
+  <script type="module" src="assets/commercial-admin.js?v=2"></script>
 </body>
 </html>
