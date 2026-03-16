@@ -1,51 +1,85 @@
-// /assets/commercial-admin.js
-// Step 1 — Org + Store + User Assignment (Commercial)
+// /assets/commercial-admin.js (v2)
+// Commercial admin workspace logic
+// Shared auth/session/logout is handled by commercial-page-boot.js
 // NO PILOT DATA. NO KPI MATH.
 
-import { requireCommercial } from "./commercial-guard.js";
-import { createOrg, createStore, upsertUserAccess, listOrgs, listStores } from "./commercial-db.js";
+import {
+  createOrg,
+  createStore,
+  upsertUserAccess,
+  listOrgs,
+  listStores
+} from "./commercial-db.js";
 
 const $ = (id) => document.getElementById(id);
 
-function msg(elId, text, isErr=false){
+function readSession() {
+  try {
+    return JSON.parse(localStorage.getItem("FLQSR_COMM_SESSION") || "null");
+  } catch {
+    return null;
+  }
+}
+
+function msg(elId, text, isErr = false) {
   const el = $(elId);
   if (!el) return;
   el.textContent = text || "";
   el.style.color = isErr ? "#b91c1c" : "#065f46";
 }
 
-function parseCsvIds(s){
+function parseCsvIds(s) {
   return String(s || "")
     .split(",")
     .map(x => x.trim())
     .filter(Boolean);
 }
 
-let SESSION = null;
+function setAdminHeaderContext() {
+  const s = readSession();
+  if (!s) return;
 
-async function onCreateOrg(){
+  const role = String(s.role || "admin").toUpperCase();
+  const orgId = s.orgId || "Platform scope";
+
+  const extra = $("adminContext");
+  if (extra) {
+    extra.textContent = `Org: ${orgId} | Role: ${role} | Admin Workspace`;
+  }
+}
+
+function currentSession() {
+  const s = readSession();
+  if (!s?.uid) throw new Error("Missing commercial session.");
+  return s;
+}
+
+async function onCreateOrg() {
   try {
+    const session = currentSession();
     const name = String($("orgName")?.value || "").trim();
     if (!name) throw new Error("Org Name required.");
 
     msg("orgMsg", "Creating org…");
-    const orgId = await createOrg({ name, createdByUid: SESSION.uid, createdByEmail: SESSION.email });
+    const orgId = await createOrg({
+      name,
+      createdByUid: session.uid,
+      createdByEmail: session.email
+    });
+
     msg("orgMsg", "✅ Org created.");
 
     if ($("orgIdOut")) $("orgIdOut").textContent = orgId;
-
-    // convenience fill
     if ($("storeOrgId")) $("storeOrgId").value = orgId;
     if ($("u_orgId")) $("u_orgId").value = orgId;
     if ($("listOrgId")) $("listOrgId").value = orgId;
-
   } catch (e) {
     console.error(e);
     msg("orgMsg", "❌ " + (e?.message || "Failed"), true);
   }
 }
 
-async function onCreateStore(){
+async function onCreateStore() {
   try {
     const orgId = String($("storeOrgId")?.value || "").trim();
     const name = String($("storeName")?.value || "").trim();
@@ -64,28 +98,26 @@ async function onCreateStore(){
   }
 }
 
-async function onSaveUser(){
+async function onSaveUser() {
   try {
     const uid = String($("u_uid")?.value || "").trim();
     const email = String($("u_email")?.value || "").trim().toLowerCase();
     const orgId = String($("u_orgId")?.value || "").trim();
     const role = String($("u_role")?.value || "SM").trim().toUpperCase();
-
-    // ✅ HTML uses checkboxes
     const commercialAccess = !!$("u_commercial")?.checked;
     const active = !!$("u_active")?.checked;
-
     const assignedStoreIds = parseCsvIds($("u_storeIds")?.value || "");
 
     if (!uid) throw new Error("User UID required.");
     if (!email) throw new Error("Email required.");
-
-    // Only allow blank orgId if SUPER_ADMIN
-    if (!orgId && role !== "SUPER_ADMIN") throw new Error("Org Id required for non-super-admin.");
+    if (!orgId && role !== "SUPER_ADMIN") {
+      throw new Error("Org Id required for non-super-admin.");
+    }
 
     msg("userMsg", "Saving user access…");
 
-    const isSuperAdmin = (role === "SUPER_ADMIN");
+    const isSuperAdmin = role === "SUPER_ADMIN";
+
     await upsertUserAccess({
       uid,
       email,
@@ -99,25 +131,30 @@ async function onSaveUser(){
       isSuperAdmin
     });
 
-    msg("userMsg", "✅ User access saved (commercial_users + orgs/{orgId}/users).");
+    msg("userMsg", "✅ User access saved (commercial_users + org user profile).");
   } catch (e) {
     console.error(e);
     msg("userMsg", "❌ " + (e?.message || "Failed"), true);
   }
 }
 
-async function refreshLists(){
+async function refreshLists() {
   try {
     msg("globalMsg", "Refreshing…");
+
     const orgs = await listOrgs();
-    if ($("orgList")) $("orgList").textContent =
-      orgs.map(o => `${o.id}  |  ${o.name}  |  active=${!!o.active}`).join("\n") || "(none)";
+    if ($("orgList")) {
+      $("orgList").textContent =
+        orgs.map(o => `${o.id}  |  ${o.name}  |  active=${!!o.active}`).join("\n") || "(none)";
+    }
 
     const orgId = String($("listOrgId")?.value || "").trim();
     if (orgId) {
       const stores = await listStores(orgId);
-      if ($("storeList")) $("storeList").textContent =
-        stores.map(st => `${st.id}  |  ${st.name}  |  baselineLocked=${!!st.baselineLocked}`).join("\n") || "(none)";
+      if ($("storeList")) {
+        $("storeList").textContent =
+          stores.map(st => `${st.id}  |  ${st.name}  |  baselineLocked=${!!st.baselineLocked}`).join("\n") || "(none)";
+      }
     } else {
       if ($("storeList")) $("storeList").textContent = "(enter orgId to list stores)";
     }
@@ -130,9 +167,7 @@ async function refreshLists(){
 }
 
 window.addEventListener("DOMContentLoaded", () => {
-  // Admin-only gate (build stage)
-  SESSION = requireCommercial({ allowRoles: ["admin","super_admin"], requireOrg: false });
-  if (!SESSION) return; // redirected already
+  setAdminHeaderContext();
 
   $("createOrgBtn")?.addEventListener("click", onCreateOrg);
   $("createStoreBtn")?.addEventListener("click", onCreateStore);
