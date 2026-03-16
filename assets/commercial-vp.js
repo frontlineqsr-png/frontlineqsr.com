@@ -1,4 +1,4 @@
-// assets/commercial-vp.js (v2)
+// assets/commercial-vp.js (v3)
 // VP / Owner page logic
 // Shared auth/session/logout is handled by commercial-page-boot.js
 
@@ -35,11 +35,13 @@ function setupVPRegionActions() {
     const trigger = e.target.closest("[data-region-id]");
     if (!trigger) return;
 
-    const regionId = trigger.getAttribute("data-region-id");
+    const regionId = String(trigger.getAttribute("data-region-id") || "").trim();
     if (!regionId) return;
 
-    // Placeholder for future VP -> RM drill-down routing
     console.log("[commercial-vp] open region drill-down:", regionId);
+
+    // Route VP -> RM with region filter
+    window.location.href = `./commercial-rm.html?region=${encodeURIComponent(regionId)}`;
   });
 }
 
