@@ -1,4 +1,4 @@
-// assets/commercial-dm.js (v1)
+// assets/commercial-dm.js (v2)
 // District Manager page logic
 // Uses shared commercial boot file for auth/session/logout
 // This file is page-specific and safe to expand later
@@ -13,11 +13,6 @@ function readSession() {
   }
 }
 
-function setText(id, value) {
-  const el = $(id);
-  if (el) el.textContent = value;
-}
-
 function setDMHeaderContext() {
   const s = readSession();
   if (!s) return;
@@ -26,12 +21,10 @@ function setDMHeaderContext() {
   const orgId = s.orgId || "N/A";
   const districts = Array.isArray(s.assigned_district_ids) ? s.assigned_district_ids : [];
 
-  // Session line is already handled by commercial-page-boot.js.
-  // This section is for future DM-only contextual UI if needed.
   const extra = $("dmContext");
   if (extra) {
     extra.textContent =
-      `Org: ${orgId} | Role: ${role} | District Scope: ${districts.length ? districts.join(", ") : "All assigned district access"}`;
+      `Org: ${orgId} | Role: ${role} | District Scope: ${districts.length ? districts.join(", ") : "Assigned district access"}`;
   }
 }
 
@@ -46,14 +39,14 @@ function setupDMTableActions() {
     const storeId = trigger.getAttribute("data-store-id");
     if (!storeId) return;
 
-    // Placeholder for future drill-down behavior.
-    // Later this can route into a store detail panel or filtered SM view.
+    // Placeholder for future drill-down behavior
+    // Later this can route into a store detail panel or filtered SM view
     console.log("[commercial-dm] open store drill-down:", storeId);
   });
 }
 
 function highlightPendingGovernance() {
-  const pendingEls = document.querySelectorAll("[data-status='pending']");
+  const pendingEls = document.querySelectorAll(".tag.pending");
   pendingEls.forEach((el) => {
     el.setAttribute("title", "Pending district review or approval follow-up");
   });
