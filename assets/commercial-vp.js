@@ -1,7 +1,6 @@
-// assets/commercial-vp.js (v1)
+// assets/commercial-vp.js (v2)
 // VP / Owner page logic
-// Uses shared commercial boot file for auth/session/logout
-// Safe to expand later for region drill-down and executive reporting
+// Shared auth/session/logout is handled by commercial-page-boot.js
 
 const $ = (id) => document.getElementById(id);
 
@@ -39,7 +38,7 @@ function setupVPRegionActions() {
     const regionId = trigger.getAttribute("data-region-id");
     if (!regionId) return;
 
-    // Placeholder for future VP → RM drill-down routing
+    // Placeholder for future VP -> RM drill-down routing
     console.log("[commercial-vp] open region drill-down:", regionId);
   });
 }
