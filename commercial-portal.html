@@ -20,7 +20,20 @@
       --shadow:0 18px 50px rgba(0,0,0,.35);
       --radius:16px;
       --brand-glow:rgba(80,200,255,.18);
+      --tab-bg:rgba(15,23,42,.06);
+      --tab-active:#111827;
+      --tab-active-text:#fff;
+      --kpi:#1d4ed8;
+      --insight:#0f766e;
+      --action:#b45309;
+      --progress:#166534;
+      --focus:#f59e0b;
+      --stable:#22c55e;
+      --coaching:#3b82f6;
+      --pending:#94a3b8;
     }
+
+    *{ box-sizing:border-box; }
 
     body{
       margin:0;
@@ -33,7 +46,7 @@
 
     .page{ min-height:100vh; }
     .hero{ padding:28px 16px 56px; }
-    .shell{ max-width:920px; margin:0 auto; }
+    .shell{ max-width:1100px; margin:0 auto; }
 
     .brand-bar{
       display:flex;
@@ -50,8 +63,8 @@
     }
 
     .brand-mark{
-      width:42px;
-      height:42px;
+      width:48px;
+      height:48px;
       border-radius:12px;
       display:flex;
       align-items:center;
@@ -65,7 +78,7 @@
     .brand-mark img{
       width:100%;
       height:100%;
-      object-fit:contain;
+      object-fit:cover;
       display:block;
     }
 
@@ -92,8 +105,7 @@
       font-size:13px;
     }
 
-    .cardx{
-      max-width:760px;
+    .page-card{
       margin:0 auto;
       padding:24px;
       border-radius:var(--radius);
@@ -101,6 +113,14 @@
       border:1px solid var(--card-border);
       box-shadow:var(--shadow);
       color:var(--text);
+    }
+
+    .header-row{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:18px;
     }
 
     .title{
@@ -117,11 +137,17 @@
       font-size:15px;
     }
 
+    .status-wrap{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:14px;
+    }
+
     .status-pill{
       display:inline-flex;
       align-items:center;
       gap:8px;
-      margin-top:16px;
       padding:8px 12px;
       border-radius:999px;
       background:rgba(15,23,42,.06);
@@ -145,14 +171,7 @@
       margin:18px 0;
     }
 
-    .section-title{
-      margin:0 0 8px;
-      font-size:16px;
-      font-weight:800;
-    }
-
     .actions{
-      margin-top:18px;
       display:flex;
       gap:10px;
       flex-wrap:wrap;
@@ -174,16 +193,277 @@
       color:#111827;
     }
 
-    @media (max-width:640px){
+    .tabs{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin:0 0 18px 0;
+      padding:8px;
+      border-radius:14px;
+      background:var(--tab-bg);
+      border:1px solid rgba(15,23,42,.08);
+    }
+
+    .tab-btn{
+      border:0;
+      background:transparent;
+      color:var(--text);
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:800;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .tab-btn.active{
+      background:var(--tab-active);
+      color:var(--tab-active-text);
+    }
+
+    .tab-panel{
+      display:none;
+    }
+
+    .tab-panel.active{
+      display:block;
+    }
+
+    .panel-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:16px;
+    }
+
+    .section-title{
+      margin:0 0 6px;
+      font-size:20px;
+      font-weight:900;
+    }
+
+    .section-sub{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.45;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(12, 1fr);
+      gap:14px;
+    }
+
+    .card{
+      grid-column:span 12;
+      background:#fff;
+      border:1px solid rgba(15,23,42,.08);
+      border-radius:14px;
+      padding:16px;
+      box-shadow:0 6px 20px rgba(15,23,42,.06);
+    }
+
+    .card-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+
+    .card-title{
+      margin:0;
+      font-size:17px;
+      font-weight:900;
+    }
+
+    .card-badge{
+      font-size:12px;
+      font-weight:800;
+      color:var(--muted);
+      background:rgba(15,23,42,.05);
+      padding:6px 10px;
+      border-radius:999px;
+    }
+
+    .metric-grid{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:12px;
+    }
+
+    .metric{
+      background:rgba(15,23,42,.03);
+      border:1px solid rgba(15,23,42,.06);
+      border-radius:12px;
+      padding:14px;
+    }
+
+    .metric-label{
+      margin:0 0 6px;
+      font-size:13px;
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .metric-value{
+      margin:0;
+      font-size:28px;
+      font-weight:900;
+      line-height:1;
+    }
+
+    .metric-delta{
+      margin:8px 0 0;
+      font-size:13px;
+      font-weight:800;
+      color:var(--muted);
+    }
+
+    .signal-list,
+    .plan-list,
+    .timeline-list{
+      display:grid;
+      gap:10px;
+    }
+
+    .signal-item,
+    .plan-item,
+    .timeline-item{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 14px;
+      border-radius:12px;
+      background:rgba(15,23,42,.03);
+      border:1px solid rgba(15,23,42,.06);
+    }
+
+    .signal-copy,
+    .plan-copy,
+    .timeline-copy{
+      min-width:0;
+    }
+
+    .item-title{
+      margin:0 0 4px;
+      font-size:15px;
+      font-weight:800;
+    }
+
+    .item-sub{
+      margin:0;
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .tag.stable{
+      background:rgba(34,197,94,.12);
+      color:#166534;
+    }
+
+    .tag.focus{
+      background:rgba(245,158,11,.14);
+      color:#92400e;
+    }
+
+    .tag.coaching{
+      background:rgba(59,130,246,.12);
+      color:#1d4ed8;
+    }
+
+    .tag.pending{
+      background:rgba(148,163,184,.16);
+      color:#475569;
+    }
+
+    .upload-box,
+    .progress-box{
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:12px;
+    }
+
+    .mini-stat{
+      background:rgba(15,23,42,.03);
+      border:1px solid rgba(15,23,42,.06);
+      border-radius:12px;
+      padding:14px;
+    }
+
+    .mini-stat h4{
+      margin:0 0 6px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .mini-stat p{
+      margin:0;
+      font-size:22px;
+      font-weight:900;
+    }
+
+    .timeline-bar{
+      margin-top:10px;
+      height:10px;
+      border-radius:999px;
+      background:linear-gradient(90deg, rgba(34,197,94,.75), rgba(245,158,11,.75), rgba(59,130,246,.75));
+      opacity:.9;
+    }
+
+    .small-note{
+      margin:12px 0 0;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.45;
+    }
+
+    @media (min-width: 760px){
+      .kpi-main{ grid-column:span 8; }
+      .kpi-side{ grid-column:span 4; }
+
+      .insight-main{ grid-column:span 8; }
+      .insight-side{ grid-column:span 4; }
+
+      .action-main{ grid-column:span 7; }
+      .action-side{ grid-column:span 5; }
+
+      .progress-main{ grid-column:span 7; }
+      .progress-side{ grid-column:span 5; }
+    }
+
+    @media (max-width:760px){
       .hero{ padding:22px 14px 44px; }
       .brand-bar{ justify-content:flex-start; }
-      .cardx{ padding:20px; }
+      .page-card{ padding:18px; }
       .title{ font-size:26px; }
-      .actions{
+      .header-row{
         flex-direction:column;
+      }
+      .actions{
+        width:100%;
       }
       .actions .btnx{
         width:100%;
+      }
+      .metric-grid,
+      .upload-box,
+      .progress-box{
+        grid-template-columns:1fr;
       }
     }
   </style>
@@ -204,46 +484,331 @@
       <div class="shell">
         <div class="brand-bar">
           <div class="brand-mark">
-            <img src="assets/frontlineqsr-logo.png" alt="FrontlineQSR logo" onerror="this.style.display='none'; this.parentElement.textContent='F'; this.parentElement.style.fontWeight='900'; this.parentElement.style.fontSize='18px';" />
+            <img src="assets/restaurant-excellence-system.png" alt="Restaurant Excellence System logo" onerror="this.style.display='none'; this.parentElement.textContent='R'; this.parentElement.style.fontWeight='900'; this.parentElement.style.fontSize='18px';" />
           </div>
           <div>
-            <p class="brand-title">FrontlineQSR</p>
-            <p class="brand-sub">Commercial leadership workspace</p>
+            <p class="brand-title">Restaurant Excellence System™</p>
+            <p class="brand-sub">Powered by FrontlineQSR — Commercial leadership workspace</p>
           </div>
         </div>
 
         <p class="anchor">Commercial — Store Manager</p>
 
-        <div class="cardx">
-          <h2 class="title">SM View</h2>
+        <div class="page-card">
+          <div class="header-row">
+            <div>
+              <h2 class="title">Store Manager Portal</h2>
+              <p id="sessionInfo" class="sub">Loading session…</p>
 
-          <p id="sessionInfo" class="sub">Loading session…</p>
+              <div class="status-wrap">
+                <div class="status-pill">
+                  <span class="status-dot"></span>
+                  Store access active
+                </div>
+                <div class="status-pill">Baseline Year: 2026</div>
+                <div class="status-pill">Upload Cadence: Weekly</div>
+              </div>
+            </div>
 
-          <div class="status-pill">
-            <span class="status-dot"></span>
-            Store access active
+            <div class="actions">
+              <button class="btnx secondary" id="logoutBtn" type="button">Logout</button>
+            </div>
           </div>
 
           <div class="hr"></div>
 
-          <p class="section-title">What this view is for</p>
-          <p class="sub">
-            This workspace is designed to help store leadership review baseline performance, weekly uploads, and the operational signals shaping execution inside the unit.
-          </p>
-
-          <div class="hr"></div>
-
-          <p class="section-title">Upcoming</p>
-          <p class="sub">
-            Store KPI dashboard, weekly upload controls, baseline visibility, and clearer guidance on where execution focus should happen week to week.
-          </p>
-
-          <div class="actions">
-            <button class="btnx secondary" id="logoutBtn" type="button">Logout</button>
+          <div class="tabs" role="tablist" aria-label="Store Manager sections">
+            <button class="tab-btn active" type="button" data-tab="kpis">KPIs</button>
+            <button class="tab-btn" type="button" data-tab="shift-insight">Shift Insight</button>
+            <button class="tab-btn" type="button" data-tab="action-plan">Action Plan</button>
+            <button class="tab-btn" type="button" data-tab="progress">Progress</button>
           </div>
+
+          <!-- KPIs -->
+          <section class="tab-panel active" id="tab-kpis">
+            <div class="panel-head">
+              <div>
+                <h3 class="section-title">KPIs</h3>
+                <p class="section-sub">Review store performance against the approved baseline and monitor current upload status.</p>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="card kpi-main">
+                <div class="card-header">
+                  <h4 class="card-title">Baseline vs Current Performance</h4>
+                  <span class="card-badge">Current Week</span>
+                </div>
+
+                <div class="metric-grid">
+                  <div class="metric">
+                    <p class="metric-label">Sales vs Baseline</p>
+                    <p class="metric-value">$12,480</p>
+                    <p class="metric-delta">+2.4% from baseline</p>
+                  </div>
+
+                  <div class="metric">
+                    <p class="metric-label">Labor vs Baseline</p>
+                    <p class="metric-value">26.1%</p>
+                    <p class="metric-delta">-1.2 pts from baseline</p>
+                  </div>
+
+                  <div class="metric">
+                    <p class="metric-label">Transactions</p>
+                    <p class="metric-value">1,128</p>
+                    <p class="metric-delta">-0.8% from baseline</p>
+                  </div>
+                </div>
+
+                <p class="small-note">This card should eventually pull approved store-level data only.</p>
+              </div>
+
+              <div class="card kpi-side">
+                <div class="card-header">
+                  <h4 class="card-title">Data & Baseline Status</h4>
+                  <span class="card-badge">Store Governance</span>
+                </div>
+
+                <div class="upload-box">
+                  <div class="mini-stat">
+                    <h4>Current Baseline</h4>
+                    <p>2026</p>
+                  </div>
+                  <div class="mini-stat">
+                    <h4>Next Renewal</h4>
+                    <p>Jan 2027</p>
+                  </div>
+                  <div class="mini-stat">
+                    <h4>Last Upload</h4>
+                    <p>Approved</p>
+                  </div>
+                  <div class="mini-stat">
+                    <h4>Upload Status</h4>
+                    <p>On Time</p>
+                  </div>
+                </div>
+
+                <p class="small-note">If the annual baseline expires, new insights should pause until renewal is approved.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- SHIFT INSIGHT -->
+          <section class="tab-panel" id="tab-shift-insight">
+            <div class="panel-head">
+              <div>
+                <h3 class="section-title">Shift Insight</h3>
+                <p class="section-sub">Identify operational patterns shaping store performance so leadership can understand what happened before coaching begins.</p>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="card insight-main">
+                <div class="card-header">
+                  <h4 class="card-title">Current Operational Signals</h4>
+                  <span class="card-badge">Approved Data Only</span>
+                </div>
+
+                <div class="signal-list">
+                  <div class="signal-item">
+                    <div class="signal-copy">
+                      <p class="item-title">Dinner Shift Volatility</p>
+                      <p class="item-sub">Wednesday and Thursday dinner periods showed lower transaction consistency between 5pm–7pm.</p>
+                    </div>
+                    <span class="tag focus">Operational Focus</span>
+                  </div>
+
+                  <div class="signal-item">
+                    <div class="signal-copy">
+                      <p class="item-title">Labor Stability Improving</p>
+                      <p class="item-sub">Closing labor has trended closer to baseline for the second consecutive week.</p>
+                    </div>
+                    <span class="tag stable">Stable</span>
+                  </div>
+
+                  <div class="signal-item">
+                    <div class="signal-copy">
+                      <p class="item-title">Lunch Throughput Opportunity</p>
+                      <p class="item-sub">Monday lunch transactions remain slightly below baseline despite stable labor deployment.</p>
+                    </div>
+                    <span class="tag coaching">Coaching Opportunity</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card insight-side">
+                <div class="card-header">
+                  <h4 class="card-title">Insight Summary</h4>
+                  <span class="card-badge">Store Narrative</span>
+                </div>
+
+                <div class="timeline-list">
+                  <div class="timeline-item">
+                    <div class="timeline-copy">
+                      <p class="item-title">Primary Weekly Signal</p>
+                      <p class="item-sub">Dinner shift inconsistency remains the top operational focus for the week.</p>
+                    </div>
+                  </div>
+
+                  <div class="timeline-item">
+                    <div class="timeline-copy">
+                      <p class="item-title">Leadership Prompt</p>
+                      <p class="item-sub">Review who is in place during peak dinner hours and whether deployment matches volume.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <p class="small-note">This section should eventually connect to daily-capable commercial uploads when enabled.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- ACTION PLAN -->
+          <section class="tab-panel" id="tab-action-plan">
+            <div class="panel-head">
+              <div>
+                <h3 class="section-title">Action Plan</h3>
+                <p class="section-sub">Translate operational signals into specific coaching priorities and store-level action steps.</p>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="card action-main">
+                <div class="card-header">
+                  <h4 class="card-title">Current Focus Areas</h4>
+                  <span class="card-badge">Manager Action</span>
+                </div>
+
+                <div class="plan-list">
+                  <div class="plan-item">
+                    <div class="plan-copy">
+                      <p class="item-title">Dinner Shift Deployment Review</p>
+                      <p class="item-sub">Check staffing placement from 5pm–7pm on Wednesday and Thursday and verify aces in the places during peak volume.</p>
+                    </div>
+                    <span class="tag focus">Operational Focus</span>
+                  </div>
+
+                  <div class="plan-item">
+                    <div class="plan-copy">
+                      <p class="item-title">Lunch Conversion Coaching</p>
+                      <p class="item-sub">Review lunch shift flow and identify where transactions are dropping compared to baseline volume expectations.</p>
+                    </div>
+                    <span class="tag coaching">Coaching Opportunity</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card action-side">
+                <div class="card-header">
+                  <h4 class="card-title">Plan Status</h4>
+                  <span class="card-badge">This Week</span>
+                </div>
+
+                <div class="signal-list">
+                  <div class="signal-item">
+                    <div class="signal-copy">
+                      <p class="item-title">2 Open Focus Areas</p>
+                      <p class="item-sub">Dinner shift deployment and lunch throughput remain active this week.</p>
+                    </div>
+                  </div>
+
+                  <div class="signal-item">
+                    <div class="signal-copy">
+                      <p class="item-title">Last Update</p>
+                      <p class="item-sub">District review completed yesterday. Awaiting next approved upload for progress review.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <p class="small-note">Action Plan should always be tied to approved Shift Insight signals, not freeform guessing.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- PROGRESS -->
+          <section class="tab-panel" id="tab-progress">
+            <div class="panel-head">
+              <div>
+                <h3 class="section-title">Progress</h3>
+                <p class="section-sub">Track current-cycle improvement, annual progress, and the operational story behind how the store is changing over time.</p>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="card progress-main">
+                <div class="card-header">
+                  <h4 class="card-title">Current Cycle Progress</h4>
+                  <span class="card-badge">Baseline Comparison</span>
+                </div>
+
+                <div class="progress-box">
+                  <div class="mini-stat">
+                    <h4>Sales Movement</h4>
+                    <p>+2.4%</p>
+                  </div>
+                  <div class="mini-stat">
+                    <h4>Labor Improvement</h4>
+                    <p>-1.2 pts</p>
+                  </div>
+                  <div class="mini-stat">
+                    <h4>Transaction Change</h4>
+                    <p>-0.8%</p>
+                  </div>
+                  <div class="mini-stat">
+                    <h4>Operational Health</h4>
+                    <p>84%</p>
+                  </div>
+                </div>
+
+                <div class="timeline-bar"></div>
+                <p class="small-note">Progress should show short-cycle movement against the current approved baseline and also connect to annual baseline progress later.</p>
+              </div>
+
+              <div class="card progress-side">
+                <div class="card-header">
+                  <h4 class="card-title">Operational Timeline</h4>
+                  <span class="card-badge">Story Layer</span>
+                </div>
+
+                <div class="timeline-list">
+                  <div class="timeline-item">
+                    <div class="timeline-copy">
+                      <p class="item-title">Week 1 — Stable</p>
+                      <p class="item-sub">Store performance opened the cycle within expected baseline range.</p>
+                    </div>
+                  </div>
+
+                  <div class="timeline-item">
+                    <div class="timeline-copy">
+                      <p class="item-title">Week 2 — Dinner Shift Volatility</p>
+                      <p class="item-sub">Shift Insight flagged dinner inconsistency on Wednesday and Thursday.</p>
+                    </div>
+                  </div>
+
+                  <div class="timeline-item">
+                    <div class="timeline-copy">
+                      <p class="item-title">Week 3 — Coaching Implemented</p>
+                      <p class="item-sub">Action Plan focused on deployment during peak dinner periods.</p>
+                    </div>
+                  </div>
+
+                  <div class="timeline-item">
+                    <div class="timeline-copy">
+                      <p class="item-title">Week 4 — Recovery Trend</p>
+                      <p class="item-sub">Labor stability improved and dinner consistency moved closer to baseline.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <p class="small-note">Timeline should summarize approved Shift Insight and Action Plan events, not create a separate analytics engine.</p>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </section>
   </main>
+
+  <script type="module" src="assets/commercial-portal.js?v=2"></script>
 </body>
 </html>
