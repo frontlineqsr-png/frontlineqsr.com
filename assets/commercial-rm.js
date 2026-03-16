@@ -1,7 +1,6 @@
-// assets/commercial-rm.js (v1)
+// assets/commercial-rm.js (v2)
 // Regional Manager page logic
-// Uses shared commercial boot file for auth/session/logout
-// Safe to expand later for district drill-down, filters, and rollups
+// Shared auth/session/logout is handled by commercial-page-boot.js
 
 const $ = (id) => document.getElementById(id);
 
@@ -24,7 +23,7 @@ function setRMHeaderContext() {
   const extra = $("rmContext");
   if (extra) {
     extra.textContent =
-      `Org: ${orgId} | Role: ${role} | Region Scope: ${regions.length ? regions.join(", ") : "All assigned regional access"}`;
+      `Org: ${orgId} | Role: ${role} | Region Scope: ${regions.length ? regions.join(", ") : "Assigned regional access"}`;
   }
 }
 
@@ -39,7 +38,7 @@ function setupRMDistrictActions() {
     const districtId = trigger.getAttribute("data-district-id");
     if (!districtId) return;
 
-    // Placeholder for future RM → DM drill-down routing
+    // Placeholder for future RM -> DM drill-down routing
     console.log("[commercial-rm] open district drill-down:", districtId);
   });
 }
