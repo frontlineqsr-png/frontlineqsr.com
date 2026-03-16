@@ -1,10 +1,11 @@
-// assets/commercial-page-boot.js (v1.6)
+// assets/commercial-page-boot.js (v1.7)
 // Shared boot for commercial role-gated pages (NO PILOT DATA)
 // ✅ Guard + session display + logout
 // ✅ Firebase truth check
 // ✅ Firestore revalidation on load/focus
 // ✅ Session refresh
 // ✅ Handles role/access drift safely
+// ✅ FIX: do not instantly force logout before Firebase auth finishes hydrating
 
 import {
   requireCommercial,
@@ -131,6 +132,33 @@ async function forceLogout(redirectTo) {
   location.replace(redirectTo);
 }
 
+function waitForAuthUser(timeoutMs = 2500) {
+  return new Promise((resolve) => {
+    if (auth.currentUser?.uid) {
+      resolve(auth.currentUser);
+      return;
+    }
+
+    let done = false;
+
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (done) return;
+      if (user?.uid) {
+        done = true;
+        unsub();
+        resolve(user);
+      }
+    });
+
+    setTimeout(() => {
+      if (done) return;
+      done = true;
+      unsub();
+      resolve(auth.currentUser || null);
+    }, timeoutMs);
+  });
+}
+
 /**
  * bootCommercialPage({
  *   allowRoles: ["sm","dm","rm","vp","admin","super_admin"],
@@ -160,17 +188,28 @@ export function bootCommercialPage(opts = {}) {
   if (!session) return null;
 
   let refreshing = false;
+  let authReady = false;
 
   async function refreshFromSource() {
     if (refreshing) return;
     refreshing = true;
 
     try {
-      const user = auth.currentUser;
       const cached = getCommercialSession();
 
-      // Firebase is source of truth
+      let user = auth.currentUser;
+
+      // FIX: wait briefly for Firebase auth hydration instead of instant logout
       if (!user?.uid) {
+        user = await waitForAuthUser(2500);
+      }
+
+      if (!user?.uid) {
+        // if cached session exists, let onAuthStateChanged continue to hydrate before killing session
+        if (cached?.uid) {
+          refreshing = false;
+          return;
+        }
         await forceLogout(redirectTo);
         return;
       }
@@ -214,23 +253,31 @@ export function bootCommercialPage(opts = {}) {
       await forceLogout(redirectTo);
     });
 
-    // Initial refresh after DOM loads
-    refreshFromSource();
-
-    // Refresh when user comes back to the tab
-    window.addEventListener("focus", refreshFromSource);
-
-    // Firebase auth truth check
     onAuthStateChanged(auth, async (user) => {
+      authReady = true;
+
       if (!user?.uid) {
         await forceLogout(redirectTo);
         return;
       }
+
       const cached = getCommercialSession();
       if (!cached?.uid || cached.uid !== user.uid) {
         await refreshFromSource();
+        return;
       }
+
+      // keep session fresh after auth is ready
+      await refreshFromSource();
     });
+
+    // Initial refresh after DOM loads
+    setTimeout(() => {
+      if (!authReady) refreshFromSource();
+    }, 150);
+
+    // Refresh when user comes back to the tab
+    window.addEventListener("focus", refreshFromSource);
   });
 
   return session;
