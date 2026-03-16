@@ -20,7 +20,13 @@
       --shadow:0 18px 50px rgba(0,0,0,.35);
       --radius:16px;
       --brand-glow:rgba(80,200,255,.18);
+      --stable:#22c55e;
+      --focus:#f59e0b;
+      --coaching:#3b82f6;
+      --pending:#94a3b8;
     }
+
+    *{ box-sizing:border-box; }
 
     body{
       margin:0;
@@ -31,18 +37,9 @@
       font-family: Georgia, "Times New Roman", serif;
     }
 
-    .page{
-      min-height:100vh;
-    }
-
-    .hero{
-      padding:28px 16px 56px;
-    }
-
-    .shell{
-      max-width:920px;
-      margin:0 auto;
-    }
+    .page{ min-height:100vh; }
+    .hero{ padding:28px 16px 56px; }
+    .shell{ max-width:1160px; margin:0 auto; }
 
     .brand-bar{
       display:flex;
@@ -59,8 +56,8 @@
     }
 
     .brand-mark{
-      width:42px;
-      height:42px;
+      width:48px;
+      height:48px;
       border-radius:12px;
       display:flex;
       align-items:center;
@@ -74,7 +71,7 @@
     .brand-mark img{
       width:100%;
       height:100%;
-      object-fit:contain;
+      object-fit:cover;
       display:block;
     }
 
@@ -108,8 +105,7 @@
       font-size:13px;
     }
 
-    .vp-card{
-      max-width:760px;
+    .page-card{
       margin:0 auto;
       padding:24px;
       border-radius:var(--radius);
@@ -119,27 +115,39 @@
       color:var(--text);
     }
 
-    .vp-title{
+    .header-row{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:18px;
+    }
+
+    .title{
       margin:0 0 10px 0;
       font-weight:900;
-      letter-spacing:.2px;
       font-size:30px;
       line-height:1.1;
     }
 
-    .vp-sub{
+    .sub{
       margin:0;
-      opacity:.82;
       color:var(--muted);
       line-height:1.5;
       font-size:15px;
+    }
+
+    .status-wrap{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:14px;
     }
 
     .status-pill{
       display:inline-flex;
       align-items:center;
       gap:8px;
-      margin-top:16px;
       padding:8px 12px;
       border-radius:999px;
       background:rgba(15,23,42,.06);
@@ -164,16 +172,7 @@
       margin:18px 0;
     }
 
-    .section-title{
-      margin:0 0 8px;
-      font-size:16px;
-      font-weight:800;
-      color:var(--text);
-      letter-spacing:.2px;
-    }
-
     .actions{
-      margin-top:18px;
       display:flex;
       gap:10px;
       flex-wrap:wrap;
@@ -205,6 +204,253 @@
       background:#f8fafc;
     }
 
+    .section-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:14px;
+    }
+
+    .section-title{
+      margin:0 0 6px;
+      font-size:21px;
+      font-weight:900;
+    }
+
+    .section-sub{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.45;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(12, 1fr);
+      gap:14px;
+    }
+
+    .card{
+      grid-column:span 12;
+      background:#fff;
+      border:1px solid rgba(15,23,42,.08);
+      border-radius:14px;
+      padding:16px;
+      box-shadow:0 6px 20px rgba(15,23,42,.06);
+    }
+
+    .card-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+
+    .card-title{
+      margin:0;
+      font-size:17px;
+      font-weight:900;
+    }
+
+    .card-badge{
+      font-size:12px;
+      font-weight:800;
+      color:var(--muted);
+      background:rgba(15,23,42,.05);
+      padding:6px 10px;
+      border-radius:999px;
+    }
+
+    .metric-grid{
+      display:grid;
+      grid-template-columns:repeat(4, 1fr);
+      gap:12px;
+    }
+
+    .metric{
+      background:rgba(15,23,42,.03);
+      border:1px solid rgba(15,23,42,.06);
+      border-radius:12px;
+      padding:14px;
+    }
+
+    .metric-label{
+      margin:0 0 6px;
+      font-size:13px;
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .metric-value{
+      margin:0;
+      font-size:28px;
+      font-weight:900;
+      line-height:1;
+    }
+
+    .metric-delta{
+      margin:8px 0 0;
+      font-size:13px;
+      font-weight:800;
+      color:var(--muted);
+    }
+
+    .signal-list,
+    .region-list{
+      display:grid;
+      gap:10px;
+    }
+
+    .signal-item,
+    .region-item{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      padding:12px 14px;
+      border-radius:12px;
+      background:rgba(15,23,42,.03);
+      border:1px solid rgba(15,23,42,.06);
+    }
+
+    .item-copy{
+      min-width:0;
+    }
+
+    .item-title{
+      margin:0 0 4px;
+      font-size:15px;
+      font-weight:800;
+    }
+
+    .item-sub{
+      margin:0;
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .tag.stable{
+      background:rgba(34,197,94,.12);
+      color:#166534;
+    }
+
+    .tag.focus{
+      background:rgba(245,158,11,.14);
+      color:#92400e;
+    }
+
+    .tag.coaching{
+      background:rgba(59,130,246,.12);
+      color:#1d4ed8;
+    }
+
+    .tag.pending{
+      background:rgba(148,163,184,.16);
+      color:#475569;
+    }
+
+    .table-wrap{
+      overflow:auto;
+      border:1px solid rgba(15,23,42,.08);
+      border-radius:12px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:760px;
+    }
+
+    thead th{
+      text-align:left;
+      font-size:13px;
+      color:var(--muted);
+      font-weight:800;
+      padding:12px 14px;
+      background:rgba(15,23,42,.03);
+      border-bottom:1px solid rgba(15,23,42,.08);
+    }
+
+    tbody td{
+      padding:14px;
+      border-bottom:1px solid rgba(15,23,42,.06);
+      font-size:14px;
+      vertical-align:top;
+    }
+
+    tbody tr:last-child td{
+      border-bottom:0;
+    }
+
+    .region-name{
+      font-weight:800;
+      color:var(--text);
+    }
+
+    .mini-grid{
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:12px;
+    }
+
+    .mini-stat{
+      background:rgba(15,23,42,.03);
+      border:1px solid rgba(15,23,42,.06);
+      border-radius:12px;
+      padding:14px;
+    }
+
+    .mini-stat h4{
+      margin:0 0 6px;
+      font-size:13px;
+      color:var(--muted);
+    }
+
+    .mini-stat p{
+      margin:0;
+      font-size:22px;
+      font-weight:900;
+    }
+
+    .small-note{
+      margin:12px 0 0;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.45;
+    }
+
+    @media (min-width: 860px){
+      .health-main{ grid-column:span 8; }
+      .health-side{ grid-column:span 4; }
+
+      .outcome-main{ grid-column:span 6; }
+      .roi-main{ grid-column:span 6; }
+
+      .focus-main{ grid-column:span 8; }
+      .focus-side{ grid-column:span 4; }
+    }
+
+    @media (max-width:860px){
+      .metric-grid,
+      .mini-grid{
+        grid-template-columns:1fr 1fr;
+      }
+    }
+
     @media (max-width: 640px){
       .hero{
         padding:22px 14px 44px;
@@ -214,22 +460,31 @@
         justify-content:flex-start;
       }
 
-      .vp-card{
+      .page-card{
         padding:20px;
       }
 
-      .vp-title{
+      .title{
         font-size:26px;
       }
 
-      .actions{
+      .header-row{
         flex-direction:column;
+      }
+
+      .actions{
+        width:100%;
       }
 
       .actions .btnx{
         width:100%;
         box-sizing:border-box;
         text-align:center;
+      }
+
+      .metric-grid,
+      .mini-grid{
+        grid-template-columns:1fr;
       }
     }
   </style>
@@ -250,46 +505,303 @@
       <div class="shell">
         <div class="brand-bar">
           <div class="brand-mark">
-            <img src="assets/frontlineqsr-logo.png" alt="FrontlineQSR logo" onerror="this.style.display='none'; this.parentElement.textContent='F'; this.parentElement.style.fontWeight='900'; this.parentElement.style.fontSize='18px';" />
+            <img src="assets/restaurant-excellence-system.png" alt="Restaurant Excellence System logo" onerror="this.style.display='none'; this.parentElement.textContent='R'; this.parentElement.style.fontWeight='900'; this.parentElement.style.fontSize='18px';" />
           </div>
           <div class="brand-copy">
-            <p class="brand-title">FrontlineQSR</p>
-            <p class="brand-sub">Commercial leadership workspace</p>
+            <p class="brand-title">Restaurant Excellence System™</p>
+            <p class="brand-sub">Powered by FrontlineQSR — Commercial leadership workspace</p>
           </div>
         </div>
 
         <p class="anchor">Commercial — VP / Owner</p>
 
-        <div class="vp-card">
-          <h2 class="vp-title">VP / Owner View</h2>
+        <div class="page-card">
+          <div class="header-row">
+            <div>
+              <h2 class="title">Executive Dashboard</h2>
+              <p id="sessionInfo" class="sub">Loading session…</p>
+              <p id="vpContext" class="sub" style="margin-top:8px;"></p>
 
-          <p id="sessionInfo" class="vp-sub">Loading session…</p>
+              <div class="status-wrap">
+                <div class="status-pill">
+                  <span class="status-dot"></span>
+                  Executive access active
+                </div>
+                <div class="status-pill">Enterprise Scope</div>
+                <div class="status-pill">ROI Visible</div>
+                <div class="status-pill">Executive Outcome Visible</div>
+              </div>
+            </div>
 
-          <div class="status-pill">
-            <span class="status-dot"></span>
-            Executive access active
+            <div class="actions">
+              <button class="btnx secondary" id="logoutBtn" type="button">Logout</button>
+            </div>
           </div>
 
           <div class="hr"></div>
 
-          <p class="section-title">What this view is for</p>
-          <p class="vp-sub">
-            This workspace is designed for executive visibility across the organization, helping leadership review rollups, governance, and operational performance at scale.
-          </p>
+          <!-- 1. ENTERPRISE OPERATIONAL HEALTH -->
+          <section>
+            <div class="section-head">
+              <div>
+                <h3 class="section-title">Enterprise Operational Health</h3>
+                <p class="section-sub">View organization-wide operational stability, regional health, baseline governance, and overall data reliability.</p>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="card health-main">
+                <div class="card-header">
+                  <h4 class="card-title">Enterprise Health Snapshot</h4>
+                  <span class="card-badge">Current Period</span>
+                </div>
+
+                <div class="metric-grid">
+                  <div class="metric">
+                    <p class="metric-label">Operational Health</p>
+                    <p class="metric-value">91%</p>
+                    <p class="metric-delta">strong enterprise stability</p>
+                  </div>
+
+                  <div class="metric">
+                    <p class="metric-label">Stable Regions</p>
+                    <p class="metric-value">3</p>
+                    <p class="metric-delta">operating within expected range</p>
+                  </div>
+
+                  <div class="metric">
+                    <p class="metric-label">Operational Focus</p>
+                    <p class="metric-value">1</p>
+                    <p class="metric-delta">region requiring executive attention</p>
+                  </div>
+
+                  <div class="metric">
+                    <p class="metric-label">Pending Baselines</p>
+                    <p class="metric-value">0</p>
+                    <p class="metric-delta">all active stores calibrated</p>
+                  </div>
+                </div>
+
+                <p class="small-note">This card should eventually reflect executive rollups, annual baseline status, upload reliability, and enterprise-wide operational health.</p>
+              </div>
+
+              <div class="card health-side">
+                <div class="card-header">
+                  <h4 class="card-title">Executive Signals</h4>
+                  <span class="card-badge">Topline View</span>
+                </div>
+
+                <div class="signal-list">
+                  <div class="signal-item">
+                    <div class="item-copy">
+                      <p class="item-title">Enterprise Stability</p>
+                      <p class="item-sub">Most regions are currently operating within expected performance and governance ranges.</p>
+                    </div>
+                    <span class="tag stable">Stable</span>
+                  </div>
+
+                  <div class="signal-item">
+                    <div class="item-copy">
+                      <p class="item-title">Regional Focus</p>
+                      <p class="item-sub">One region continues to show repeated operational variance requiring closer attention.</p>
+                    </div>
+                    <span class="tag focus">Operational Focus</span>
+                  </div>
+
+                  <div class="signal-item">
+                    <div class="item-copy">
+                      <p class="item-title">Data Integrity</p>
+                      <p class="item-sub">Baseline and upload compliance remain strong across participating locations.</p>
+                    </div>
+                    <span class="tag stable">Stable</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
           <div class="hr"></div>
 
-          <p class="section-title">Upcoming</p>
-          <p class="vp-sub">
-            Enterprise rollups, ROI reporting, governance compliance dashboard, and higher-level execution visibility across participating locations.
-          </p>
+          <!-- 2. EXECUTIVE OUTCOME + ROI -->
+          <section>
+            <div class="section-head">
+              <div>
+                <h3 class="section-title">Executive Outcome & ROI</h3>
+                <p class="section-sub">Keep executive visibility on operational outcome and estimated financial impact at all times.</p>
+              </div>
+            </div>
 
-          <div class="actions">
-            <button class="btnx secondary" id="logoutBtn" type="button">Logout</button>
-          </div>
+            <div class="grid">
+              <div class="card outcome-main">
+                <div class="card-header">
+                  <h4 class="card-title">Executive Outcome</h4>
+                  <span class="card-badge">Organization Summary</span>
+                </div>
+
+                <div class="signal-list">
+                  <div class="signal-item">
+                    <div class="item-copy">
+                      <p class="item-title">Leadership Outcome</p>
+                      <p class="item-sub">The organization is showing stronger operational consistency, with one region still requiring more focused support to stabilize repeat variance.</p>
+                    </div>
+                  </div>
+
+                  <div class="signal-item">
+                    <div class="item-copy">
+                      <p class="item-title">Current Executive Priority</p>
+                      <p class="item-sub">Continue supporting the focus region while protecting consistency gains across stable regions.</p>
+                    </div>
+                  </div>
+
+                  <div class="signal-item">
+                    <div class="item-copy">
+                      <p class="item-title">Annual Progress Story</p>
+                      <p class="item-sub">Compared to the current annual baseline, the enterprise is showing healthier operating rhythm and improved leadership visibility.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card roi-main">
+                <div class="card-header">
+                  <h4 class="card-title">ROI</h4>
+                  <span class="card-badge">Estimated Operational Impact</span>
+                </div>
+
+                <div class="metric-grid">
+                  <div class="metric">
+                    <p class="metric-label">Estimated Margin Impact</p>
+                    <p class="metric-value">$420K</p>
+                    <p class="metric-delta">annualized estimate</p>
+                  </div>
+
+                  <div class="metric">
+                    <p class="metric-label">Labor Stability Gain</p>
+                    <p class="metric-value">+2.3 pts</p>
+                    <p class="metric-delta">improved consistency</p>
+                  </div>
+
+                  <div class="metric">
+                    <p class="metric-label">Regions Stabilized</p>
+                    <p class="metric-value">3</p>
+                    <p class="metric-delta">showing strong operational health</p>
+                  </div>
+
+                  <div class="metric">
+                    <p class="metric-label">Watch Areas</p>
+                    <p class="metric-value">1</p>
+                    <p class="metric-delta">region still mixed</p>
+                  </div>
+                </div>
+
+                <p class="small-note">ROI should remain framed as estimated operational impact, not guaranteed savings.</p>
+              </div>
+            </div>
+          </section>
+
+          <div class="hr"></div>
+
+          <!-- 3. REGIONAL FOCUS AREAS -->
+          <section>
+            <div class="section-head">
+              <div>
+                <h3 class="section-title">Regional Focus Areas</h3>
+                <p class="section-sub">Use this view to see where enterprise attention is needed and which regions should be opened for deeper drill-down.</p>
+              </div>
+            </div>
+
+            <div class="grid">
+              <div class="card health-main">
+                <div class="card-header">
+                  <h4 class="card-title">Regional Enterprise Table</h4>
+                  <span class="card-badge">Executive Drill-Down</span>
+                </div>
+
+                <div class="table-wrap" data-vp-region-table>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Region</th>
+                        <th>Operational Status</th>
+                        <th>Primary Pattern</th>
+                        <th>Executive Outcome</th>
+                        <th>ROI Signal</th>
+                        <th>Open Region View</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><span class="region-name">West Region</span></td>
+                        <td><span class="tag stable">Stable</span></td>
+                        <td>None this period</td>
+                        <td>Strong consistency</td>
+                        <td>Positive</td>
+                        <td data-region-id="west_region">Open Region View</td>
+                      </tr>
+                      <tr>
+                        <td><span class="region-name">Central Region</span></td>
+                        <td><span class="tag focus">Operational Focus</span></td>
+                        <td>Repeated district variance</td>
+                        <td>Mixed</td>
+                        <td>Watch</td>
+                        <td data-region-id="central_region">Open Region View</td>
+                      </tr>
+                      <tr>
+                        <td><span class="region-name">North Region</span></td>
+                        <td><span class="tag stable">Stable</span></td>
+                        <td>Improving district consistency</td>
+                        <td>Positive</td>
+                        <td>Positive</td>
+                        <td data-region-id="north_region">Open Region View</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <p class="small-note">Eventually this table should drill into the full RM dashboard with regional health, district operational focus, ROI, and Executive Outcome.</p>
+              </div>
+
+              <div class="card health-side">
+                <div class="card-header">
+                  <h4 class="card-title">Executive Summary</h4>
+                  <span class="card-badge">Focus Notes</span>
+                </div>
+
+                <div class="mini-grid">
+                  <div class="mini-stat">
+                    <h4>Regions Stable</h4>
+                    <p>3</p>
+                  </div>
+                  <div class="mini-stat">
+                    <h4>Regions Requiring Focus</h4>
+                    <p>1</p>
+                  </div>
+                  <div class="mini-stat">
+                    <h4>Most Improved Region</h4>
+                    <p>North</p>
+                  </div>
+                  <div class="mini-stat">
+                    <h4>Executive Review</h4>
+                    <p>Monthly</p>
+                  </div>
+                </div>
+
+                <div class="signal-list" style="margin-top:12px;">
+                  <div class="signal-item">
+                    <div class="item-copy">
+                      <p class="item-title">Current Executive Watch</p>
+                      <p class="item-sub">Central Region remains the primary area for enterprise attention until district patterns stabilize.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </section>
   </main>
+
+  <script type="module" src="assets/commercial-vp.js?v=1"></script>
 </body>
 </html>
