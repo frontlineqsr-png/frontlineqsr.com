@@ -175,6 +175,7 @@
       display:flex;
       gap:10px;
       flex-wrap:wrap;
+      align-items:center;
     }
 
     .btnx{
@@ -191,6 +192,24 @@
     .btnx.secondary{
       background:#fff;
       color:#111827;
+    }
+
+    .view-select{
+      min-width:220px;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      color:#111827;
+      font-weight:800;
+      font-size:14px;
+      outline:none;
+      cursor:pointer;
+    }
+
+    .view-select:focus{
+      border-color:rgba(15,23,42,.28);
+      box-shadow:0 0 0 3px rgba(15,23,42,.08);
     }
 
     .tabs{
@@ -226,6 +245,28 @@
 
     .tab-panel.active{
       display:block;
+    }
+
+    @media (max-width:640px){
+      .hero{ padding:22px 14px 44px; }
+      .brand-bar{ justify-content:flex-start; }
+      .page-card{ padding:18px; }
+      .title{ font-size:26px; }
+
+      .header-row{
+        flex-direction:column;
+      }
+
+      .actions{
+        width:100%;
+      }
+
+      .actions .btnx,
+      .actions .view-select{
+        width:100%;
+        box-sizing:border-box;
+        text-align:center;
+      }
     }
   </style>
 
@@ -277,6 +318,13 @@
             </div>
 
             <div class="actions">
+              <select id="viewSelector" class="view-select" aria-label="View selector">
+                <option value="vp">Enterprise View</option>
+                <option value="rm">Region View</option>
+                <option value="dm">District View</option>
+                <option value="sm" selected>Store View</option>
+              </select>
+
               <button class="btnx secondary" id="logoutBtn" type="button">Logout</button>
             </div>
           </div>
@@ -315,7 +363,7 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-portal.js?v=4"></script>
+  <script type="module" src="assets/commercial-portal.js?v=5"></script>
 
 </body>
 </html>
