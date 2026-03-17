@@ -1,6 +1,6 @@
-// /assets/commercial-admin.js (v5)
+// /assets/commercial-admin.js (v6)
 // Commercial admin workspace logic
-// Adds baseline governance (load + approve)
+// Adds baseline intake + governance
 // Syncs org/store values across admin sections for speed
 
 import {
@@ -9,6 +9,7 @@ import {
   upsertUserAccess,
   listOrgs,
   listStores,
+  savePendingStoreBaseline,
   getStoreBaselineStatus,
   approvePendingStoreBaseline
 } from "./commercial-db.js";
@@ -41,6 +42,33 @@ function parseCsvIds(s) {
     .filter(Boolean);
 }
 
+function parseJsonRows(text) {
+  const raw = String(text || "").trim();
+  if (!raw) throw new Error("Baseline rows JSON is required.");
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error("Baseline rows must be valid JSON.");
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error("Baseline rows JSON must be an array of row objects.");
+  }
+
+  if (!parsed.length) {
+    throw new Error("Baseline rows array cannot be empty.");
+  }
+
+  const invalid = parsed.some((row) => !row || typeof row !== "object" || Array.isArray(row));
+  if (invalid) {
+    throw new Error("Each baseline row must be an object.");
+  }
+
+  return parsed;
+}
+
 function currentSession() {
   const s = readSession();
   if (!s?.uid) throw new Error("Missing commercial session.");
@@ -58,11 +86,13 @@ function syncOrgIdEverywhere(orgId) {
   setValue("listOrgId", orgId);
   setValue("inspectOrgId", orgId);
   setValue("baselineOrgId", orgId);
+  setValue("baselineIntakeOrgId", orgId);
 }
 
 function syncStoreIdEverywhere(storeId) {
   setValue("inspectStoreId", storeId);
   setValue("baselineStoreId", storeId);
+  setValue("baselineIntakeStoreId", storeId);
 }
 
 /* =========================================================
@@ -213,6 +243,46 @@ function openLevel(level) {
 }
 
 /* =========================================================
+   BASELINE INTAKE
+========================================================= */
+
+async function onSavePendingBaseline() {
+  try {
+    const session = currentSession();
+    const orgId = String($("baselineIntakeOrgId")?.value || "").trim();
+    const storeId = String($("baselineIntakeStoreId")?.value || "").trim();
+    const label = String($("baselineLabel")?.value || "").trim();
+    const year = String($("baselineYear")?.value || "").trim();
+    const rows = parseJsonRows($("baselineRows")?.value || "");
+
+    if (!orgId) throw new Error("Baseline intake Org Id required.");
+    if (!storeId) throw new Error("Baseline intake Store Id required.");
+
+    msg("baselineIntakeMsg", "Saving pending baseline…");
+
+    await savePendingStoreBaseline({
+      orgId,
+      storeId,
+      label,
+      year,
+      rows,
+      uploadedByUid: session.uid,
+      uploadedByEmail: session.email
+    });
+
+    msg("baselineIntakeMsg", "✅ Pending baseline saved.");
+
+    setValue("baselineOrgId", orgId);
+    setValue("baselineStoreId", storeId);
+
+    await onLoadBaselineStatus();
+    await refreshLists();
+  } catch (e) {
+    msg("baselineIntakeMsg", "❌ " + e.message, true);
+  }
+}
+
+/* =========================================================
    BASELINE GOVERNANCE
 ========================================================= */
 
@@ -337,6 +407,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("openDmBtn")?.addEventListener("click", () => openLevel("dm"));
   $("openSmBtn")?.addEventListener("click", () => openLevel("sm"));
 
+  $("saveBaselineBtn")?.addEventListener("click", onSavePendingBaseline);
   $("loadBaselineBtn")?.addEventListener("click", onLoadBaselineStatus);
   $("approveBaselineBtn")?.addEventListener("click", onApproveBaseline);
 
