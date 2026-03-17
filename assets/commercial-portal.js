@@ -1,6 +1,9 @@
-// assets/commercial-portal.js (v5)
+// assets/commercial-portal.js (v6)
 // Store Manager page logic only
 // Shared auth/session/logout is handled by commercial-page-boot.js
+// Presentation-ready KPI state for commercial side
+// NOTE: This does NOT fake KPI math. It clearly communicates pending commercial data
+// until approved baseline + approved weekly upload wiring is added.
 
 const $ = (id) => document.getElementById(id);
 
@@ -131,8 +134,34 @@ function setupTabs() {
   });
 }
 
+function setPendingKpiState() {
+  const selectedStore = getStoreFromUrl();
+  const storeName = selectedStore ? prettyLabel(selectedStore) : "selected store";
+
+  if ($("kpiSalesValue")) $("kpiSalesValue").textContent = "—";
+  if ($("kpiTransactionsValue")) $("kpiTransactionsValue").textContent = "—";
+  if ($("kpiLaborPctValue")) $("kpiLaborPctValue").textContent = "—";
+  if ($("kpiAvgTicketValue")) $("kpiAvgTicketValue").textContent = "—";
+
+  if ($("kpiSalesDelta")) $("kpiSalesDelta").textContent = "Awaiting approved commercial data";
+  if ($("kpiTransactionsDelta")) $("kpiTransactionsDelta").textContent = "Awaiting approved commercial data";
+  if ($("kpiLaborPctDelta")) $("kpiLaborPctDelta").textContent = "Awaiting approved commercial data";
+  if ($("kpiAvgTicketDelta")) $("kpiAvgTicketDelta").textContent = "Awaiting approved commercial data";
+
+  if ($("baselineStatusText")) {
+    $("baselineStatusText").textContent =
+      `No approved commercial baseline loaded for ${storeName} yet. Once a commercial baseline exists, KPI baseline weekly equivalent should populate here.`;
+  }
+
+  if ($("weeklyStatusText")) {
+    $("weeklyStatusText").textContent =
+      `No approved commercial weekly upload loaded for ${storeName} yet. Once an approved weekly upload exists, latest KPI values should populate here.`;
+  }
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   setSMHeaderContext();
   setupViewSelector();
   setupTabs();
+  setPendingKpiState();
 });
