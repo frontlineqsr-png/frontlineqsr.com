@@ -1,4 +1,4 @@
-// assets/commercial-dm.js (v3)
+// assets/commercial-dm.js (v4)
 // District Manager page logic
 // Shared auth/session/logout is handled by commercial-page-boot.js
 
@@ -60,6 +60,46 @@ function setDMHeaderContext() {
   }
 }
 
+function setupViewSelector() {
+  const selector = $("viewSelector");
+  if (!selector) return;
+
+  selector.addEventListener("change", (e) => {
+    const view = String(e.target.value || "").trim();
+    const selectedDistrict = getDistrictFromUrl();
+    const selectedRegion = getRegionFromUrl();
+
+    if (view === "vp") {
+      window.location.href = "./commercial-vp.html";
+      return;
+    }
+
+    if (view === "rm") {
+      if (selectedRegion) {
+        window.location.href = `./commercial-rm.html?region=${encodeURIComponent(selectedRegion)}`;
+      } else {
+        window.location.href = "./commercial-rm.html";
+      }
+      return;
+    }
+
+    if (view === "dm") {
+      const next = new URL("./commercial-dm.html", window.location.href);
+      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
+      if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      window.location.href = next.toString();
+      return;
+    }
+
+    if (view === "sm") {
+      const next = new URL("./commercial-portal.html", window.location.href);
+      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
+      if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      window.location.href = next.toString();
+    }
+  });
+}
+
 function setupDMTableActions() {
   const table = document.querySelector("[data-dm-store-table]");
   if (!table) return;
@@ -94,6 +134,7 @@ function highlightPendingGovernance() {
 
 window.addEventListener("DOMContentLoaded", () => {
   setDMHeaderContext();
+  setupViewSelector();
   setupDMTableActions();
   highlightPendingGovernance();
 });
