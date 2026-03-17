@@ -269,6 +269,10 @@
       line-height:1.45;
     }
 
+    .tall-card{
+      min-height:140px;
+    }
+
     @media (max-width: 980px){
       .grid,
       .grid-2,
@@ -323,7 +327,7 @@
             <div>
               <h2 class="admin-title">Admin Hub</h2>
               <p class="admin-sub">
-                Manage organizations, stores, user access, baseline governance, and launch inspection views from one workspace.
+                Manage organizations, stores, user access, baseline intake, baseline governance, and launch inspection views from one workspace.
               </p>
               <p id="sessionInfo" class="admin-sub" style="margin-top:8px;">Loading session…</p>
               <p id="adminContext" class="admin-sub" style="margin-top:8px;"></p>
@@ -374,6 +378,45 @@
           <div class="hr"></div>
 
           <div class="panel">
+            <h3>Baseline Intake</h3>
+
+            <div class="grid-2">
+              <div>
+                <label class="small">Org Id</label>
+                <input class="input" id="baselineIntakeOrgId" placeholder="Paste orgId" />
+              </div>
+
+              <div>
+                <label class="small">Store Id</label>
+                <input class="input" id="baselineIntakeStoreId" placeholder="Paste storeId" />
+              </div>
+
+              <div>
+                <label class="small">Baseline Label</label>
+                <input class="input" id="baselineLabel" placeholder="Example: 2026 Baseline Month" />
+              </div>
+
+              <div>
+                <label class="small">Baseline Year</label>
+                <input class="input" id="baselineYear" placeholder="Example: 2026" />
+              </div>
+            </div>
+
+            <div class="space"></div>
+
+            <label class="small">Baseline Rows (JSON array of row objects)</label>
+            <textarea class="input" id="baselineRows" rows="8" placeholder='Example: [{"Date":"2026-01-01","Sales":2500,"Labor":700,"Transactions":210}]'></textarea>
+
+            <div class="launch-grid" style="grid-template-columns:1fr;">
+              <button class="btnx" id="saveBaselineBtn" type="button">Save Pending Baseline</button>
+            </div>
+
+            <div class="msg" id="baselineIntakeMsg"></div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="panel">
             <h3>Baseline Governance</h3>
 
             <div class="grid-2">
@@ -394,7 +437,7 @@
             </div>
 
             <div class="msg" id="baselineMsg"></div>
-            <pre class="list-card" id="baselineStatus" style="margin-top:12px; min-height:120px;">(baseline status loads here)</pre>
+            <pre class="list-card tall-card" id="baselineStatus" style="margin-top:12px;">(baseline status loads here)</pre>
           </div>
 
           <div class="hr"></div>
@@ -506,6 +549,6 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-admin.js?v=4"></script>
+  <script type="module" src="assets/commercial-admin.js?v=6"></script>
 </body>
 </html>
