@@ -323,7 +323,7 @@
             <div>
               <h2 class="admin-title">Admin Hub</h2>
               <p class="admin-sub">
-                Manage organizations, stores, user access, and launch inspection views from one workspace.
+                Manage organizations, stores, user access, baseline governance, and launch inspection views from one workspace.
               </p>
               <p id="sessionInfo" class="admin-sub" style="margin-top:8px;">Loading session…</p>
               <p id="adminContext" class="admin-sub" style="margin-top:8px;"></p>
@@ -369,6 +369,32 @@
             </div>
 
             <div class="msg" id="inspectMsg"></div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="panel">
+            <h3>Baseline Governance</h3>
+
+            <div class="grid-2">
+              <div>
+                <label class="small">Org Id</label>
+                <input class="input" id="baselineOrgId" placeholder="Paste orgId" />
+              </div>
+
+              <div>
+                <label class="small">Store Id</label>
+                <input class="input" id="baselineStoreId" placeholder="Paste storeId" />
+              </div>
+            </div>
+
+            <div class="launch-grid" style="grid-template-columns:repeat(2, minmax(0, 1fr));">
+              <button class="btnx" id="loadBaselineBtn" type="button">Load Baseline Status</button>
+              <button class="btnx secondary" id="approveBaselineBtn" type="button">Approve Pending Baseline</button>
+            </div>
+
+            <div class="msg" id="baselineMsg"></div>
+            <pre class="list-card" id="baselineStatus" style="margin-top:12px; min-height:120px;">(baseline status loads here)</pre>
           </div>
 
           <div class="hr"></div>
@@ -480,6 +506,6 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-admin.js?v=3"></script>
+  <script type="module" src="assets/commercial-admin.js?v=4"></script>
 </body>
 </html>
