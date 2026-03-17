@@ -1,4 +1,4 @@
-// assets/commercial-rm.js (v3)
+// assets/commercial-rm.js (v4)
 // Regional Manager page logic
 // Shared auth/session/logout is handled by commercial-page-boot.js
 
@@ -39,7 +39,9 @@ function setRMHeaderContext() {
   if (extra) {
     extra.textContent =
       `Org: ${orgId} | Role: ${role} | Region Scope: ${
-        selectedRegion ? prettyRegion(selectedRegion) : (regions.length ? regions.join(", ") : "Assigned regional access")
+        selectedRegion
+          ? prettyRegion(selectedRegion)
+          : (regions.length ? regions.join(", ") : "Assigned regional access")
       }`;
   }
 
@@ -49,6 +51,47 @@ function setRMHeaderContext() {
       ? `Selected Region: ${prettyRegion(selectedRegion)}`
       : "Selected Region: All assigned regions";
   }
+}
+
+function setupViewSelector() {
+  const selector = $("viewSelector");
+  if (!selector) return;
+
+  selector.addEventListener("change", (e) => {
+    const view = String(e.target.value || "").trim();
+    const selectedRegion = getRegionFromUrl();
+
+    if (view === "vp") {
+      window.location.href = "./commercial-vp.html";
+      return;
+    }
+
+    if (view === "rm") {
+      if (selectedRegion) {
+        window.location.href = `./commercial-rm.html?region=${encodeURIComponent(selectedRegion)}`;
+      } else {
+        window.location.href = "./commercial-rm.html";
+      }
+      return;
+    }
+
+    if (view === "dm") {
+      if (selectedRegion) {
+        window.location.href = `./commercial-dm.html?region=${encodeURIComponent(selectedRegion)}`;
+      } else {
+        window.location.href = "./commercial-dm.html";
+      }
+      return;
+    }
+
+    if (view === "sm") {
+      if (selectedRegion) {
+        window.location.href = `./commercial-portal.html?region=${encodeURIComponent(selectedRegion)}`;
+      } else {
+        window.location.href = "./commercial-portal.html";
+      }
+    }
+  });
 }
 
 function setupRMDistrictActions() {
@@ -76,5 +119,6 @@ function setupRMDistrictActions() {
 
 window.addEventListener("DOMContentLoaded", () => {
   setRMHeaderContext();
+  setupViewSelector();
   setupRMDistrictActions();
 });
