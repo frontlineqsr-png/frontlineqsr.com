@@ -1,6 +1,7 @@
-// /assets/commercial-admin.js (v4)
+// /assets/commercial-admin.js (v5)
 // Commercial admin workspace logic
 // Adds baseline governance (load + approve)
+// Syncs org/store values across admin sections for speed
 
 import {
   createOrg,
@@ -46,6 +47,24 @@ function currentSession() {
   return s;
 }
 
+function setValue(id, value) {
+  const el = $(id);
+  if (el) el.value = value || "";
+}
+
+function syncOrgIdEverywhere(orgId) {
+  setValue("storeOrgId", orgId);
+  setValue("u_orgId", orgId);
+  setValue("listOrgId", orgId);
+  setValue("inspectOrgId", orgId);
+  setValue("baselineOrgId", orgId);
+}
+
+function syncStoreIdEverywhere(storeId) {
+  setValue("inspectStoreId", storeId);
+  setValue("baselineStoreId", storeId);
+}
+
 /* =========================================================
    Header
 ========================================================= */
@@ -64,7 +83,7 @@ function setAdminHeaderContext() {
 }
 
 /* =========================================================
-   ORG + STORE + USER (UNCHANGED)
+   ORG + STORE + USER
 ========================================================= */
 
 async function onCreateOrg() {
@@ -81,12 +100,9 @@ async function onCreateOrg() {
     });
 
     msg("orgMsg", "✅ Org created.");
+    if ($("orgIdOut")) $("orgIdOut").textContent = orgId;
 
-    $("storeOrgId").value = orgId;
-    $("u_orgId").value = orgId;
-    $("listOrgId").value = orgId;
-    $("inspectOrgId").value = orgId;
-
+    syncOrgIdEverywhere(orgId);
   } catch (e) {
     msg("orgMsg", "❌ " + e.message, true);
   }
@@ -94,15 +110,24 @@ async function onCreateOrg() {
 
 async function onCreateStore() {
   try {
-    const orgId = $("storeOrgId").value.trim();
-    const name = $("storeName").value.trim();
+    const orgId = String($("storeOrgId")?.value || "").trim();
+    const name = String($("storeName")?.value || "").trim();
+    const regionId = String($("regionId")?.value || "").trim();
+    const districtId = String($("districtId")?.value || "").trim();
+
+    if (!orgId) throw new Error("Org Id required.");
+    if (!name) throw new Error("Store Name required.");
 
     msg("storeMsg", "Creating store…");
-    const storeId = await createStore({ orgId, name });
+    const storeId = await createStore({ orgId, name, regionId, districtId });
 
     msg("storeMsg", `✅ Store created: ${storeId}`);
-    $("inspectStoreId").value = storeId;
 
+    syncOrgIdEverywhere(orgId);
+    syncStoreIdEverywhere(storeId);
+
+    if ($("inspectRegionId") && regionId) $("inspectRegionId").value = regionId;
+    if ($("inspectDistrictId") && districtId) $("inspectDistrictId").value = districtId;
   } catch (e) {
     msg("storeMsg", "❌ " + e.message, true);
   }
@@ -110,10 +135,10 @@ async function onCreateStore() {
 
 async function onSaveUser() {
   try {
-    const uid = $("u_uid").value.trim();
-    const email = $("u_email").value.trim().toLowerCase();
-    const orgId = $("u_orgId").value.trim();
-    const role = $("u_role").value;
+    const uid = String($("u_uid")?.value || "").trim();
+    const email = String($("u_email")?.value || "").trim().toLowerCase();
+    const orgId = String($("u_orgId")?.value || "").trim();
+    const role = String($("u_role")?.value || "SM").trim().toUpperCase();
 
     msg("userMsg", "Saving user…");
 
@@ -122,29 +147,79 @@ async function onSaveUser() {
       email,
       orgId,
       role,
-      commercialAccess: true,
-      active: true,
-      assignedStoreIds: parseCsvIds($("u_storeIds").value),
+      commercialAccess: !!$("u_commercial")?.checked,
+      active: !!$("u_active")?.checked,
+      assignedStoreIds: parseCsvIds($("u_storeIds")?.value || ""),
       assignedDistrictIds: [],
       assignedRegionIds: [],
       isSuperAdmin: role === "SUPER_ADMIN"
     });
 
     msg("userMsg", "✅ User saved");
-
   } catch (e) {
     msg("userMsg", "❌ " + e.message, true);
   }
 }
 
 /* =========================================================
-   BASELINE GOVERNANCE (NEW)
+   Inspection Launch
+========================================================= */
+
+function buildLaunchUrl(level) {
+  const orgId = String($("inspectOrgId")?.value || "").trim();
+  const regionId = String($("inspectRegionId")?.value || "").trim();
+  const districtId = String($("inspectDistrictId")?.value || "").trim();
+  const storeId = String($("inspectStoreId")?.value || "").trim();
+
+  let path = "./commercial-vp.html";
+  if (level === "rm") path = "./commercial-rm.html";
+  if (level === "dm") path = "./commercial-dm.html";
+  if (level === "sm") path = "./commercial-portal.html";
+
+  const next = new URL(path, window.location.href);
+
+  if (orgId) next.searchParams.set("org", orgId);
+  if (regionId) next.searchParams.set("region", regionId);
+  if (districtId) next.searchParams.set("district", districtId);
+  if (storeId) next.searchParams.set("store", storeId);
+
+  return next.toString();
+}
+
+function openLevel(level) {
+  try {
+    const url = buildLaunchUrl(level);
+
+    if (level === "rm" && !String($("inspectRegionId")?.value || "").trim()) {
+      msg("inspectMsg", "❌ Region Id is recommended for Region View.", true);
+      return;
+    }
+
+    if (level === "dm" && !String($("inspectDistrictId")?.value || "").trim()) {
+      msg("inspectMsg", "❌ District Id is recommended for District View.", true);
+      return;
+    }
+
+    if (level === "sm" && !String($("inspectStoreId")?.value || "").trim()) {
+      msg("inspectMsg", "❌ Store Id is required for Store View.", true);
+      return;
+    }
+
+    msg("inspectMsg", `Opening ${level.toUpperCase()} view…`);
+    window.location.href = url;
+  } catch (e) {
+    msg("inspectMsg", "❌ " + (e?.message || "Failed to open view"), true);
+  }
+}
+
+/* =========================================================
+   BASELINE GOVERNANCE
 ========================================================= */
 
 async function onLoadBaselineStatus() {
   try {
-    const orgId = $("inspectOrgId").value.trim();
-    const storeId = $("inspectStoreId").value.trim();
+    const orgId = String($("baselineOrgId")?.value || "").trim();
+    const storeId = String($("baselineStoreId")?.value || "").trim();
 
     if (!orgId || !storeId) {
       throw new Error("Org + Store required.");
@@ -155,24 +230,32 @@ async function onLoadBaselineStatus() {
     const data = await getStoreBaselineStatus(orgId, storeId);
 
     let output = "";
+    output += `STORE: ${storeId}\n`;
+    output += `BASELINE APPROVED: ${data.baselineApproved ? "YES" : "NO"}\n`;
+    output += `BASELINE LOCKED: ${data.baselineLocked ? "YES" : "NO"}\n\n`;
 
     if (data.activeBaseline) {
       output += `ACTIVE BASELINE:\n`;
-      output += `${data.activeBaseline.label || "N/A"}\n\n`;
+      output += `ID: ${data.activeBaseline.id}\n`;
+      output += `LABEL: ${data.activeBaseline.label || "N/A"}\n`;
+      output += `YEAR: ${data.activeBaseline.year || "N/A"}\n`;
+      output += `ROWS: ${data.activeBaseline.rowCount || 0}\n\n`;
     }
 
     if (data.pendingBaseline) {
       output += `PENDING BASELINE:\n`;
-      output += `${data.pendingBaseline.label || "Pending"}\n\n`;
+      output += `ID: ${data.pendingBaseline.id}\n`;
+      output += `LABEL: ${data.pendingBaseline.label || "Pending"}\n`;
+      output += `YEAR: ${data.pendingBaseline.year || "N/A"}\n`;
+      output += `ROWS: ${data.pendingBaseline.rowCount || 0}\n\n`;
     }
 
     if (!data.activeBaseline && !data.pendingBaseline) {
-      output = "No baseline found.";
+      output += "No baseline found.\n";
     }
 
-    $("baselineStatus").textContent = output;
+    if ($("baselineStatus")) $("baselineStatus").textContent = output;
     msg("baselineMsg", "✅ Loaded");
-
   } catch (e) {
     msg("baselineMsg", "❌ " + e.message, true);
   }
@@ -181,8 +264,8 @@ async function onLoadBaselineStatus() {
 async function onApproveBaseline() {
   try {
     const session = currentSession();
-    const orgId = $("inspectOrgId").value.trim();
-    const storeId = $("inspectStoreId").value.trim();
+    const orgId = String($("baselineOrgId")?.value || "").trim();
+    const storeId = String($("baselineStoreId")?.value || "").trim();
 
     if (!orgId || !storeId) {
       throw new Error("Org + Store required.");
@@ -198,9 +281,8 @@ async function onApproveBaseline() {
     });
 
     msg("baselineMsg", "✅ Baseline approved");
-
     await onLoadBaselineStatus();
-
+    await refreshLists();
   } catch (e) {
     msg("baselineMsg", "❌ " + e.message, true);
   }
@@ -211,16 +293,30 @@ async function onApproveBaseline() {
 ========================================================= */
 
 async function refreshLists() {
-  const orgId = $("listOrgId").value.trim();
+  try {
+    const orgId = String($("listOrgId")?.value || "").trim();
 
-  const orgs = await listOrgs();
-  $("orgList").textContent =
-    orgs.map(o => `${o.id} | ${o.name}`).join("\n");
+    const orgs = await listOrgs();
+    if ($("orgList")) {
+      $("orgList").textContent =
+        orgs.map(o => `${o.id} | ${o.name}`).join("\n") || "(none)";
+    }
 
-  if (orgId) {
-    const stores = await listStores(orgId);
-    $("storeList").textContent =
-      stores.map(s => `${s.id} | ${s.name} | approved=${s.baselineApproved}`).join("\n");
+    if (orgId) {
+      const stores = await listStores(orgId);
+      if ($("storeList")) {
+        $("storeList").textContent =
+          stores.map(s =>
+            `${s.id} | ${s.name} | approved=${!!s.baselineApproved} | locked=${!!s.baselineLocked} | activeBaseline=${s.activeBaselineLabel || "none"}`
+          ).join("\n") || "(none)";
+      }
+    } else {
+      if ($("storeList")) $("storeList").textContent = "(enter orgId to list stores)";
+    }
+
+    msg("globalMsg", "✅ Refreshed.");
+  } catch (e) {
+    msg("globalMsg", "❌ " + (e?.message || "Failed"), true);
   }
 }
 
@@ -236,8 +332,13 @@ window.addEventListener("DOMContentLoaded", () => {
   $("saveUserBtn")?.addEventListener("click", onSaveUser);
   $("refreshBtn")?.addEventListener("click", refreshLists);
 
+  $("openVpBtn")?.addEventListener("click", () => openLevel("vp"));
+  $("openRmBtn")?.addEventListener("click", () => openLevel("rm"));
+  $("openDmBtn")?.addEventListener("click", () => openLevel("dm"));
+  $("openSmBtn")?.addEventListener("click", () => openLevel("sm"));
+
   $("loadBaselineBtn")?.addEventListener("click", onLoadBaselineStatus);
   $("approveBaselineBtn")?.addEventListener("click", onApproveBaseline);
 
-  refreshLists();
+  refreshLists().catch(() => {});
 });
