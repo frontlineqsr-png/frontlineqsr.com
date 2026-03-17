@@ -23,14 +23,10 @@
       --tab-bg:rgba(15,23,42,.06);
       --tab-active:#111827;
       --tab-active-text:#fff;
-      --kpi:#1d4ed8;
-      --insight:#0f766e;
-      --action:#b45309;
-      --progress:#166534;
-      --focus:#f59e0b;
-      --stable:#22c55e;
-      --coaching:#3b82f6;
-      --pending:#94a3b8;
+      --good:#166534;
+      --bad:#991b1b;
+      --pending:#92400e;
+      --soft:#f8fafc;
     }
 
     *{ box-sizing:border-box; }
@@ -247,6 +243,96 @@
       display:block;
     }
 
+    .section-title{
+      margin:0 0 10px;
+      font-size:22px;
+      font-weight:900;
+    }
+
+    .kpi-grid{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:14px;
+      margin-bottom:16px;
+    }
+
+    .kpi-card{
+      background:var(--soft);
+      border:1px solid rgba(15,23,42,.08);
+      border-radius:14px;
+      padding:16px;
+      min-height:118px;
+    }
+
+    .kpi-label{
+      margin:0 0 8px;
+      font-size:13px;
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .kpi-value{
+      margin:0;
+      font-size:28px;
+      line-height:1;
+      font-weight:900;
+      color:var(--text);
+    }
+
+    .kpi-sub{
+      margin:10px 0 0;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+
+    .kpi-delta{
+      margin:8px 0 0;
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .kpi-delta.good{ color:var(--good); }
+    .kpi-delta.bad{ color:var(--bad); }
+    .kpi-delta.pending{ color:var(--pending); }
+
+    .info-box{
+      border-radius:14px;
+      padding:16px;
+      border:1px solid rgba(15,23,42,.08);
+      background:rgba(15,23,42,.03);
+      color:var(--text);
+    }
+
+    .info-box h4{
+      margin:0 0 8px;
+      font-size:16px;
+      font-weight:900;
+    }
+
+    .info-box p{
+      margin:0;
+      font-size:14px;
+      line-height:1.5;
+      color:var(--muted);
+    }
+
+    .meta-grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:14px;
+      margin-top:14px;
+    }
+
+    @media (max-width: 900px){
+      .kpi-grid{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+      }
+      .meta-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
     @media (max-width:640px){
       .hero{ padding:22px 14px 44px; }
       .brand-bar{ justify-content:flex-start; }
@@ -266,6 +352,10 @@
         width:100%;
         box-sizing:border-box;
         text-align:center;
+      }
+
+      .kpi-grid{
+        grid-template-columns:1fr;
       }
     }
   </style>
@@ -339,8 +429,50 @@
           </div>
 
           <section class="tab-panel active" id="tab-kpis">
-            <h3>KPIs</h3>
-            <p class="sub">Review store performance against the approved baseline.</p>
+            <h3 class="section-title">KPIs</h3>
+            <p class="sub" style="margin-bottom:14px;">Review store performance against the approved baseline.</p>
+
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <p class="kpi-label">Sales</p>
+                <p class="kpi-value" id="kpiSalesValue">—</p>
+                <p class="kpi-delta pending" id="kpiSalesDelta">Awaiting approved commercial data</p>
+                <p class="kpi-sub" id="kpiSalesSub">Latest approved week vs baseline weekly equivalent</p>
+              </div>
+
+              <div class="kpi-card">
+                <p class="kpi-label">Transactions</p>
+                <p class="kpi-value" id="kpiTransactionsValue">—</p>
+                <p class="kpi-delta pending" id="kpiTransactionsDelta">Awaiting approved commercial data</p>
+                <p class="kpi-sub" id="kpiTransactionsSub">Latest approved week vs baseline weekly equivalent</p>
+              </div>
+
+              <div class="kpi-card">
+                <p class="kpi-label">Labor %</p>
+                <p class="kpi-value" id="kpiLaborPctValue">—</p>
+                <p class="kpi-delta pending" id="kpiLaborPctDelta">Awaiting approved commercial data</p>
+                <p class="kpi-sub" id="kpiLaborPctSub">Latest approved week vs approved baseline</p>
+              </div>
+
+              <div class="kpi-card">
+                <p class="kpi-label">Average Ticket</p>
+                <p class="kpi-value" id="kpiAvgTicketValue">—</p>
+                <p class="kpi-delta pending" id="kpiAvgTicketDelta">Awaiting approved commercial data</p>
+                <p class="kpi-sub" id="kpiAvgTicketSub">Latest approved week vs approved baseline</p>
+              </div>
+            </div>
+
+            <div class="meta-grid">
+              <div class="info-box">
+                <h4>Baseline Status</h4>
+                <p id="baselineStatusText">No approved commercial baseline loaded for this selected store yet.</p>
+              </div>
+
+              <div class="info-box">
+                <h4>Weekly Upload Status</h4>
+                <p id="weeklyStatusText">No approved weekly commercial upload loaded for this selected store yet.</p>
+              </div>
+            </div>
           </section>
 
           <section class="tab-panel" id="tab-shift-insight">
@@ -363,7 +495,7 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-portal.js?v=5"></script>
+  <script type="module" src="assets/commercial-portal.js?v=6"></script>
 
 </body>
 </html>
