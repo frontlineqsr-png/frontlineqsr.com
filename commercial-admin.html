@@ -404,8 +404,10 @@
 
             <div class="space"></div>
 
-            <label class="small">Baseline Rows (JSON array of row objects)</label>
-            <textarea class="input" id="baselineRows" rows="8" placeholder='Example: [{"Date":"2026-01-01","Sales":2500,"Labor":700,"Transactions":210}]'></textarea>
+            <label class="small">Baseline CSV File</label>
+            <input class="input" id="baselineCsvFile" type="file" accept=".csv,text/csv" />
+
+            <div class="msg" id="baselineCsvInfo">No CSV selected.</div>
 
             <div class="launch-grid" style="grid-template-columns:1fr;">
               <button class="btnx" id="saveBaselineBtn" type="button">Save Pending Baseline</button>
@@ -549,6 +551,6 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-admin.js?v=6"></script>
+  <script type="module" src="assets/commercial-admin.js?v=7"></script>
 </body>
 </html>
