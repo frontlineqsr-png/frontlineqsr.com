@@ -1,4 +1,4 @@
-// assets/commercial-page-boot.js (v1.7)
+// assets/commercial-page-boot.js (v1.8)
 // Shared boot for commercial role-gated pages (NO PILOT DATA)
 // ✅ Guard + session display + logout
 // ✅ Firebase truth check
@@ -6,6 +6,7 @@
 // ✅ Session refresh
 // ✅ Handles role/access drift safely
 // ✅ FIX: do not instantly force logout before Firebase auth finishes hydrating
+// ✅ FIX: allow higher roles to stay on lower-level pages if current page is allowed
 
 import {
   requireCommercial,
@@ -54,6 +55,18 @@ function samePath(target) {
   const current = location.pathname.split("/").pop() || "";
   const next = String(target || "").replace("./", "");
   return current === next;
+}
+
+function currentRoleAllowed(allowRoles, role, isSuperAdmin = false) {
+  const allow = (Array.isArray(allowRoles) ? allowRoles : [])
+    .map((r) => normRole(r))
+    .filter(Boolean);
+
+  const current = normRole(role);
+
+  if (isSuperAdmin) return true;
+  if (current === "admin") return allow.includes("admin") || allow.includes("super_admin");
+  return allow.includes(current);
 }
 
 async function loadDirectory(uid) {
@@ -199,13 +212,12 @@ export function bootCommercialPage(opts = {}) {
 
       let user = auth.currentUser;
 
-      // FIX: wait briefly for Firebase auth hydration instead of instant logout
+      // wait briefly for Firebase auth hydration instead of instant logout
       if (!user?.uid) {
         user = await waitForAuthUser(2500);
       }
 
       if (!user?.uid) {
-        // if cached session exists, let onAuthStateChanged continue to hydrate before killing session
         if (cached?.uid) {
           refreshing = false;
           return;
@@ -217,11 +229,22 @@ export function bootCommercialPage(opts = {}) {
       // UID mismatch = bad cached session
       if (!cached?.uid || cached.uid !== user.uid) {
         const fresh = await rebuildCommercialSession(user);
-        const target = landingForRole(fresh.isSuperAdmin ? "super_admin" : fresh.role);
-        if (!samePath(target)) {
-          location.replace(target);
-          return;
+
+        // Only reroute if the current page is NOT allowed for this role
+        const pageAllowed = currentRoleAllowed(
+          allowRoles,
+          fresh.isSuperAdmin ? "super_admin" : fresh.role,
+          fresh.isSuperAdmin
+        );
+
+        if (!pageAllowed) {
+          const target = landingForRole(fresh.isSuperAdmin ? "super_admin" : fresh.role);
+          if (!samePath(target)) {
+            location.replace(target);
+            return;
+          }
         }
+
         setSessionInfo($(sessionInfoId), fresh);
         return;
       }
@@ -229,11 +252,19 @@ export function bootCommercialPage(opts = {}) {
       // Refresh from Firestore to catch role/access drift
       const fresh = await rebuildCommercialSession(user);
 
-      // If current page no longer matches role, reroute
-      const target = landingForRole(fresh.isSuperAdmin ? "super_admin" : fresh.role);
-      if (!samePath(target)) {
-        location.replace(target);
-        return;
+      // Only reroute if the current page is NOT allowed for this role
+      const pageAllowed = currentRoleAllowed(
+        allowRoles,
+        fresh.isSuperAdmin ? "super_admin" : fresh.role,
+        fresh.isSuperAdmin
+      );
+
+      if (!pageAllowed) {
+        const target = landingForRole(fresh.isSuperAdmin ? "super_admin" : fresh.role);
+        if (!samePath(target)) {
+          location.replace(target);
+          return;
+        }
       }
 
       setSessionInfo($(sessionInfoId), fresh);
@@ -267,16 +298,13 @@ export function bootCommercialPage(opts = {}) {
         return;
       }
 
-      // keep session fresh after auth is ready
       await refreshFromSource();
     });
 
-    // Initial refresh after DOM loads
     setTimeout(() => {
       if (!authReady) refreshFromSource();
     }, 150);
 
-    // Refresh when user comes back to the tab
     window.addEventListener("focus", refreshFromSource);
   });
 
