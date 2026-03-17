@@ -7,6 +7,7 @@ import { db } from "./firebase.js";
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   addDoc,
@@ -28,6 +29,10 @@ function normalizeIds(v) {
   if (Array.isArray(v)) return v.map(x => String(x).trim()).filter(Boolean);
   if (typeof v === "string") return v.split(",").map(x => x.trim()).filter(Boolean);
   return [];
+}
+
+function cleanString(v) {
+  return String(v || "").trim();
 }
 
 /* =========================================================
@@ -75,6 +80,8 @@ export async function createStore({ orgId, name, regionId, districtId }) {
     districtId: String(districtId || "").trim() || null,
     baselineApproved: false,
     baselineLocked: false,
+    activeBaselineId: null,
+    activeBaselineLabel: null,
     active: true,
     createdAt: serverTimestamp(),
     createdAtIso: nowIso()
@@ -92,6 +99,146 @@ export async function listStores(orgId) {
   );
 
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/* =========================================================
+   BASELINE GOVERNANCE
+   One approved active baseline per store
+   Baseline may represent a month, but weekly KPI comparison
+   should later use normalized weekly equivalent in KPI layer.
+========================================================= */
+
+// Save or replace pending baseline for a store.
+// rows should stay in same row/object format as pilot CSV parsing.
+export async function savePendingStoreBaseline({
+  orgId,
+  storeId,
+  label,
+  year,
+  rows,
+  uploadedByUid,
+  uploadedByEmail
+}) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+  const baselineLabel = cleanString(label) || cleanString(year) || "baseline";
+  const safeRows = Array.isArray(rows) ? rows : [];
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+  if (!safeRows.length) throw new Error("Baseline rows required.");
+
+  const baselineId = "pending_baseline";
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid, "baselines", baselineId), {
+    label: baselineLabel,
+    year: cleanString(year) || null,
+    rows: safeRows,
+    rowCount: safeRows.length,
+    approved: false,
+    active: false,
+    locked: false,
+    uploadedByUid: cleanString(uploadedByUid) || null,
+    uploadedByEmail: cleanString(uploadedByEmail) || null,
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso()
+  }, { merge: true });
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid), {
+    baselineApproved: false,
+    baselineLocked: false
+  }, { merge: true });
+
+  return baselineId;
+}
+
+export async function getStoreBaselineStatus(orgId, storeId) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+
+  const storeSnap = await getDoc(doc(db, "orgs", oid, "stores", sid));
+  const pendingSnap = await getDoc(doc(db, "orgs", oid, "stores", sid, "baselines", "pending_baseline"));
+
+  const store = storeSnap.exists() ? (storeSnap.data() || {}) : {};
+  const pending = pendingSnap.exists() ? (pendingSnap.data() || {}) : null;
+
+  let active = null;
+  const activeBaselineId = cleanString(store.activeBaselineId);
+  if (activeBaselineId) {
+    const activeSnap = await getDoc(doc(db, "orgs", oid, "stores", sid, "baselines", activeBaselineId));
+    if (activeSnap.exists()) active = { id: activeSnap.id, ...(activeSnap.data() || {}) };
+  }
+
+  return {
+    storeId: sid,
+    baselineApproved: !!store.baselineApproved,
+    baselineLocked: !!store.baselineLocked,
+    activeBaselineId: activeBaselineId || null,
+    activeBaselineLabel: store.activeBaselineLabel || null,
+    pendingBaseline: pending ? { id: "pending_baseline", ...pending } : null,
+    activeBaseline: active
+  };
+}
+
+// Approves pending baseline and makes it the single active baseline for the store.
+export async function approvePendingStoreBaseline({
+  orgId,
+  storeId,
+  approvedByUid,
+  approvedByEmail
+}) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+
+  const pendingRef = doc(db, "orgs", oid, "stores", sid, "baselines", "pending_baseline");
+  const pendingSnap = await getDoc(pendingRef);
+
+  if (!pendingSnap.exists()) {
+    throw new Error("No pending baseline found for this store.");
+  }
+
+  const pending = pendingSnap.data() || {};
+  const approvedId = `approved_${Date.now()}`;
+  const approvedRef = doc(db, "orgs", oid, "stores", sid, "baselines", approvedId);
+
+  // create immutable approved version
+  await setDoc(approvedRef, {
+    ...pending,
+    approved: true,
+    active: true,
+    locked: true,
+    approvedByUid: cleanString(approvedByUid) || null,
+    approvedByEmail: cleanString(approvedByEmail) || null,
+    approvedAt: serverTimestamp(),
+    approvedAtIso: nowIso()
+  }, { merge: true });
+
+  // clear / deactivate pending baseline
+  await setDoc(pendingRef, {
+    approved: false,
+    active: false,
+    locked: false,
+    replacedAt: serverTimestamp(),
+    replacedAtIso: nowIso()
+  }, { merge: true });
+
+  // update store-level truth fields
+  await setDoc(doc(db, "orgs", oid, "stores", sid), {
+    baselineApproved: true,
+    baselineLocked: true,
+    activeBaselineId: approvedId,
+    activeBaselineLabel: pending.label || pending.year || "approved baseline",
+    baselineApprovedAt: serverTimestamp(),
+    baselineApprovedAtIso: nowIso()
+  }, { merge: true });
+
+  return approvedId;
 }
 
 /* =========================================================
