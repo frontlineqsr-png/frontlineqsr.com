@@ -1,4 +1,4 @@
-// assets/commercial-portal.js (v4)
+// assets/commercial-portal.js (v5)
 // Store Manager page logic only
 // Shared auth/session/logout is handled by commercial-page-boot.js
 
@@ -69,6 +69,48 @@ function setSMHeaderContext() {
   }
 }
 
+function setupViewSelector() {
+  const selector = $("viewSelector");
+  if (!selector) return;
+
+  selector.addEventListener("change", (e) => {
+    const view = String(e.target.value || "").trim();
+    const selectedStore = getStoreFromUrl();
+    const selectedDistrict = getDistrictFromUrl();
+    const selectedRegion = getRegionFromUrl();
+
+    if (view === "vp") {
+      window.location.href = "./commercial-vp.html";
+      return;
+    }
+
+    if (view === "rm") {
+      if (selectedRegion) {
+        window.location.href = `./commercial-rm.html?region=${encodeURIComponent(selectedRegion)}`;
+      } else {
+        window.location.href = "./commercial-rm.html";
+      }
+      return;
+    }
+
+    if (view === "dm") {
+      const next = new URL("./commercial-dm.html", window.location.href);
+      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
+      if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      window.location.href = next.toString();
+      return;
+    }
+
+    if (view === "sm") {
+      const next = new URL("./commercial-portal.html", window.location.href);
+      if (selectedStore) next.searchParams.set("store", selectedStore);
+      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
+      if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      window.location.href = next.toString();
+    }
+  });
+}
+
 function setupTabs() {
   const buttons = document.querySelectorAll(".tab-btn");
   const panels = document.querySelectorAll(".tab-panel");
@@ -91,5 +133,6 @@ function setupTabs() {
 
 window.addEventListener("DOMContentLoaded", () => {
   setSMHeaderContext();
+  setupViewSelector();
   setupTabs();
 });
