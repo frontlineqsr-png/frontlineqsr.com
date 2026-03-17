@@ -176,6 +176,7 @@
       display:flex;
       gap:10px;
       flex-wrap:wrap;
+      align-items:center;
     }
 
     .btnx{
@@ -202,6 +203,24 @@
 
     .btnx.secondary:hover{
       background:#f8fafc;
+    }
+
+    .view-select{
+      min-width:220px;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      color:#111827;
+      font-weight:800;
+      font-size:14px;
+      outline:none;
+      cursor:pointer;
+    }
+
+    .view-select:focus{
+      border-color:rgba(15,23,42,.28);
+      box-shadow:0 0 0 3px rgba(15,23,42,.08);
     }
 
     .section-head{
@@ -476,7 +495,8 @@
         width:100%;
       }
 
-      .actions .btnx{
+      .actions .btnx,
+      .actions .view-select{
         width:100%;
         box-sizing:border-box;
         text-align:center;
@@ -534,6 +554,13 @@
             </div>
 
             <div class="actions">
+              <select id="viewSelector" class="view-select" aria-label="View selector">
+                <option value="vp" selected>Enterprise View</option>
+                <option value="rm">Region View</option>
+                <option value="dm">District View</option>
+                <option value="sm">Store View</option>
+              </select>
+
               <button class="btnx secondary" id="logoutBtn" type="button">Logout</button>
             </div>
           </div>
@@ -802,6 +829,6 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-vp.js?v=3"></script>
+  <script type="module" src="assets/commercial-vp.js?v=4"></script>
 </body>
 </html>
