@@ -1,4 +1,4 @@
-// /assets/commercial-admin.js (v2)
+// /assets/commercial-admin.js (v3)
 // Commercial admin workspace logic
 // Shared auth/session/logout is handled by commercial-page-boot.js
 // NO PILOT DATA. NO KPI MATH.
@@ -73,6 +73,7 @@ async function onCreateOrg() {
     if ($("storeOrgId")) $("storeOrgId").value = orgId;
     if ($("u_orgId")) $("u_orgId").value = orgId;
     if ($("listOrgId")) $("listOrgId").value = orgId;
+    if ($("inspectOrgId")) $("inspectOrgId").value = orgId;
   } catch (e) {
     console.error(e);
     msg("orgMsg", "❌ " + (e?.message || "Failed"), true);
@@ -92,6 +93,11 @@ async function onCreateStore() {
     msg("storeMsg", "Creating store…");
     const storeId = await createStore({ orgId, name, regionId, districtId });
     msg("storeMsg", `✅ Store created: ${storeId}`);
+
+    if ($("inspectOrgId")) $("inspectOrgId").value = orgId;
+    if ($("inspectRegionId") && regionId) $("inspectRegionId").value = regionId;
+    if ($("inspectDistrictId") && districtId) $("inspectDistrictId").value = districtId;
+    if ($("inspectStoreId")) $("inspectStoreId").value = storeId;
   } catch (e) {
     console.error(e);
     msg("storeMsg", "❌ " + (e?.message || "Failed"), true);
@@ -138,6 +144,54 @@ async function onSaveUser() {
   }
 }
 
+function buildLaunchUrl(level) {
+  const orgId = String($("inspectOrgId")?.value || "").trim();
+  const regionId = String($("inspectRegionId")?.value || "").trim();
+  const districtId = String($("inspectDistrictId")?.value || "").trim();
+  const storeId = String($("inspectStoreId")?.value || "").trim();
+
+  let path = "./commercial-vp.html";
+  if (level === "rm") path = "./commercial-rm.html";
+  if (level === "dm") path = "./commercial-dm.html";
+  if (level === "sm") path = "./commercial-portal.html";
+
+  const next = new URL(path, window.location.href);
+
+  if (orgId) next.searchParams.set("org", orgId);
+  if (regionId) next.searchParams.set("region", regionId);
+  if (districtId) next.searchParams.set("district", districtId);
+  if (storeId) next.searchParams.set("store", storeId);
+
+  return next.toString();
+}
+
+function openLevel(level) {
+  try {
+    const url = buildLaunchUrl(level);
+
+    if (level === "rm" && !$("inspectRegionId")?.value.trim()) {
+      msg("inspectMsg", "❌ Region Id is recommended for Region View.", true);
+      return;
+    }
+
+    if (level === "dm" && !$("inspectDistrictId")?.value.trim()) {
+      msg("inspectMsg", "❌ District Id is recommended for District View.", true);
+      return;
+    }
+
+    if (level === "sm" && !$("inspectStoreId")?.value.trim()) {
+      msg("inspectMsg", "❌ Store Id is required for Store View.", true);
+      return;
+    }
+
+    msg("inspectMsg", `Opening ${level.toUpperCase()} view…`);
+    window.location.href = url;
+  } catch (e) {
+    console.error(e);
+    msg("inspectMsg", "❌ " + (e?.message || "Failed to open view"), true);
+  }
+}
+
 async function refreshLists() {
   try {
     msg("globalMsg", "Refreshing…");
@@ -173,6 +227,11 @@ window.addEventListener("DOMContentLoaded", () => {
   $("createStoreBtn")?.addEventListener("click", onCreateStore);
   $("saveUserBtn")?.addEventListener("click", onSaveUser);
   $("refreshBtn")?.addEventListener("click", refreshLists);
+
+  $("openVpBtn")?.addEventListener("click", () => openLevel("vp"));
+  $("openRmBtn")?.addEventListener("click", () => openLevel("rm"));
+  $("openDmBtn")?.addEventListener("click", () => openLevel("dm"));
+  $("openSmBtn")?.addEventListener("click", () => openLevel("sm"));
 
   refreshLists().catch(() => {});
 });
