@@ -1,6 +1,6 @@
-// /assets/commercial-admin.js (v6)
+// /assets/commercial-admin.js (v7)
 // Commercial admin workspace logic
-// Adds baseline intake + governance
+// CSV baseline intake + governance
 // Syncs org/store values across admin sections for speed
 
 import {
@@ -42,33 +42,6 @@ function parseCsvIds(s) {
     .filter(Boolean);
 }
 
-function parseJsonRows(text) {
-  const raw = String(text || "").trim();
-  if (!raw) throw new Error("Baseline rows JSON is required.");
-
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error("Baseline rows must be valid JSON.");
-  }
-
-  if (!Array.isArray(parsed)) {
-    throw new Error("Baseline rows JSON must be an array of row objects.");
-  }
-
-  if (!parsed.length) {
-    throw new Error("Baseline rows array cannot be empty.");
-  }
-
-  const invalid = parsed.some((row) => !row || typeof row !== "object" || Array.isArray(row));
-  if (invalid) {
-    throw new Error("Each baseline row must be an object.");
-  }
-
-  return parsed;
-}
-
 function currentSession() {
   const s = readSession();
   if (!s?.uid) throw new Error("Missing commercial session.");
@@ -93,6 +66,84 @@ function syncStoreIdEverywhere(storeId) {
   setValue("inspectStoreId", storeId);
   setValue("baselineStoreId", storeId);
   setValue("baselineIntakeStoreId", storeId);
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Unable to read CSV file."));
+    reader.readAsText(file);
+  });
+}
+
+function parseCsvLine(line) {
+  const out = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    const next = line[i + 1];
+
+    if (ch === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (ch === "," && !inQuotes) {
+      out.push(current);
+      current = "";
+      continue;
+    }
+
+    current += ch;
+  }
+
+  out.push(current);
+  return out.map(v => String(v || "").trim());
+}
+
+function parseCsvTextToRows(text) {
+  const raw = String(text || "").replace(/^\uFEFF/, "").trim();
+  if (!raw) throw new Error("Baseline CSV file is empty.");
+
+  const lines = raw
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) {
+    throw new Error("Baseline CSV must include a header row and at least one data row.");
+  }
+
+  const headers = parseCsvLine(lines[0]);
+  if (!headers.length || headers.every(h => !h)) {
+    throw new Error("Baseline CSV header row is invalid.");
+  }
+
+  const rows = lines.slice(1).map((line) => {
+    const values = parseCsvLine(line);
+    const row = {};
+
+    headers.forEach((header, idx) => {
+      row[header] = values[idx] ?? "";
+    });
+
+    return row;
+  });
+
+  if (!rows.length) {
+    throw new Error("No baseline rows were found in the CSV.");
+  }
+
+  return rows;
 }
 
 /* =========================================================
@@ -246,6 +297,17 @@ function openLevel(level) {
    BASELINE INTAKE
 ========================================================= */
 
+function setupBaselineCsvInfo() {
+  const input = $("baselineCsvFile");
+  const info = $("baselineCsvInfo");
+  if (!input || !info) return;
+
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    info.textContent = file ? `Selected CSV: ${file.name}` : "No CSV selected.";
+  });
+}
+
 async function onSavePendingBaseline() {
   try {
     const session = currentSession();
@@ -253,10 +315,16 @@ async function onSavePendingBaseline() {
     const storeId = String($("baselineIntakeStoreId")?.value || "").trim();
     const label = String($("baselineLabel")?.value || "").trim();
     const year = String($("baselineYear")?.value || "").trim();
-    const rows = parseJsonRows($("baselineRows")?.value || "");
+    const file = $("baselineCsvFile")?.files?.[0];
 
     if (!orgId) throw new Error("Baseline intake Org Id required.");
     if (!storeId) throw new Error("Baseline intake Store Id required.");
+    if (!file) throw new Error("Baseline CSV file is required.");
+
+    msg("baselineIntakeMsg", "Reading CSV…");
+
+    const csvText = await readFileAsText(file);
+    const rows = parseCsvTextToRows(csvText);
 
     msg("baselineIntakeMsg", "Saving pending baseline…");
 
@@ -270,7 +338,7 @@ async function onSavePendingBaseline() {
       uploadedByEmail: session.email
     });
 
-    msg("baselineIntakeMsg", "✅ Pending baseline saved.");
+    msg("baselineIntakeMsg", `✅ Pending baseline saved. Rows: ${rows.length}`);
 
     setValue("baselineOrgId", orgId);
     setValue("baselineStoreId", storeId);
@@ -396,6 +464,7 @@ async function refreshLists() {
 
 window.addEventListener("DOMContentLoaded", () => {
   setAdminHeaderContext();
+  setupBaselineCsvInfo();
 
   $("createOrgBtn")?.addEventListener("click", onCreateOrg);
   $("createStoreBtn")?.addEventListener("click", onCreateStore);
