@@ -1,4 +1,4 @@
-// assets/commercial-vp.js (v3)
+// assets/commercial-vp.js (v4)
 // VP / Owner page logic
 // Shared auth/session/logout is handled by commercial-page-boot.js
 
@@ -27,6 +27,34 @@ function setVPHeaderContext() {
   }
 }
 
+function setupViewSelector() {
+  const selector = $("viewSelector");
+  if (!selector) return;
+
+  selector.addEventListener("change", (e) => {
+    const view = String(e.target.value || "").trim();
+
+    if (view === "vp") {
+      window.location.href = "./commercial-vp.html";
+      return;
+    }
+
+    if (view === "rm") {
+      window.location.href = "./commercial-rm.html";
+      return;
+    }
+
+    if (view === "dm") {
+      window.location.href = "./commercial-dm.html";
+      return;
+    }
+
+    if (view === "sm") {
+      window.location.href = "./commercial-portal.html";
+    }
+  });
+}
+
 function setupVPRegionActions() {
   const table = document.querySelector("[data-vp-region-table]");
   if (!table) return;
@@ -40,12 +68,12 @@ function setupVPRegionActions() {
 
     console.log("[commercial-vp] open region drill-down:", regionId);
 
-    // Route VP -> RM with region filter
     window.location.href = `./commercial-rm.html?region=${encodeURIComponent(regionId)}`;
   });
 }
 
 window.addEventListener("DOMContentLoaded", () => {
   setVPHeaderContext();
+  setupViewSelector();
   setupVPRegionActions();
 });
