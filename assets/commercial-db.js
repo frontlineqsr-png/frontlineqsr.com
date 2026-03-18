@@ -35,6 +35,16 @@ function cleanString(v) {
   return String(v || "").trim();
 }
 
+function safeRowsArray(v) {
+  return Array.isArray(v) ? v : [];
+}
+
+function makeWeekId(weekStart) {
+  const ws = cleanString(weekStart);
+  if (!ws) throw new Error("Week start is required.");
+  return ws;
+}
+
 /* =========================================================
    ORGS
 ========================================================= */
@@ -82,6 +92,9 @@ export async function createStore({ orgId, name, regionId, districtId }) {
     baselineLocked: false,
     activeBaselineId: null,
     activeBaselineLabel: null,
+    latestWeekId: null,
+    latestWeekStart: null,
+    latestWeekApproved: false,
     active: true,
     createdAt: serverTimestamp(),
     createdAtIso: nowIso()
@@ -108,8 +121,6 @@ export async function listStores(orgId) {
    should later use normalized weekly equivalent in KPI layer.
 ========================================================= */
 
-// Save or replace pending baseline for a store.
-// rows should stay in same row/object format as pilot CSV parsing.
 export async function savePendingStoreBaseline({
   orgId,
   storeId,
@@ -122,7 +133,7 @@ export async function savePendingStoreBaseline({
   const oid = cleanString(orgId);
   const sid = cleanString(storeId);
   const baselineLabel = cleanString(label) || cleanString(year) || "baseline";
-  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeRows = safeRowsArray(rows);
 
   if (!oid) throw new Error("Org ID required.");
   if (!sid) throw new Error("Store ID required.");
@@ -189,7 +200,6 @@ export async function getStoreBaselineStatus(orgId, storeId) {
   };
 }
 
-// Approves pending baseline and makes it the single active baseline for the store.
 export async function approvePendingStoreBaseline({
   orgId,
   storeId,
@@ -217,7 +227,6 @@ export async function approvePendingStoreBaseline({
   const approvedId = `approved_${Date.now()}`;
   const approvedRef = doc(db, "orgs", oid, "stores", sid, "baselines", approvedId);
 
-  // create immutable approved version
   await setDoc(approvedRef, {
     ...pending,
     approved: true,
@@ -230,7 +239,6 @@ export async function approvePendingStoreBaseline({
     approvedAtIso: nowIso()
   }, { merge: true });
 
-  // mark pending baseline as replaced / inactive
   await setDoc(pendingRef, {
     replaced: true,
     approved: false,
@@ -240,7 +248,6 @@ export async function approvePendingStoreBaseline({
     replacedAtIso: nowIso()
   }, { merge: true });
 
-  // update store-level truth fields
   await setDoc(doc(db, "orgs", oid, "stores", sid), {
     baselineApproved: true,
     baselineLocked: true,
@@ -251,6 +258,111 @@ export async function approvePendingStoreBaseline({
   }, { merge: true });
 
   return approvedId;
+}
+
+/* =========================================================
+   WEEKLY UPLOADS
+   Stores weekly data separately from baseline.
+   Structure:
+   /orgs/{orgId}/stores/{storeId}/weeks/{weekId}
+========================================================= */
+
+export async function saveStoreWeek({
+  orgId,
+  storeId,
+  weekStart,
+  rows,
+  uploadedByUid,
+  uploadedByEmail,
+  note
+}) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+  const ws = cleanString(weekStart);
+  const weekId = makeWeekId(ws);
+  const safeRows = safeRowsArray(rows);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+  if (!ws) throw new Error("Week start required.");
+  if (!safeRows.length) throw new Error("Weekly rows required.");
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid, "weeks", weekId), {
+    weekId,
+    weekStart: ws,
+    rows: safeRows,
+    rowCount: safeRows.length,
+    approved: true,
+    active: true,
+    note: cleanString(note) || null,
+    uploadedByUid: cleanString(uploadedByUid) || null,
+    uploadedByEmail: cleanString(uploadedByEmail) || null,
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso()
+  }, { merge: true });
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid), {
+    latestWeekId: weekId,
+    latestWeekStart: ws,
+    latestWeekApproved: true,
+    latestWeekAtIso: nowIso()
+  }, { merge: true });
+
+  return weekId;
+}
+
+export async function getStoreWeek(orgId, storeId, weekId) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+  const wid = cleanString(weekId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+  if (!wid) throw new Error("Week ID required.");
+
+  const snap = await getDoc(doc(db, "orgs", oid, "stores", sid, "weeks", wid));
+  if (!snap.exists()) return null;
+
+  return { id: snap.id, ...(snap.data() || {}) };
+}
+
+export async function listStoreWeeks(orgId, storeId) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+
+  const snap = await getDocs(
+    query(
+      collection(db, "orgs", oid, "stores", sid, "weeks"),
+      orderBy("weekStart", "desc"),
+      limit(104)
+    )
+  );
+
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function getLatestStoreWeek(orgId, storeId) {
+  const weeks = await listStoreWeeks(orgId, storeId);
+  return weeks.length ? weeks[0] : null;
+}
+
+export async function getStoreWeekStatus(orgId, storeId) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+
+  const latestWeek = await getLatestStoreWeek(oid, sid);
+
+  return {
+    storeId: sid,
+    latestWeek: latestWeek || null,
+    hasWeeks: !!latestWeek
+  };
 }
 
 /* =========================================================
@@ -279,7 +391,6 @@ export async function upsertUserAccess({
   if (!_uid) throw new Error("UID required.");
   if (!_email) throw new Error("Email required.");
 
-  // 1) Global directory
   await setDoc(doc(db, "commercial_users", _uid), {
     uid: _uid,
     email: _email,
@@ -292,7 +403,6 @@ export async function upsertUserAccess({
     updatedAtIso: nowIso()
   }, { merge: true });
 
-  // 2) Org subcollection (skip if no orgId)
   if (_orgId) {
     await setDoc(doc(db, "orgs", _orgId, "users", _uid), {
       uid: _uid,
