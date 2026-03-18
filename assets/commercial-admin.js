@@ -1,6 +1,6 @@
-// /assets/commercial-admin.js (v7)
+// /assets/commercial-admin.js (v8)
 // Commercial admin workspace logic
-// CSV baseline intake + governance
+// CSV baseline intake + weekly upload intake + governance
 // Syncs org/store values across admin sections for speed
 
 import {
@@ -11,7 +11,9 @@ import {
   listStores,
   savePendingStoreBaseline,
   getStoreBaselineStatus,
-  approvePendingStoreBaseline
+  approvePendingStoreBaseline,
+  saveStoreWeek,
+  getStoreWeekStatus
 } from "./commercial-db.js";
 
 const $ = (id) => document.getElementById(id);
@@ -60,18 +62,19 @@ function syncOrgIdEverywhere(orgId) {
   setValue("inspectOrgId", orgId);
   setValue("baselineOrgId", orgId);
   setValue("baselineIntakeOrgId", orgId);
+  setValue("weeklyOrgId", orgId);
 }
 
 function syncStoreIdEverywhere(storeId) {
   setValue("inspectStoreId", storeId);
   setValue("baselineStoreId", storeId);
   setValue("baselineIntakeStoreId", storeId);
+  setValue("weeklyStoreId", storeId);
 }
 
 function readFileAsText(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-
     reader.onload = () => resolve(String(reader.result || ""));
     reader.onerror = () => reject(new Error("Unable to read CSV file."));
     reader.readAsText(file);
@@ -110,9 +113,9 @@ function parseCsvLine(line) {
   return out.map(v => String(v || "").trim());
 }
 
-function parseCsvTextToRows(text) {
+function parseCsvTextToRows(text, kind = "CSV") {
   const raw = String(text || "").replace(/^\uFEFF/, "").trim();
-  if (!raw) throw new Error("Baseline CSV file is empty.");
+  if (!raw) throw new Error(`${kind} file is empty.`);
 
   const lines = raw
     .split(/\r?\n/)
@@ -120,12 +123,12 @@ function parseCsvTextToRows(text) {
     .filter(Boolean);
 
   if (lines.length < 2) {
-    throw new Error("Baseline CSV must include a header row and at least one data row.");
+    throw new Error(`${kind} must include a header row and at least one data row.`);
   }
 
   const headers = parseCsvLine(lines[0]);
   if (!headers.length || headers.every(h => !h)) {
-    throw new Error("Baseline CSV header row is invalid.");
+    throw new Error(`${kind} header row is invalid.`);
   }
 
   const rows = lines.slice(1).map((line) => {
@@ -140,7 +143,7 @@ function parseCsvTextToRows(text) {
   });
 
   if (!rows.length) {
-    throw new Error("No baseline rows were found in the CSV.");
+    throw new Error(`No rows were found in the ${kind}.`);
   }
 
   return rows;
@@ -324,7 +327,7 @@ async function onSavePendingBaseline() {
     msg("baselineIntakeMsg", "Reading CSV…");
 
     const csvText = await readFileAsText(file);
-    const rows = parseCsvTextToRows(csvText);
+    const rows = parseCsvTextToRows(csvText, "Baseline CSV");
 
     msg("baselineIntakeMsg", "Saving pending baseline…");
 
@@ -351,6 +354,67 @@ async function onSavePendingBaseline() {
 }
 
 /* =========================================================
+   WEEKLY INTAKE
+========================================================= */
+
+function setupWeeklyCsvInfo() {
+  const input = $("weeklyCsvFile");
+  const info = $("weeklyCsvInfo");
+  if (!input || !info) return;
+
+  input.addEventListener("change", () => {
+    const file = input.files?.[0];
+    info.textContent = file ? `Selected weekly CSV: ${file.name}` : "No weekly CSV selected.";
+  });
+}
+
+async function onSaveWeeklyUpload() {
+  try {
+    const session = currentSession();
+    const orgId = String($("weeklyOrgId")?.value || "").trim();
+    const storeId = String($("weeklyStoreId")?.value || "").trim();
+    const weekStart = String($("weeklyStart")?.value || "").trim();
+    const note = String($("weeklyNote")?.value || "").trim();
+    const file = $("weeklyCsvFile")?.files?.[0];
+
+    if (!orgId) throw new Error("Weekly Org Id required.");
+    if (!storeId) throw new Error("Weekly Store Id required.");
+    if (!weekStart) throw new Error("Week Start required.");
+    if (!file) throw new Error("Weekly CSV file is required.");
+
+    msg("weeklyIntakeMsg", "Reading weekly CSV…");
+
+    const csvText = await readFileAsText(file);
+    const rows = parseCsvTextToRows(csvText, "Weekly CSV");
+
+    msg("weeklyIntakeMsg", "Saving weekly upload…");
+
+    const weekId = await saveStoreWeek({
+      orgId,
+      storeId,
+      weekStart,
+      rows,
+      uploadedByUid: session.uid,
+      uploadedByEmail: session.email,
+      note
+    });
+
+    const status = await getStoreWeekStatus(orgId, storeId);
+
+    let summary = `✅ Weekly upload saved.\nWeek ID: ${weekId}\nRows: ${rows.length}`;
+    if (status?.latestWeek?.weekStart) {
+      summary += `\nLatest Week: ${status.latestWeek.weekStart}`;
+    }
+
+    msg("weeklyIntakeMsg", summary);
+
+    await refreshLists();
+  } catch (e) {
+    msg("weeklyIntakeMsg", "❌ " + e.message, true);
+  }
+}
+
+/* =========================================================
    BASELINE GOVERNANCE
 ========================================================= */
 
@@ -366,6 +430,7 @@ async function onLoadBaselineStatus() {
     msg("baselineMsg", "Loading baseline status…");
 
     const data = await getStoreBaselineStatus(orgId, storeId);
+    const weekStatus = await getStoreWeekStatus(orgId, storeId);
 
     let output = "";
     output += `STORE: ${storeId}\n`;
@@ -389,7 +454,17 @@ async function onLoadBaselineStatus() {
     }
 
     if (!data.activeBaseline && !data.pendingBaseline) {
-      output += "No baseline found.\n";
+      output += "No baseline found.\n\n";
+    }
+
+    if (weekStatus?.latestWeek) {
+      output += `LATEST WEEK:\n`;
+      output += `ID: ${weekStatus.latestWeek.id || weekStatus.latestWeek.weekId || "N/A"}\n`;
+      output += `WEEK START: ${weekStatus.latestWeek.weekStart || "N/A"}\n`;
+      output += `ROWS: ${weekStatus.latestWeek.rowCount || 0}\n`;
+      output += `APPROVED: ${weekStatus.latestWeek.approved ? "YES" : "NO"}\n`;
+    } else {
+      output += `LATEST WEEK:\nNo weekly upload found.\n`;
     }
 
     if ($("baselineStatus")) $("baselineStatus").textContent = output;
@@ -445,7 +520,7 @@ async function refreshLists() {
       if ($("storeList")) {
         $("storeList").textContent =
           stores.map(s =>
-            `${s.id} | ${s.name} | approved=${!!s.baselineApproved} | locked=${!!s.baselineLocked} | activeBaseline=${s.activeBaselineLabel || "none"}`
+            `${s.id} | ${s.name} | approved=${!!s.baselineApproved} | locked=${!!s.baselineLocked} | activeBaseline=${s.activeBaselineLabel || "none"} | latestWeek=${s.latestWeekStart || "none"}`
           ).join("\n") || "(none)";
       }
     } else {
@@ -465,6 +540,7 @@ async function refreshLists() {
 window.addEventListener("DOMContentLoaded", () => {
   setAdminHeaderContext();
   setupBaselineCsvInfo();
+  setupWeeklyCsvInfo();
 
   $("createOrgBtn")?.addEventListener("click", onCreateOrg);
   $("createStoreBtn")?.addEventListener("click", onCreateStore);
@@ -477,6 +553,7 @@ window.addEventListener("DOMContentLoaded", () => {
   $("openSmBtn")?.addEventListener("click", () => openLevel("sm"));
 
   $("saveBaselineBtn")?.addEventListener("click", onSavePendingBaseline);
+  $("saveWeeklyBtn")?.addEventListener("click", onSaveWeeklyUpload);
   $("loadBaselineBtn")?.addEventListener("click", onLoadBaselineStatus);
   $("approveBaselineBtn")?.addEventListener("click", onApproveBaseline);
 
