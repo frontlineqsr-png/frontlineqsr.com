@@ -138,6 +138,7 @@ export async function savePendingStoreBaseline({
     approved: false,
     active: false,
     locked: false,
+    replaced: false,
     uploadedByUid: cleanString(uploadedByUid) || null,
     uploadedByEmail: cleanString(uploadedByEmail) || null,
     updatedAt: serverTimestamp(),
@@ -163,7 +164,7 @@ export async function getStoreBaselineStatus(orgId, storeId) {
   const pendingSnap = await getDoc(doc(db, "orgs", oid, "stores", sid, "baselines", "pending_baseline"));
 
   const store = storeSnap.exists() ? (storeSnap.data() || {}) : {};
-  const pending = pendingSnap.exists() ? (pendingSnap.data() || {}) : null;
+  const pendingRaw = pendingSnap.exists() ? (pendingSnap.data() || {}) : null;
 
   let active = null;
   const activeBaselineId = cleanString(store.activeBaselineId);
@@ -172,13 +173,18 @@ export async function getStoreBaselineStatus(orgId, storeId) {
     if (activeSnap.exists()) active = { id: activeSnap.id, ...(activeSnap.data() || {}) };
   }
 
+  const pending =
+    pendingRaw && !pendingRaw.replaced
+      ? { id: "pending_baseline", ...pendingRaw }
+      : null;
+
   return {
     storeId: sid,
     baselineApproved: !!store.baselineApproved,
     baselineLocked: !!store.baselineLocked,
     activeBaselineId: activeBaselineId || null,
     activeBaselineLabel: store.activeBaselineLabel || null,
-    pendingBaseline: pending ? { id: "pending_baseline", ...pending } : null,
+    pendingBaseline: pending,
     activeBaseline: active
   };
 }
@@ -204,6 +210,10 @@ export async function approvePendingStoreBaseline({
   }
 
   const pending = pendingSnap.data() || {};
+  if (pending.replaced) {
+    throw new Error("Pending baseline has already been replaced.");
+  }
+
   const approvedId = `approved_${Date.now()}`;
   const approvedRef = doc(db, "orgs", oid, "stores", sid, "baselines", approvedId);
 
@@ -213,14 +223,16 @@ export async function approvePendingStoreBaseline({
     approved: true,
     active: true,
     locked: true,
+    replaced: false,
     approvedByUid: cleanString(approvedByUid) || null,
     approvedByEmail: cleanString(approvedByEmail) || null,
     approvedAt: serverTimestamp(),
     approvedAtIso: nowIso()
   }, { merge: true });
 
-  // clear / deactivate pending baseline
+  // mark pending baseline as replaced / inactive
   await setDoc(pendingRef, {
+    replaced: true,
     approved: false,
     active: false,
     locked: false,
