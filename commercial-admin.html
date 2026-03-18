@@ -327,7 +327,7 @@
             <div>
               <h2 class="admin-title">Admin Hub</h2>
               <p class="admin-sub">
-                Manage organizations, stores, user access, baseline intake, baseline governance, and launch inspection views from one workspace.
+                Manage organizations, stores, user access, baseline intake, weekly uploads, baseline governance, and launch inspection views from one workspace.
               </p>
               <p id="sessionInfo" class="admin-sub" style="margin-top:8px;">Loading session…</p>
               <p id="adminContext" class="admin-sub" style="margin-top:8px;"></p>
@@ -414,6 +414,47 @@
             </div>
 
             <div class="msg" id="baselineIntakeMsg"></div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="panel">
+            <h3>Weekly Upload Intake</h3>
+
+            <div class="grid-2">
+              <div>
+                <label class="small">Org Id</label>
+                <input class="input" id="weeklyOrgId" placeholder="Paste orgId" />
+              </div>
+
+              <div>
+                <label class="small">Store Id</label>
+                <input class="input" id="weeklyStoreId" placeholder="Paste storeId" />
+              </div>
+
+              <div>
+                <label class="small">Week Start</label>
+                <input class="input" id="weeklyStart" type="date" />
+              </div>
+
+              <div>
+                <label class="small">Weekly Note (optional)</label>
+                <input class="input" id="weeklyNote" placeholder="Example: Week 1 upload" />
+              </div>
+            </div>
+
+            <div class="space"></div>
+
+            <label class="small">Weekly CSV File</label>
+            <input class="input" id="weeklyCsvFile" type="file" accept=".csv,text/csv" />
+
+            <div class="msg" id="weeklyCsvInfo">No weekly CSV selected.</div>
+
+            <div class="launch-grid" style="grid-template-columns:1fr;">
+              <button class="btnx" id="saveWeeklyBtn" type="button">Save Weekly Upload</button>
+            </div>
+
+            <div class="msg" id="weeklyIntakeMsg"></div>
           </div>
 
           <div class="hr"></div>
@@ -551,6 +592,6 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-admin.js?v=7"></script>
+  <script type="module" src="assets/commercial-admin.js?v=8"></script>
 </body>
 </html>
