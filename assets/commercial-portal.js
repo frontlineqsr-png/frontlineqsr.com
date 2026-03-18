@@ -1,10 +1,22 @@
-// assets/commercial-portal.js (v7)
+// assets/commercial-portal.js (v8)
 // Store Manager page logic only
 // Shared auth/session/logout is handled by commercial-page-boot.js
-// Reads live commercial baseline status from Firestore
-// Does NOT change KPI math
+// Reads live commercial baseline + latest week from Firestore
+// Uses shared KPI engine and keeps KPI math unchanged
 
-import { getStoreBaselineStatus } from "./commercial-db.js";
+import {
+  getStoreBaselineStatus,
+  getLatestStoreWeek
+} from "./commercial-db.js";
+
+import {
+  computeKpisFromRows,
+  normalizeBaselineMonthToWeeklyAvg,
+  deltaClass,
+  fmtMoney,
+  fmtNumber,
+  fmtPct
+} from "./core-kpi-engine.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -16,19 +28,26 @@ function readSession() {
   }
 }
 
-function getStoreFromUrl() {
+function getParams() {
   const params = new URLSearchParams(window.location.search);
-  return String(params.get("store") || "").trim();
+  return {
+    orgId: String(params.get("org") || "").trim(),
+    storeId: String(params.get("store") || "").trim(),
+    districtId: String(params.get("district") || "").trim(),
+    regionId: String(params.get("region") || "").trim()
+  };
+}
+
+function getStoreFromUrl() {
+  return getParams().storeId;
 }
 
 function getDistrictFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return String(params.get("district") || "").trim();
+  return getParams().districtId;
 }
 
 function getRegionFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return String(params.get("region") || "").trim();
+  return getParams().regionId;
 }
 
 function prettyLabel(value) {
@@ -49,17 +68,22 @@ function setClass(id, className) {
   if (el) el.className = className;
 }
 
+function setDelta(id, text, tone = "pending") {
+  setText(id, text);
+  setClass(id, `kpi-delta ${tone}`);
+}
+
 function setSMHeaderContext() {
   const s = readSession();
-  if (!s) return;
+  const params = getParams();
 
-  const role = String(s.role || "sm").toUpperCase();
-  const orgId = s.orgId || "N/A";
-  const stores = Array.isArray(s.assigned_store_ids) ? s.assigned_store_ids : [];
+  const role = String(s?.role || "sm").toUpperCase();
+  const orgId = params.orgId || s?.orgId || "N/A";
+  const stores = Array.isArray(s?.assigned_store_ids) ? s.assigned_store_ids : [];
 
-  const selectedStore = getStoreFromUrl();
-  const selectedDistrict = getDistrictFromUrl();
-  const selectedRegion = getRegionFromUrl();
+  const selectedStore = params.storeId;
+  const selectedDistrict = params.districtId;
+  const selectedRegion = params.regionId;
 
   const extra = $("smContext");
   if (extra) {
@@ -88,37 +112,38 @@ function setupViewSelector() {
 
   selector.addEventListener("change", (e) => {
     const view = String(e.target.value || "").trim();
-    const selectedStore = getStoreFromUrl();
-    const selectedDistrict = getDistrictFromUrl();
-    const selectedRegion = getRegionFromUrl();
+    const params = getParams();
 
     if (view === "vp") {
-      window.location.href = "./commercial-vp.html";
+      const next = new URL("./commercial-vp.html", window.location.href);
+      if (params.orgId) next.searchParams.set("org", params.orgId);
+      window.location.href = next.toString();
       return;
     }
 
     if (view === "rm") {
-      if (selectedRegion) {
-        window.location.href = `./commercial-rm.html?region=${encodeURIComponent(selectedRegion)}`;
-      } else {
-        window.location.href = "./commercial-rm.html";
-      }
+      const next = new URL("./commercial-rm.html", window.location.href);
+      if (params.orgId) next.searchParams.set("org", params.orgId);
+      if (params.regionId) next.searchParams.set("region", params.regionId);
+      window.location.href = next.toString();
       return;
     }
 
     if (view === "dm") {
       const next = new URL("./commercial-dm.html", window.location.href);
-      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
-      if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      if (params.orgId) next.searchParams.set("org", params.orgId);
+      if (params.districtId) next.searchParams.set("district", params.districtId);
+      if (params.regionId) next.searchParams.set("region", params.regionId);
       window.location.href = next.toString();
       return;
     }
 
     if (view === "sm") {
       const next = new URL("./commercial-portal.html", window.location.href);
-      if (selectedStore) next.searchParams.set("store", selectedStore);
-      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
-      if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      if (params.orgId) next.searchParams.set("org", params.orgId);
+      if (params.storeId) next.searchParams.set("store", params.storeId);
+      if (params.districtId) next.searchParams.set("district", params.districtId);
+      if (params.regionId) next.searchParams.set("region", params.regionId);
       window.location.href = next.toString();
     }
   });
@@ -150,15 +175,10 @@ function setBasePendingState(storeName) {
   setText("kpiLaborPctValue", "—");
   setText("kpiAvgTicketValue", "—");
 
-  setText("kpiSalesDelta", "Awaiting approved commercial data");
-  setText("kpiTransactionsDelta", "Awaiting approved commercial data");
-  setText("kpiLaborPctDelta", "Awaiting approved commercial data");
-  setText("kpiAvgTicketDelta", "Awaiting approved commercial data");
-
-  setClass("kpiSalesDelta", "kpi-delta pending");
-  setClass("kpiTransactionsDelta", "kpi-delta pending");
-  setClass("kpiLaborPctDelta", "kpi-delta pending");
-  setClass("kpiAvgTicketDelta", "kpi-delta pending");
+  setDelta("kpiSalesDelta", "Awaiting approved commercial data", "pending");
+  setDelta("kpiTransactionsDelta", "Awaiting approved commercial data", "pending");
+  setDelta("kpiLaborPctDelta", "Awaiting approved commercial data", "pending");
+  setDelta("kpiAvgTicketDelta", "Awaiting approved commercial data", "pending");
 
   setText(
     "baselineStatusText",
@@ -171,10 +191,48 @@ function setBasePendingState(storeName) {
   );
 }
 
+function applyKpiValues({ baselineWeekly, latestWeekKpis }) {
+  const salesDelta = latestWeekKpis.sales - baselineWeekly.sales;
+  const transactionsDelta = latestWeekKpis.transactions - baselineWeekly.transactions;
+  const laborPctDelta = latestWeekKpis.laborPct - baselineWeekly.laborPct;
+  const avgTicketDelta = latestWeekKpis.avgTicket - baselineWeekly.avgTicket;
+
+  setText("kpiSalesValue", fmtMoney(latestWeekKpis.sales));
+  setText("kpiTransactionsValue", fmtNumber(latestWeekKpis.transactions));
+  setText("kpiLaborPctValue", fmtPct(latestWeekKpis.laborPct));
+  setText("kpiAvgTicketValue", fmtMoney(latestWeekKpis.avgTicket));
+
+  setDelta(
+    "kpiSalesDelta",
+    `${salesDelta >= 0 ? "+" : ""}${fmtMoney(salesDelta)} vs baseline week`,
+    deltaClass(salesDelta, "up") || "pending"
+  );
+
+  setDelta(
+    "kpiTransactionsDelta",
+    `${transactionsDelta >= 0 ? "+" : ""}${fmtNumber(transactionsDelta)} vs baseline week`,
+    deltaClass(transactionsDelta, "up") || "pending"
+  );
+
+  setDelta(
+    "kpiLaborPctDelta",
+    `${laborPctDelta >= 0 ? "+" : ""}${fmtPct(laborPctDelta)} vs baseline`,
+    deltaClass(laborPctDelta, "down") || "pending"
+  );
+
+  setDelta(
+    "kpiAvgTicketDelta",
+    `${avgTicketDelta >= 0 ? "+" : ""}${fmtMoney(avgTicketDelta)} vs baseline`,
+    deltaClass(avgTicketDelta, "up") || "pending"
+  );
+}
+
 async function loadCommercialKpiStatus() {
   const session = readSession();
-  const orgId = String(session?.orgId || "").trim();
-  const selectedStore = getStoreFromUrl();
+  const params = getParams();
+
+  const orgId = String(params.orgId || session?.orgId || "").trim();
+  const selectedStore = String(params.storeId || "").trim();
   const storeName = selectedStore ? prettyLabel(selectedStore) : "selected store";
 
   setBasePendingState(storeName);
@@ -182,7 +240,7 @@ async function loadCommercialKpiStatus() {
   if (!orgId || !selectedStore) {
     setText(
       "baselineStatusText",
-      `Missing org or selected store context. Select a store to view commercial KPI status.`
+      "Missing org or selected store context. Select a store to view commercial KPI status."
     );
     return;
   }
@@ -190,58 +248,68 @@ async function loadCommercialKpiStatus() {
   try {
     const status = await getStoreBaselineStatus(orgId, selectedStore);
 
-    if (status?.activeBaseline) {
-      const label = status.activeBaseline.label || status.activeBaseline.year || "Approved baseline";
-      const rows = Number(status.activeBaseline.rowCount || 0);
+    if (!status?.activeBaseline) {
+      if (status?.pendingBaseline) {
+        const label = status.pendingBaseline.label || status.pendingBaseline.year || "Pending baseline";
+        const rows = Number(status.pendingBaseline.rowCount || 0);
 
-      setText(
-        "baselineStatusText",
-        `Approved baseline loaded: ${label}. Row count: ${rows}. Weekly KPI comparison should use this store baseline as the truth source.`
-      );
+        setText(
+          "baselineStatusText",
+          `Pending baseline found: ${label}. Row count: ${rows}. Admin approval is still required before KPI baseline weekly equivalent can be used here.`
+        );
 
-      setText("kpiSalesDelta", "Approved baseline on file");
-      setText("kpiTransactionsDelta", "Approved baseline on file");
-      setText("kpiLaborPctDelta", "Approved baseline on file");
-      setText("kpiAvgTicketDelta", "Approved baseline on file");
-
-      setClass("kpiSalesDelta", "kpi-delta good");
-      setClass("kpiTransactionsDelta", "kpi-delta good");
-      setClass("kpiLaborPctDelta", "kpi-delta good");
-      setClass("kpiAvgTicketDelta", "kpi-delta good");
-    } else if (status?.pendingBaseline) {
-      const label = status.pendingBaseline.label || status.pendingBaseline.year || "Pending baseline";
-      const rows = Number(status.pendingBaseline.rowCount || 0);
-
-      setText(
-        "baselineStatusText",
-        `Pending baseline found: ${label}. Row count: ${rows}. Admin approval is still required before KPI baseline weekly equivalent can be used here.`
-      );
-
-      setText("kpiSalesDelta", "Pending baseline approval");
-      setText("kpiTransactionsDelta", "Pending baseline approval");
-      setText("kpiLaborPctDelta", "Pending baseline approval");
-      setText("kpiAvgTicketDelta", "Pending baseline approval");
-
-      setClass("kpiSalesDelta", "kpi-delta pending");
-      setClass("kpiTransactionsDelta", "kpi-delta pending");
-      setClass("kpiLaborPctDelta", "kpi-delta pending");
-      setClass("kpiAvgTicketDelta", "kpi-delta pending");
+        setDelta("kpiSalesDelta", "Pending baseline approval", "pending");
+        setDelta("kpiTransactionsDelta", "Pending baseline approval", "pending");
+        setDelta("kpiLaborPctDelta", "Pending baseline approval", "pending");
+        setDelta("kpiAvgTicketDelta", "Pending baseline approval", "pending");
+      }
+      return;
     }
+
+    const activeBaseline = status.activeBaseline;
+    const baselineRows = Array.isArray(activeBaseline.rows) ? activeBaseline.rows : [];
+    const baselineKpis = computeKpisFromRows(baselineRows);
+    const baselineWeekly = normalizeBaselineMonthToWeeklyAvg(baselineKpis);
+
+    const latestWeek = await getLatestStoreWeek(orgId, selectedStore);
+
+    const baselineLabel = activeBaseline.label || activeBaseline.year || "Approved baseline";
+    const baselineRowCount = Number(activeBaseline.rowCount || 0);
+
+    setText(
+      "baselineStatusText",
+      `Approved baseline loaded: ${baselineLabel}. Row count: ${baselineRowCount}. Baseline weekly equivalent is being used as the KPI truth source.`
+    );
+
+    if (!latestWeek) {
+      setText(
+        "weeklyStatusText",
+        `No approved weekly upload loaded for ${storeName} yet. Upload a weekly CSV to populate live KPI comparison.`
+      );
+
+      setDelta("kpiSalesDelta", "Approved baseline on file", "good");
+      setDelta("kpiTransactionsDelta", "Approved baseline on file", "good");
+      setDelta("kpiLaborPctDelta", "Approved baseline on file", "good");
+      setDelta("kpiAvgTicketDelta", "Approved baseline on file", "good");
+      return;
+    }
+
+    const latestWeekRows = Array.isArray(latestWeek.rows) ? latestWeek.rows : [];
+    const latestWeekKpis = computeKpisFromRows(latestWeekRows);
+
+    applyKpiValues({
+      baselineWeekly,
+      latestWeekKpis
+    });
 
     setText(
       "weeklyStatusText",
-      `Weekly commercial upload wiring is the next live-data step. Default behavior should use the latest approved week, with ability to compare to other approved weeks later.`
+      `Latest approved week loaded: ${latestWeek.weekStart || latestWeek.id}. Row count: ${Number(latestWeek.rowCount || 0)}. KPI cards now compare this week against the approved baseline weekly equivalent.`
     );
   } catch (e) {
     console.error("[commercial-portal] loadCommercialKpiStatus failed:", e);
-    setText(
-      "baselineStatusText",
-      `Unable to load baseline status for ${storeName}.`
-    );
-    setText(
-      "weeklyStatusText",
-      `Commercial weekly upload status unavailable right now.`
-    );
+    setText("baselineStatusText", `Unable to load baseline status for ${storeName}.`);
+    setText("weeklyStatusText", "Commercial weekly upload status unavailable right now.");
   }
 }
 
