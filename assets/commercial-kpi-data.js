@@ -1,7 +1,9 @@
-// /assets/commercial-kpi-data.js (v2 FIXED)
+// /assets/commercial-kpi-data.js (v2)
 // Shared commercial store-level truth adapter
-// ✅ Standardized state = "ready"
-// ✅ Fixes wiring for Shift / Action / Progress
+// ✅ Uses approved commercial baseline + latest approved week
+// ✅ Falls back to session org/store when URL context is incomplete
+// ✅ Uses shared KPI engine
+// ✅ One source for KPIs / Shift Insight / Action Plan / Progress
 // 🚫 No KPI math changes
 
 import {
@@ -27,50 +29,54 @@ function cleanString(v) {
   return String(v || "").trim();
 }
 
-function getStoreFromUrl() {
+function getParams() {
   const params = new URLSearchParams(window.location.search);
-  return cleanString(params.get("store"));
-}
-
-function getDistrictFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return cleanString(params.get("district"));
-}
-
-function getRegionFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return cleanString(params.get("region"));
+  return {
+    orgId: cleanString(params.get("org")),
+    storeId: cleanString(params.get("store")),
+    districtId: cleanString(params.get("district")),
+    regionId: cleanString(params.get("region"))
+  };
 }
 
 export function getCommercialScopeFromUrl() {
+  const p = getParams();
   return {
-    storeId: getStoreFromUrl(),
-    districtId: getDistrictFromUrl(),
-    regionId: getRegionFromUrl()
+    storeId: p.storeId,
+    districtId: p.districtId,
+    regionId: p.regionId
   };
 }
 
 export function getCommercialSessionContext() {
-  const session = readSession();
+  const session = readSession() || {};
+  const p = getParams();
+
+  const assignedStoreIds = Array.isArray(session.assigned_store_ids)
+    ? session.assigned_store_ids.map(cleanString).filter(Boolean)
+    : [];
+
   return {
     session,
-    orgId: cleanString(session?.orgId),
-    role: cleanString(session?.role).toUpperCase()
+    orgId: p.orgId || cleanString(session.orgId),
+    role: cleanString(session.role).toUpperCase(),
+    storeId: p.storeId || assignedStoreIds[0] || "",
+    districtId: p.districtId,
+    regionId: p.regionId
   };
 }
 
 export async function loadCommercialStoreTruth() {
-  const { orgId, role, session } = getCommercialSessionContext();
-  const { storeId, districtId, regionId } = getCommercialScopeFromUrl();
+  const ctx = getCommercialSessionContext();
 
   const result = {
     ok: false,
-    orgId,
-    role,
-    storeId,
-    districtId,
-    regionId,
-    session,
+    orgId: ctx.orgId,
+    role: ctx.role,
+    storeId: ctx.storeId,
+    districtId: ctx.districtId,
+    regionId: ctx.regionId,
+    session: ctx.session,
     baselineStatus: null,
     latestWeek: null,
     allWeeks: [],
@@ -86,13 +92,13 @@ export async function loadCommercialStoreTruth() {
     message: "Missing org or store context."
   };
 
-  if (!orgId || !storeId) {
+  if (!ctx.orgId || !ctx.storeId) {
     return result;
   }
 
-  const baselineStatus = await getStoreBaselineStatus(orgId, storeId);
-  const latestWeek = await getLatestStoreWeek(orgId, storeId);
-  const allWeeksRaw = await listStoreWeeks(orgId, storeId);
+  const baselineStatus = await getStoreBaselineStatus(ctx.orgId, ctx.storeId);
+  const latestWeek = await getLatestStoreWeek(ctx.orgId, ctx.storeId);
+  const allWeeksRaw = await listStoreWeeks(ctx.orgId, ctx.storeId);
 
   const allWeeks = Array.isArray(allWeeksRaw)
     ? [...allWeeksRaw].sort((a, b) =>
@@ -109,50 +115,41 @@ export async function loadCommercialStoreTruth() {
   result.previousWeek = previousWeek || null;
 
   const activeBaseline = baselineStatus?.activeBaseline || null;
-
-  if (!activeBaseline && baselineStatus?.pendingBaseline) {
-    result.state = "pending_baseline";
-    return result;
-  }
-
-  if (!activeBaseline) {
-    result.state = "missing_baseline";
-    return result;
-  }
-
-  const baselineRows = Array.isArray(activeBaseline?.rows)
-    ? activeBaseline.rows
-    : [];
-
-  const latestWeekRows = Array.isArray(latestWeek?.rows)
-    ? latestWeek.rows
-    : [];
-
-  const previousWeekRows = Array.isArray(previousWeek?.rows)
-    ? previousWeek.rows
-    : [];
+  const baselineRows = Array.isArray(activeBaseline?.rows) ? activeBaseline.rows : [];
+  const latestWeekRows = Array.isArray(latestWeek?.rows) ? latestWeek.rows : [];
+  const previousWeekRows = Array.isArray(previousWeek?.rows) ? previousWeek.rows : [];
 
   result.baselineRows = baselineRows;
   result.latestWeekRows = latestWeekRows;
   result.previousWeekRows = previousWeekRows;
 
+  if (!activeBaseline && baselineStatus?.pendingBaseline) {
+    result.state = "pending_baseline";
+    result.message = "Pending baseline exists but is not approved yet.";
+    return result;
+  }
+
+  if (!activeBaseline) {
+    result.state = "missing_baseline";
+    result.message = "No approved baseline found.";
+    return result;
+  }
+
   result.baselineMonthKpis = computeKpisFromRows(baselineRows);
-  result.baselineWeeklyKpis =
-    normalizeBaselineMonthToWeeklyAvg(result.baselineMonthKpis);
+  result.baselineWeeklyKpis = normalizeBaselineMonthToWeeklyAvg(result.baselineMonthKpis);
 
   if (!latestWeek) {
     result.ok = true;
     result.state = "baseline_only";
+    result.message = "Approved baseline found, but no approved weekly upload exists yet.";
     return result;
   }
 
   result.latestWeekKpis = computeKpisFromRows(latestWeekRows);
-  result.previousWeekKpis = previousWeek
-    ? computeKpisFromRows(previousWeekRows)
-    : null;
-
+  result.previousWeekKpis = previousWeek ? computeKpisFromRows(previousWeekRows) : null;
   result.ok = true;
-  result.state = "ready"; // ✅ THIS IS THE FIX
+  result.state = "live";
+  result.message = "Approved baseline and latest approved week are loaded.";
 
   return result;
 }
