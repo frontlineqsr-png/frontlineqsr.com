@@ -1,6 +1,7 @@
-// /assets/commercial-action-plan.js (v2)
+// /assets/commercial-action-plan.js (v3)
 // Commercial Action Plan — live store-level wiring
 // ✅ Uses commercial-kpi-data.js shared adapter
+// ✅ Resolves active store from URL, session, localStorage, or assigned stores
 // ✅ Uses approved baseline + latest approved week
 // ✅ Aligns to pilot Action Plan hierarchy
 // 🚫 No KPI math changes
@@ -10,6 +11,8 @@ import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
 const ROOT_ID = "commercialActionPlanRoot";
 const $ = (id) => document.getElementById(id);
 
+const LS_COMM_ACTIVE_STORE = "FLQSR_COMM_ACTIVE_STORE_ID";
+
 function readSession() {
   try {
     return JSON.parse(localStorage.getItem("FLQSR_COMM_SESSION") || "null");
@@ -18,27 +21,79 @@ function readSession() {
   }
 }
 
-function getStoreFromUrl() {
+function getUrlParam(name) {
   const params = new URLSearchParams(window.location.search);
-  return String(params.get("store") || "").trim();
+  return String(params.get(name) || "").trim();
+}
+
+function getStoreFromUrl() {
+  return getUrlParam("store");
 }
 
 function getDistrictFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return String(params.get("district") || "").trim();
+  return getUrlParam("district");
 }
 
 function getRegionFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return String(params.get("region") || "").trim();
+  return getUrlParam("region");
 }
 
 function prettyLabel(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
-  return raw
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (m) => m.toUpperCase());
+  return raw.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function normStoreId(v) {
+  return String(v || "").trim();
+}
+
+function getAssignedStoresFromSession() {
+  const s = readSession();
+  if (!s) return [];
+  const arr = Array.isArray(s.assigned_store_ids) ? s.assigned_store_ids : [];
+  return arr.map(normStoreId).filter(Boolean);
+}
+
+function getSessionSelectedStore() {
+  const s = readSession();
+  if (!s) return "";
+  return String(s.selectedStoreId || s.activeStoreId || s.storeId || "").trim();
+}
+
+function getStoredActiveStore() {
+  try {
+    return String(
+      localStorage.getItem(LS_COMM_ACTIVE_STORE) ||
+      localStorage.getItem("FLQSR_ACTIVE_STORE_ID") ||
+      localStorage.getItem("flqsr_active_store_id") ||
+      ""
+    ).trim();
+  } catch {
+    return "";
+  }
+}
+
+function setStoredActiveStore(storeId) {
+  const v = String(storeId || "").trim();
+  if (!v) return;
+  try { localStorage.setItem(LS_COMM_ACTIVE_STORE, v); } catch {}
+}
+
+function resolveSelectedStore() {
+  const fromUrl = getStoreFromUrl();
+  if (fromUrl) return fromUrl;
+
+  const fromSession = getSessionSelectedStore();
+  if (fromSession) return fromSession;
+
+  const fromLs = getStoredActiveStore();
+  if (fromLs) return fromLs;
+
+  const assigned = getAssignedStoresFromSession();
+  if (assigned.length) return assigned[0];
+
+  return "";
 }
 
 function setText(id, text) {
@@ -135,7 +190,7 @@ function setHeaderContext() {
   const role = String(s.role || "sm").toUpperCase();
   const orgId = s.orgId || "N/A";
 
-  const selectedStore = getStoreFromUrl();
+  const selectedStore = resolveSelectedStore();
   const selectedDistrict = getDistrictFromUrl();
   const selectedRegion = getRegionFromUrl();
 
@@ -159,7 +214,7 @@ function setupViewSelector() {
   const selector = $("viewSelector");
   if (!selector) return;
 
-  const selectedStore = getStoreFromUrl();
+  const selectedStore = resolveSelectedStore();
   const selectedDistrict = getDistrictFromUrl();
   const selectedRegion = getRegionFromUrl();
 
@@ -174,11 +229,11 @@ function setupViewSelector() {
     }
 
     if (view === "rm") {
-      if (selectedRegion) {
-        window.location.href = `./commercial-rm.html?region=${encodeURIComponent(selectedRegion)}`;
-      } else {
-        window.location.href = "./commercial-rm.html";
-      }
+      const next = new URL("./commercial-rm.html", window.location.href);
+      if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
+      if (selectedStore) next.searchParams.set("store", selectedStore);
+      window.location.href = next.toString();
       return;
     }
 
@@ -186,6 +241,7 @@ function setupViewSelector() {
       const next = new URL("./commercial-dm.html", window.location.href);
       if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
       if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      if (selectedStore) next.searchParams.set("store", selectedStore);
       window.location.href = next.toString();
       return;
     }
@@ -204,6 +260,7 @@ function setupLogout() {
   $("logoutBtn")?.addEventListener("click", () => {
     try {
       localStorage.removeItem("FLQSR_COMM_SESSION");
+      localStorage.removeItem(LS_COMM_ACTIVE_STORE);
     } catch {}
     window.location.href = "./commercial-login.html";
   });
@@ -422,8 +479,15 @@ function renderLiveActionPlan(truth) {
 }
 
 async function loadCommercialActionPlan() {
+  const resolvedStore = resolveSelectedStore();
+  if (resolvedStore) setStoredActiveStore(resolvedStore);
+
   try {
-    const truth = await loadCommercialStoreTruth();
+    const truth = await loadCommercialStoreTruth({
+      storeId: resolvedStore
+    });
+
+    if (truth?.storeId) setStoredActiveStore(truth.storeId);
 
     if (truth.state === "missing_context") {
       renderLocked("Commercial Action Plan", "Missing org or store context.");
@@ -432,7 +496,7 @@ async function loadCommercialActionPlan() {
 
     if (truth.state === "pending_baseline") {
       renderLocked(
-        `Commercial Action Plan — ${prettyLabel(truth.storeId)}`,
+        `Commercial Action Plan — ${prettyLabel(truth.storeId || resolvedStore)}`,
         "A pending baseline exists, but it is not approved yet.",
         "Approve the commercial baseline before generating a live action plan."
       );
@@ -441,7 +505,7 @@ async function loadCommercialActionPlan() {
 
     if (truth.state === "missing_baseline") {
       renderLocked(
-        `Commercial Action Plan — ${prettyLabel(truth.storeId)}`,
+        `Commercial Action Plan — ${prettyLabel(truth.storeId || resolvedStore)}`,
         "No approved baseline found for this store."
       );
       return;
@@ -449,7 +513,7 @@ async function loadCommercialActionPlan() {
 
     if (truth.state === "baseline_only") {
       renderLocked(
-        `Commercial Action Plan — ${prettyLabel(truth.storeId)}`,
+        `Commercial Action Plan — ${prettyLabel(truth.storeId || resolvedStore)}`,
         "Approved baseline exists, but no approved weekly upload has been saved yet.",
         "Save an approved weekly upload to generate a live action plan."
       );
