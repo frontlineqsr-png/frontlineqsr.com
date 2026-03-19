@@ -80,6 +80,9 @@ export async function loadCommercialStoreTruth() {
     baselineMonthKpis: null,
     baselineWeeklyKpis: null,
     latestWeekKpis: null,
+    previousWeek: null,
+    previousWeekRows: [],
+    previousWeekKpis: null,
     state: "missing_context",
     message: "Missing org or store context."
   };
@@ -90,18 +93,28 @@ export async function loadCommercialStoreTruth() {
 
   const baselineStatus = await getStoreBaselineStatus(orgId, storeId);
   const latestWeek = await getLatestStoreWeek(orgId, storeId);
-  const allWeeks = await listStoreWeeks(orgId, storeId);
+  const allWeeksRaw = await listStoreWeeks(orgId, storeId);
+
+  const allWeeks = Array.isArray(allWeeksRaw)
+    ? [...allWeeksRaw].sort((a, b) => String(a.weekStart || "").localeCompare(String(b.weekStart || "")))
+    : [];
+
+  const previousWeek =
+    allWeeks.length >= 2 ? allWeeks[allWeeks.length - 2] : null;
 
   result.baselineStatus = baselineStatus || null;
   result.latestWeek = latestWeek || null;
-  result.allWeeks = Array.isArray(allWeeks) ? allWeeks : [];
+  result.allWeeks = allWeeks;
+  result.previousWeek = previousWeek || null;
 
   const activeBaseline = baselineStatus?.activeBaseline || null;
   const baselineRows = Array.isArray(activeBaseline?.rows) ? activeBaseline.rows : [];
   const latestWeekRows = Array.isArray(latestWeek?.rows) ? latestWeek.rows : [];
+  const previousWeekRows = Array.isArray(previousWeek?.rows) ? previousWeek.rows : [];
 
   result.baselineRows = baselineRows;
   result.latestWeekRows = latestWeekRows;
+  result.previousWeekRows = previousWeekRows;
 
   if (!activeBaseline && baselineStatus?.pendingBaseline) {
     result.state = "pending_baseline";
@@ -126,6 +139,7 @@ export async function loadCommercialStoreTruth() {
   }
 
   result.latestWeekKpis = computeKpisFromRows(latestWeekRows);
+  result.previousWeekKpis = previousWeek ? computeKpisFromRows(previousWeekRows) : null;
   result.ok = true;
   result.state = "live";
   result.message = "Approved baseline and latest approved week are loaded.";
