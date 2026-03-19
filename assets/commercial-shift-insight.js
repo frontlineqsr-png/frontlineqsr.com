@@ -1,6 +1,7 @@
-// /assets/commercial-shift-insight.js (v2)
+// /assets/commercial-shift-insight.js (v3)
 // Commercial Shift Insight — live store-level wiring
 // ✅ Uses commercial-kpi-data.js shared adapter
+// ✅ Resolves active store from URL, session, localStorage, or assigned stores
 // ✅ Uses approved baseline + latest approved week + previous week
 // ✅ Matches pilot shift-insight hierarchy
 // ✅ Honest fallback if shift/daypart data is not present
@@ -10,6 +11,8 @@ import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
 
 const $ = (id) => document.getElementById(id);
 
+const LS_COMM_ACTIVE_STORE = "FLQSR_COMM_ACTIVE_STORE_ID";
+
 function readSession() {
   try {
     return JSON.parse(localStorage.getItem("FLQSR_COMM_SESSION") || "null");
@@ -18,19 +21,21 @@ function readSession() {
   }
 }
 
-function getStoreFromUrl() {
+function getUrlParam(name) {
   const params = new URLSearchParams(window.location.search);
-  return String(params.get("store") || "").trim();
+  return String(params.get(name) || "").trim();
+}
+
+function getStoreFromUrl() {
+  return getUrlParam("store");
 }
 
 function getDistrictFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return String(params.get("district") || "").trim();
+  return getUrlParam("district");
 }
 
 function getRegionFromUrl() {
-  const params = new URLSearchParams(window.location.search);
-  return String(params.get("region") || "").trim();
+  return getUrlParam("region");
 }
 
 function prettyLabel(value) {
@@ -39,6 +44,64 @@ function prettyLabel(value) {
   return raw
     .replace(/_/g, " ")
     .replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function normStoreId(v) {
+  return String(v || "").trim();
+}
+
+function getAssignedStoresFromSession() {
+  const s = readSession();
+  if (!s) return [];
+  const arr = Array.isArray(s.assigned_store_ids) ? s.assigned_store_ids : [];
+  return arr.map(normStoreId).filter(Boolean);
+}
+
+function getSessionSelectedStore() {
+  const s = readSession();
+  if (!s) return "";
+
+  return String(
+    s.selectedStoreId ||
+    s.activeStoreId ||
+    s.storeId ||
+    ""
+  ).trim();
+}
+
+function getStoredActiveStore() {
+  try {
+    return String(
+      localStorage.getItem(LS_COMM_ACTIVE_STORE) ||
+      localStorage.getItem("FLQSR_ACTIVE_STORE_ID") ||
+      localStorage.getItem("flqsr_active_store_id") ||
+      ""
+    ).trim();
+  } catch {
+    return "";
+  }
+}
+
+function setStoredActiveStore(storeId) {
+  const v = String(storeId || "").trim();
+  if (!v) return;
+  try { localStorage.setItem(LS_COMM_ACTIVE_STORE, v); } catch {}
+}
+
+function resolveSelectedStore() {
+  const fromUrl = getStoreFromUrl();
+  if (fromUrl) return fromUrl;
+
+  const fromSession = getSessionSelectedStore();
+  if (fromSession) return fromSession;
+
+  const fromLs = getStoredActiveStore();
+  if (fromLs) return fromLs;
+
+  const assigned = getAssignedStoresFromSession();
+  if (assigned.length) return assigned[0];
+
+  return "";
 }
 
 function setHtml(id, html) {
@@ -52,9 +115,9 @@ function setSMHeaderContext() {
 
   const role = String(s.role || "sm").toUpperCase();
   const orgId = s.orgId || "N/A";
-  const stores = Array.isArray(s.assigned_store_ids) ? s.assigned_store_ids : [];
+  const stores = getAssignedStoresFromSession();
 
-  const selectedStore = getStoreFromUrl();
+  const selectedStore = resolveSelectedStore();
   const selectedDistrict = getDistrictFromUrl();
   const selectedRegion = getRegionFromUrl();
 
@@ -83,7 +146,7 @@ function setupViewSelector() {
   const selector = $("viewSelector");
   if (!selector) return;
 
-  const selectedStore = getStoreFromUrl();
+  const selectedStore = resolveSelectedStore();
   const selectedDistrict = getDistrictFromUrl();
   const selectedRegion = getRegionFromUrl();
 
@@ -98,11 +161,11 @@ function setupViewSelector() {
     }
 
     if (view === "rm") {
-      if (selectedRegion) {
-        window.location.href = `./commercial-rm.html?region=${encodeURIComponent(selectedRegion)}`;
-      } else {
-        window.location.href = "./commercial-rm.html";
-      }
+      const next = new URL("./commercial-rm.html", window.location.href);
+      if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
+      if (selectedStore) next.searchParams.set("store", selectedStore);
+      window.location.href = next.toString();
       return;
     }
 
@@ -110,6 +173,7 @@ function setupViewSelector() {
       const next = new URL("./commercial-dm.html", window.location.href);
       if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
       if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      if (selectedStore) next.searchParams.set("store", selectedStore);
       window.location.href = next.toString();
       return;
     }
@@ -128,6 +192,7 @@ function setupLogout() {
   $("logoutBtn")?.addEventListener("click", () => {
     try {
       localStorage.removeItem("FLQSR_COMM_SESSION");
+      localStorage.removeItem(LS_COMM_ACTIVE_STORE);
     } catch {}
     window.location.href = "./commercial-login.html";
   });
@@ -518,7 +583,7 @@ function secondaryAction(shiftKey) {
 }
 
 function renderFallbackFromTruth(truth) {
-  const selectedStore = truth?.storeId || "selected store";
+  const selectedStore = truth?.storeId || resolveSelectedStore() || "selected store";
   const baseline = truth?.baselineStatus?.activeBaseline;
   const baselineLabel = baseline?.label || baseline?.year || "";
   const baselineRows = Number(baseline?.rowCount || 0);
@@ -536,7 +601,7 @@ function renderFallbackFromTruth(truth) {
           <h3 style="margin:4px 0 4px 0;">Awaiting Commercial Shift Data</h3>
           <div class="meta" style="opacity:.88;">${prettyStore}</div>
         </div>
-        <div class="csi-badge">Commercial V2</div>
+        <div class="csi-badge">Commercial V3</div>
       </div>
 
       <div class="csi-metric-grid">
@@ -576,8 +641,8 @@ function renderFallbackFromTruth(truth) {
     <div class="card" style="margin-bottom:14px;">
       <h3 style="margin:0 0 8px 0;">Coaching Context</h3>
       <div style="display:flex;flex-direction:column;gap:7px;">
-        <div style="opacity:.92;">• Week lens: latest approved commercial week is loaded</div>
-        <div style="opacity:.92;">• Driver: weekly rows do not contain enough shift/daypart detail</div>
+        <div style="opacity:.92;">• Week lens: latest approved commercial week is loaded when available</div>
+        <div style="opacity:.92;">• Driver: weekly rows do not contain enough shift/daypart detail or no store scope resolved</div>
         <div style="opacity:.92;">• Rule: once shift detail is present, isolate one shift first — do not coach the whole day</div>
       </div>
     </div>
@@ -741,8 +806,15 @@ function renderLiveShiftInsight(truth, analysis) {
 }
 
 async function loadCommercialShiftInsight() {
+  const resolvedStore = resolveSelectedStore();
+  if (resolvedStore) setStoredActiveStore(resolvedStore);
+
   try {
-    const truth = await loadCommercialStoreTruth();
+    const truth = await loadCommercialStoreTruth({
+      storeId: resolvedStore
+    });
+
+    if (truth?.storeId) setStoredActiveStore(truth.storeId);
 
     if (truth.state === "missing_context") {
       renderFallbackFromTruth(truth);
@@ -774,7 +846,7 @@ async function loadCommercialShiftInsight() {
     renderLiveShiftInsight(truth, analysis);
   } catch (e) {
     console.error("[commercial-shift-insight] load failed:", e);
-    renderFallbackFromTruth({ storeId: getStoreFromUrl() || "selected store" });
+    renderFallbackFromTruth({ storeId: resolveSelectedStore() || "selected store" });
   }
 }
 
