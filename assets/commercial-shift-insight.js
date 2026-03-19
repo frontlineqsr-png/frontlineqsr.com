@@ -1,10 +1,9 @@
 // /assets/commercial-shift-insight.js (v1)
 // Commercial Shift Insight
-// UI-aligned to pilot Shift Insight V2.1
-// ✅ No fake KPI math
-// ✅ No invented shift results
-// ✅ Reads commercial baseline status if available
-// ✅ Shows "awaiting commercial shift data" until weekly/daypart wiring exists
+// ✅ Uses commercial session + page shell
+// ✅ Matches pilot Shift Insight decision hierarchy
+// ✅ Honest pending state until commercial weekly/daypart wiring exists
+// 🚫 No fake KPI math
 
 import { getStoreBaselineStatus } from "./commercial-db.js";
 
@@ -39,11 +38,6 @@ function prettyLabel(value) {
   return raw
     .replace(/_/g, " ")
     .replace(/\b\w/g, (m) => m.toUpperCase());
-}
-
-function setText(id, text) {
-  const el = $(id);
-  if (el) el.textContent = text;
 }
 
 function setHtml(id, html) {
@@ -88,11 +82,14 @@ function setupViewSelector() {
   const selector = $("viewSelector");
   if (!selector) return;
 
+  const selectedStore = getStoreFromUrl();
+  const selectedDistrict = getDistrictFromUrl();
+  const selectedRegion = getRegionFromUrl();
+
+  selector.value = "sm";
+
   selector.addEventListener("change", (e) => {
     const view = String(e.target.value || "").trim();
-    const selectedStore = getStoreFromUrl();
-    const selectedDistrict = getDistrictFromUrl();
-    const selectedRegion = getRegionFromUrl();
 
     if (view === "vp") {
       window.location.href = "./commercial-vp.html";
@@ -117,7 +114,7 @@ function setupViewSelector() {
     }
 
     if (view === "sm") {
-      const next = new URL("./commercial-portal.html", window.location.href);
+      const next = new URL("./commercial-shift-insight.html", window.location.href);
       if (selectedStore) next.searchParams.set("store", selectedStore);
       if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
       if (selectedRegion) next.searchParams.set("region", selectedRegion);
@@ -126,23 +123,12 @@ function setupViewSelector() {
   });
 }
 
-function setupTabs() {
-  const buttons = document.querySelectorAll(".tab-btn");
-  const panels = document.querySelectorAll(".tab-panel");
-
-  buttons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.tab;
-      if (!tab) return;
-
-      buttons.forEach((b) => b.classList.remove("active"));
-      panels.forEach((p) => p.classList.remove("active"));
-
-      btn.classList.add("active");
-
-      const panel = document.getElementById(`tab-${tab}`);
-      if (panel) panel.classList.add("active");
-    });
+function setupLogout() {
+  $("logoutBtn")?.addEventListener("click", () => {
+    try {
+      localStorage.removeItem("FLQSR_COMM_SESSION");
+    } catch {}
+    window.location.href = "./commercial-login.html";
   });
 }
 
@@ -152,7 +138,18 @@ function injectShiftInsightStyles() {
   const style = document.createElement("style");
   style.id = "commercialShiftInsightStyles";
   style.textContent = `
-    .csi-badge{
+    #shiftInsightRoot .small{
+      font-size:12px;
+      opacity:.75;
+      margin-bottom:6px;
+    }
+
+    #shiftInsightRoot .meta{
+      font-size:14px;
+      line-height:1.45;
+    }
+
+    #shiftInsightRoot .csi-badge{
       display:inline-flex;
       align-items:center;
       justify-content:center;
@@ -164,48 +161,48 @@ function injectShiftInsightStyles() {
       background:rgba(255,255,255,.04);
     }
 
-    .csi-metric-grid{
+    #shiftInsightRoot .csi-metric-grid{
       display:grid;
       grid-template-columns:repeat(3, minmax(0, 1fr));
       gap:12px;
       margin:14px 0;
     }
 
-    .csi-metric{
+    #shiftInsightRoot .csi-metric{
       padding:12px;
       border-radius:12px;
       background:rgba(255,255,255,.04);
       border:1px solid rgba(255,255,255,.08);
     }
 
-    .csi-metric-value{
+    #shiftInsightRoot .csi-metric-value{
       font-weight:900;
       font-size:22px;
       line-height:1.1;
     }
 
-    .csi-coach-grid{
+    #shiftInsightRoot .csi-coach-grid{
       display:grid;
       grid-template-columns:repeat(2, minmax(0, 1fr));
       gap:12px;
       margin-top:12px;
     }
 
-    .csi-coach-box{
+    #shiftInsightRoot .csi-coach-box{
       padding:12px;
       border-radius:12px;
       background:rgba(255,255,255,.04);
       border:1px solid rgba(255,255,255,.08);
     }
 
-    .csi-secondary-grid{
+    #shiftInsightRoot .csi-secondary-grid{
       display:flex;
       gap:12px;
       flex-wrap:wrap;
       margin-top:12px;
     }
 
-    .csi-secondary-card{
+    #shiftInsightRoot .csi-secondary-card{
       flex:1;
       min-width:220px;
       padding:12px;
@@ -214,15 +211,15 @@ function injectShiftInsightStyles() {
       border:1px solid rgba(255,255,255,.08);
     }
 
-    .csi-note{
+    #shiftInsightRoot .csi-note{
       font-size:13px;
       line-height:1.45;
       opacity:.86;
     }
 
     @media (max-width: 720px){
-      .csi-metric-grid,
-      .csi-coach-grid{
+      #shiftInsightRoot .csi-metric-grid,
+      #shiftInsightRoot .csi-coach-grid{
         grid-template-columns:1fr;
       }
     }
@@ -266,7 +263,7 @@ function renderAwaitingShiftData(storeName, baselineLabel, baselineRows) {
 
       <div style="font-weight:800;margin-bottom:6px;">Why this is pending</div>
       <div class="csi-note">
-        Commercial Shift Insight is now aligned to the pilot lens, but live shift coaching requires approved commercial weekly uploads with daypart or shift-level data.
+        Commercial Shift Insight now matches the pilot coaching lens, but live shift coaching requires approved commercial weekly uploads with shift or daypart-level data.
       </div>
 
       <div class="csi-coach-grid">
@@ -356,6 +353,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   injectShiftInsightStyles();
   setSMHeaderContext();
   setupViewSelector();
-  setupTabs();
+  setupLogout();
   await loadCommercialShiftInsight();
 });
