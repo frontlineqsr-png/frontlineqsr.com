@@ -1,1 +1,62 @@
-act
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FrontlineQSR | Commercial Action Plan</title>
+  <link rel="stylesheet" href="./assets/styles.css" />
+  <meta name="robots" content="noindex" />
+
+  <script type="module">
+    import { bootCommercialPage } from "./assets/commercial-page-boot.js";
+
+    bootCommercialPage({
+      allowRoles: ["sm","dm","rm","vp","owner","admin","super_admin"],
+      requireOrg: false
+    });
+  </script>
+</head>
+
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">FrontlineQSR</div>
+
+      <nav class="nav">
+        <a class="nav-link" href="./commercial-portal.html">Portal</a>
+        <a class="nav-link" href="./commercial-shift-insight.html">Shift Insight</a>
+        <a class="nav-link active" href="./commercial-action-plan.html">Action Plan</a>
+        <a class="nav-link" href="./commercial-kpis.html">KPIs</a>
+        <a class="nav-link" href="./commercial-progress.html">Progress</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1>Commercial Action Plan</h1>
+          <p class="muted">Convert execution drift into aligned operational action.</p>
+          <p id="apContext" class="muted" style="margin-top:6px;"></p>
+          <p id="apScope" class="muted" style="margin-top:4px;"></p>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <select id="viewSelector" class="input" style="min-width:180px;">
+            <option value="sm" selected>Store View</option>
+            <option value="dm">District View</option>
+            <option value="rm">Region View</option>
+            <option value="vp">Executive View</option>
+          </select>
+          <button class="btn" id="logoutBtn" type="button">Logout</button>
+        </div>
+      </header>
+
+      <section class="panel">
+        <div id="commercialActionPlanRoot"></div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./assets/commercial-action-plan.js?v=1"></script>
+</body>
+</html>
