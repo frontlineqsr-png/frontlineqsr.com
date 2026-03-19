@@ -1,4 +1,4 @@
-// /assets/commercial-kpi-data.js (v1)
+// /assets/commercial-kpi-data.js (v2)
 // Shared commercial store-level truth adapter
 // ✅ Uses approved commercial baseline + latest approved week
 // ✅ Uses shared KPI engine
@@ -96,7 +96,9 @@ export async function loadCommercialStoreTruth() {
   const allWeeksRaw = await listStoreWeeks(orgId, storeId);
 
   const allWeeks = Array.isArray(allWeeksRaw)
-    ? [...allWeeksRaw].sort((a, b) => String(a.weekStart || "").localeCompare(String(b.weekStart || "")))
+    ? [...allWeeksRaw].sort((a, b) =>
+        String(a.weekStart || "").localeCompare(String(b.weekStart || ""))
+      )
     : [];
 
   const previousWeek =
@@ -108,13 +110,24 @@ export async function loadCommercialStoreTruth() {
   result.previousWeek = previousWeek || null;
 
   const activeBaseline = baselineStatus?.activeBaseline || null;
-  const baselineRows = Array.isArray(activeBaseline?.rows) ? activeBaseline.rows : [];
-  const latestWeekRows = Array.isArray(latestWeek?.rows) ? latestWeek.rows : [];
-  const previousWeekRows = Array.isArray(previousWeek?.rows) ? previousWeek.rows : [];
+
+  const baselineRows = Array.isArray(activeBaseline?.rows)
+    ? activeBaseline.rows
+    : [];
+
+  const latestWeekRows = Array.isArray(latestWeek?.rows)
+    ? latestWeek.rows
+    : [];
+
+  const previousWeekRows = Array.isArray(previousWeek?.rows)
+    ? previousWeek.rows
+    : [];
 
   result.baselineRows = baselineRows;
   result.latestWeekRows = latestWeekRows;
   result.previousWeekRows = previousWeekRows;
+
+  /* ---------------- baseline checks ---------------- */
 
   if (!activeBaseline && baselineStatus?.pendingBaseline) {
     result.state = "pending_baseline";
@@ -128,21 +141,32 @@ export async function loadCommercialStoreTruth() {
     return result;
   }
 
+  /* ---------------- KPI calculations ---------------- */
+
   result.baselineMonthKpis = computeKpisFromRows(baselineRows);
-  result.baselineWeeklyKpis = normalizeBaselineMonthToWeeklyAvg(result.baselineMonthKpis);
+  result.baselineWeeklyKpis = normalizeBaselineMonthToWeeklyAvg(
+    result.baselineMonthKpis
+  );
 
   if (!latestWeek) {
     result.ok = true;
     result.state = "baseline_only";
-    result.message = "Approved baseline found, but no approved weekly upload exists yet.";
+    result.message =
+      "Approved baseline found, but no approved weekly upload exists yet.";
     return result;
   }
 
   result.latestWeekKpis = computeKpisFromRows(latestWeekRows);
-  result.previousWeekKpis = previousWeek ? computeKpisFromRows(previousWeekRows) : null;
+  result.previousWeekKpis = previousWeek
+    ? computeKpisFromRows(previousWeekRows)
+    : null;
+
+  /* ---------------- FIXED STATE ---------------- */
+
   result.ok = true;
-  result.state = "live";
-  result.message = "Approved baseline and latest approved week are loaded.";
+  result.state = "ready"; // ✅ THIS WAS THE BREAK
+  result.message =
+    "Approved baseline and latest approved week are loaded.";
 
   return result;
 }
