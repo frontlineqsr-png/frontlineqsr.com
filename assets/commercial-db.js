@@ -2,6 +2,9 @@
 // Commercial Firestore org-layer DB helpers
 // NO PILOT DATA. NO KPI MATH.
 // Enterprise-only structure.
+// ✅ Store active/inactive support added
+// ✅ Archive helper added
+// ✅ Active-store list helper added
 
 import { db } from "./firebase.js";
 import {
@@ -77,7 +80,7 @@ export async function listOrgs() {
    STORES (org subcollection)
 ========================================================= */
 
-export async function createStore({ orgId, name, regionId, districtId }) {
+export async function createStore({ orgId, name, regionId, districtId, active = true }) {
   const oid = String(orgId || "").trim();
   const storeName = String(name || "").trim();
 
@@ -95,7 +98,12 @@ export async function createStore({ orgId, name, regionId, districtId }) {
     latestWeekId: null,
     latestWeekStart: null,
     latestWeekApproved: false,
-    active: true,
+    active: !!active,
+    archived: false,
+    archivedAt: null,
+    archivedAtIso: null,
+    archivedByUid: null,
+    archivedByEmail: null,
     createdAt: serverTimestamp(),
     createdAtIso: nowIso()
   });
@@ -112,6 +120,60 @@ export async function listStores(orgId) {
   );
 
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+export async function listActiveStores(orgId) {
+  const stores = await listStores(orgId);
+  return (stores || []).filter(s => s.active !== false && s.archived !== true);
+}
+
+export async function setStoreActiveStatus({
+  orgId,
+  storeId,
+  active,
+  updatedByUid,
+  updatedByEmail
+}) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+  if (typeof active !== "boolean") throw new Error("Active status must be true or false.");
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid), {
+    active: !!active,
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso(),
+    updatedByUid: cleanString(updatedByUid) || null,
+    updatedByEmail: cleanString(updatedByEmail) || null
+  }, { merge: true });
+
+  return true;
+}
+
+export async function archiveStore({
+  orgId,
+  storeId,
+  archivedByUid,
+  archivedByEmail
+}) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid), {
+    active: false,
+    archived: true,
+    archivedAt: serverTimestamp(),
+    archivedAtIso: nowIso(),
+    archivedByUid: cleanString(archivedByUid) || null,
+    archivedByEmail: cleanString(archivedByEmail) || null
+  }, { merge: true });
+
+  return true;
 }
 
 /* =========================================================
@@ -196,7 +258,9 @@ export async function getStoreBaselineStatus(orgId, storeId) {
     activeBaselineId: activeBaselineId || null,
     activeBaselineLabel: store.activeBaselineLabel || null,
     pendingBaseline: pending,
-    activeBaseline: active
+    activeBaseline: active,
+    storeActive: store.active !== false,
+    storeArchived: store.archived === true
   };
 }
 
