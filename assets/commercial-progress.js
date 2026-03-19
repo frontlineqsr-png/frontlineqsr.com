@@ -1,9 +1,10 @@
-// /assets/commercial-progress.js (v3)
+// /assets/commercial-progress.js (v4)
 // Commercial Progress — live weekly trend
-// ✅ Uses commercial-kpi-data.js
+// ✅ Uses commercial-kpi-data.js shared adapter
 // ✅ Resolves active store from URL, session, localStorage, or assigned stores
 // ✅ Baseline weekly equivalent vs all approved weeks
 // ✅ Real WoW + trend visibility
+// ✅ Uses shared adapter state contract correctly
 // 🚫 No KPI math changes
 
 import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
@@ -149,6 +150,7 @@ function setupViewSelector() {
   const selectedStore = resolveSelectedStore();
   const selectedDistrict = getDistrictFromUrl();
   const selectedRegion = getRegionFromUrl();
+  const orgId = String(readSession()?.orgId || "").trim();
 
   selector.value = "sm";
 
@@ -156,12 +158,18 @@ function setupViewSelector() {
     const view = String(e.target.value || "").trim();
 
     if (view === "vp") {
-      window.location.href = "./commercial-vp.html";
+      const next = new URL("./commercial-vp.html", window.location.href);
+      if (orgId) next.searchParams.set("org", orgId);
+      if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
+      if (selectedStore) next.searchParams.set("store", selectedStore);
+      window.location.href = next.toString();
       return;
     }
 
     if (view === "rm") {
       const next = new URL("./commercial-rm.html", window.location.href);
+      if (orgId) next.searchParams.set("org", orgId);
       if (selectedRegion) next.searchParams.set("region", selectedRegion);
       if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
       if (selectedStore) next.searchParams.set("store", selectedStore);
@@ -171,6 +179,7 @@ function setupViewSelector() {
 
     if (view === "dm") {
       const next = new URL("./commercial-dm.html", window.location.href);
+      if (orgId) next.searchParams.set("org", orgId);
       if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
       if (selectedRegion) next.searchParams.set("region", selectedRegion);
       if (selectedStore) next.searchParams.set("store", selectedStore);
@@ -180,6 +189,7 @@ function setupViewSelector() {
 
     if (view === "sm") {
       const next = new URL("./commercial-progress.html", window.location.href);
+      if (orgId) next.searchParams.set("org", orgId);
       if (selectedStore) next.searchParams.set("store", selectedStore);
       if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
       if (selectedRegion) next.searchParams.set("region", selectedRegion);
@@ -246,6 +256,13 @@ function injectStyles() {
       margin-top:8px;
       font-size:13px;
       opacity:.82;
+    }
+
+    #${ROOT_ID} .progHeatWrap{
+      overflow:auto;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      margin-top:12px;
     }
 
     #${ROOT_ID} .progHeatTable{
@@ -371,7 +388,7 @@ function heatClass(val) {
 
 function renderProgress(truth) {
   const weeks = truth.allWeeks || [];
-  const baseline = truth.baselineWeeklyKpis;
+  const baseline = truth.baselineWeeklyKpis || {};
 
   if (!weeks.length) {
     renderLocked("No approved weekly data available.");
@@ -393,7 +410,7 @@ function renderProgress(truth) {
       vsBase: {
         sales: pctDelta(k.sales, baseline.sales),
         tx: pctDelta(k.transactions, baseline.transactions),
-        labor: k.laborPct - baseline.laborPct
+        labor: k.laborPct - Number(baseline.laborPct || 0)
       }
     };
   });
@@ -417,7 +434,7 @@ function renderProgress(truth) {
       <td>${fmtMoney2(r.k.avgTicket)}</td>
       <td>${fmtPct(r.k.laborPct)}</td>
       <td>${r.wow ? fmtMoney(r.wow.sales) : "—"}</td>
-      <td>${r.wow ? r.wow.tx : "—"}</td>
+      <td>${r.wow ? r.wow.tx.toLocaleString() : "—"}</td>
       <td>${r.wow ? r.wow.labor.toFixed(2) : "—"}</td>
     </tr>
   `).join("");
@@ -449,36 +466,40 @@ function renderProgress(truth) {
 
     <div class="progCard progSection">
       <h3>Trend Heat Map</h3>
-      <table class="progHeatTable">
-        <thead>
-          <tr>
-            <th>Week</th>
-            <th>Sales</th>
-            <th>Tx</th>
-            <th>Labor</th>
-          </tr>
-        </thead>
-        <tbody>${heatRows}</tbody>
-      </table>
+      <div class="progHeatWrap">
+        <table class="progHeatTable">
+          <thead>
+            <tr>
+              <th>Week</th>
+              <th>Sales</th>
+              <th>Tx</th>
+              <th>Labor</th>
+            </tr>
+          </thead>
+          <tbody>${heatRows}</tbody>
+        </table>
+      </div>
     </div>
 
     <div class="progCard progSection">
       <h3>Weekly Detail</h3>
-      <table class="progHeatTable">
-        <thead>
-          <tr>
-            <th>Week</th>
-            <th>Sales</th>
-            <th>Transactions</th>
-            <th>Avg Ticket</th>
-            <th>Labor %</th>
-            <th>WoW Sales</th>
-            <th>WoW Tx</th>
-            <th>WoW Labor</th>
-          </tr>
-        </thead>
-        <tbody>${tableRows}</tbody>
-      </table>
+      <div class="progHeatWrap">
+        <table class="progHeatTable">
+          <thead>
+            <tr>
+              <th>Week</th>
+              <th>Sales</th>
+              <th>Transactions</th>
+              <th>Avg Ticket</th>
+              <th>Labor %</th>
+              <th>WoW Sales</th>
+              <th>WoW Tx</th>
+              <th>WoW Labor</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
     </div>
   `);
 }
@@ -496,8 +517,23 @@ async function load() {
 
     if (truth?.storeId) setStoredActiveStore(truth.storeId);
 
-    if (truth.state !== "ready") {
-      renderLocked("Waiting for approved baseline + weekly data.");
+    if (truth.state === "missing_context") {
+      renderLocked("Missing org or store context.");
+      return;
+    }
+
+    if (truth.state === "pending_baseline") {
+      renderLocked("Baseline pending approval.");
+      return;
+    }
+
+    if (truth.state === "missing_baseline") {
+      renderLocked("No approved baseline found.");
+      return;
+    }
+
+    if (truth.state === "baseline_only") {
+      renderLocked("Baseline approved. Awaiting weekly uploads.");
       return;
     }
 
