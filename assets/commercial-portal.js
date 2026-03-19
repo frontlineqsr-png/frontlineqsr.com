@@ -1,8 +1,11 @@
-// assets/commercial-portal.js (v8)
-// Store Manager page logic only
+// assets/commercial-portal.js (v9)
+// Store Manager portal logic
 // Shared auth/session/logout is handled by commercial-page-boot.js
 // Reads live commercial baseline + latest week from Firestore
 // Uses shared KPI engine and keeps KPI math unchanged
+// ✅ Fix: tabs now route to the real live commercial pages
+// ✅ KPI remains on portal page
+// 🚫 No KPI math changes
 
 import {
   getStoreBaselineStatus,
@@ -38,18 +41,6 @@ function getParams() {
   };
 }
 
-function getStoreFromUrl() {
-  return getParams().storeId;
-}
-
-function getDistrictFromUrl() {
-  return getParams().districtId;
-}
-
-function getRegionFromUrl() {
-  return getParams().regionId;
-}
-
 function prettyLabel(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -71,6 +62,18 @@ function setClass(id, className) {
 function setDelta(id, text, tone = "pending") {
   setText(id, text);
   setClass(id, `kpi-delta ${tone}`);
+}
+
+function buildScopedUrl(path) {
+  const params = getParams();
+  const next = new URL(path, window.location.href);
+
+  if (params.orgId) next.searchParams.set("org", params.orgId);
+  if (params.storeId) next.searchParams.set("store", params.storeId);
+  if (params.districtId) next.searchParams.set("district", params.districtId);
+  if (params.regionId) next.searchParams.set("region", params.regionId);
+
+  return next.toString();
 }
 
 function setSMHeaderContext() {
@@ -151,20 +154,31 @@ function setupViewSelector() {
 
 function setupTabs() {
   const buttons = document.querySelectorAll(".tab-btn");
-  const panels = document.querySelectorAll(".tab-panel");
+  if (!buttons.length) return;
 
   buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
-      const tab = btn.dataset.tab;
+      const tab = String(btn.dataset.tab || "").trim().toLowerCase();
       if (!tab) return;
 
-      buttons.forEach((b) => b.classList.remove("active"));
-      panels.forEach((p) => p.classList.remove("active"));
+      if (tab === "kpis" || tab === "kpi") {
+        window.location.href = buildScopedUrl("./commercial-portal.html");
+        return;
+      }
 
-      btn.classList.add("active");
+      if (tab === "shift" || tab === "shift-insight" || tab === "shiftinsight") {
+        window.location.href = buildScopedUrl("./commercial-shift-insight.html");
+        return;
+      }
 
-      const panel = document.getElementById(`tab-${tab}`);
-      if (panel) panel.classList.add("active");
+      if (tab === "action" || tab === "action-plan" || tab === "actionplan") {
+        window.location.href = buildScopedUrl("./commercial-action-plan.html");
+        return;
+      }
+
+      if (tab === "progress") {
+        window.location.href = buildScopedUrl("./commercial-progress.html");
+      }
     });
   });
 }
