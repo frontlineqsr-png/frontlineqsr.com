@@ -23,11 +23,11 @@
       <div class="brand">FrontlineQSR</div>
 
       <nav class="nav">
-        <a class="nav-link" href="./commercial-portal.html">Portal</a>
-        <a class="nav-link" href="./commercial-shift-insight.html">Shift Insight</a>
-        <a class="nav-link" href="./commercial-action-plan.html">Action Plan</a>
-        <a class="nav-link" href="./commercial-kpis.html">KPIs</a>
-        <a class="nav-link active" href="./commercial-progress.html">Progress</a>
+        <a class="nav-link" data-nav="./commercial-portal.html">Portal</a>
+        <a class="nav-link" data-nav="./commercial-shift-insight.html">Shift Insight</a>
+        <a class="nav-link" data-nav="./commercial-action-plan.html">Action Plan</a>
+        <a class="nav-link" data-nav="./commercial-kpis.html">KPIs</a>
+        <a class="nav-link active" data-nav="./commercial-progress.html">Progress</a>
       </nav>
     </aside>
 
@@ -58,5 +58,37 @@
   </div>
 
   <script type="module" src="./assets/commercial-progress.js?v=1"></script>
+
+  <script>
+    function getScopedParams() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        org: String(params.get("org") || "").trim(),
+        store: String(params.get("store") || "").trim(),
+        district: String(params.get("district") || "").trim(),
+        region: String(params.get("region") || "").trim()
+      };
+    }
+
+    function buildScopedLink(path) {
+      const p = getScopedParams();
+      const url = new URL(path, window.location.href);
+
+      if (p.org) url.searchParams.set("org", p.org);
+      if (p.store) url.searchParams.set("store", p.store);
+      if (p.district) url.searchParams.set("district", p.district);
+      if (p.region) url.searchParams.set("region", p.region);
+
+      return url.toString();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll("[data-nav]").forEach((link) => {
+        const path = link.getAttribute("data-nav");
+        if (!path) return;
+        link.setAttribute("href", buildScopedLink(path));
+      });
+    });
+  </script>
 </body>
 </html>
