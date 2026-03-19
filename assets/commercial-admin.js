@@ -1,7 +1,10 @@
-// /assets/commercial-admin.js (v8)
+// /assets/commercial-admin.js (v9)
 // Commercial admin workspace logic
 // CSV baseline intake + weekly upload intake + governance
 // Syncs org/store values across admin sections for speed
+// ✅ Filters inactive stores from admin lists
+// ✅ New stores default to active
+// 🚫 No KPI math changes
 
 import {
   createOrg,
@@ -203,7 +206,13 @@ async function onCreateStore() {
     if (!name) throw new Error("Store Name required.");
 
     msg("storeMsg", "Creating store…");
-    const storeId = await createStore({ orgId, name, regionId, districtId });
+    const storeId = await createStore({
+      orgId,
+      name,
+      regionId,
+      districtId,
+      active: true
+    });
 
     msg("storeMsg", `✅ Store created: ${storeId}`);
 
@@ -502,7 +511,7 @@ async function onApproveBaseline() {
 }
 
 /* =========================================================
-   LISTS
+   Lists
 ========================================================= */
 
 async function refreshLists() {
@@ -517,10 +526,12 @@ async function refreshLists() {
 
     if (orgId) {
       const stores = await listStores(orgId);
+      const activeStores = (stores || []).filter(s => s.active !== false);
+
       if ($("storeList")) {
         $("storeList").textContent =
-          stores.map(s =>
-            `${s.id} | ${s.name} | approved=${!!s.baselineApproved} | locked=${!!s.baselineLocked} | activeBaseline=${s.activeBaselineLabel || "none"} | latestWeek=${s.latestWeekStart || "none"}`
+          activeStores.map(s =>
+            `${s.id} | ${s.name} | active=${s.active !== false} | approved=${!!s.baselineApproved} | locked=${!!s.baselineLocked} | activeBaseline=${s.activeBaselineLabel || "none"} | latestWeek=${s.latestWeekStart || "none"}`
           ).join("\n") || "(none)";
       }
     } else {
@@ -534,7 +545,7 @@ async function refreshLists() {
 }
 
 /* =========================================================
-   INIT
+   Init
 ========================================================= */
 
 window.addEventListener("DOMContentLoaded", () => {
