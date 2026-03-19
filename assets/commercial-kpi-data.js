@@ -1,9 +1,8 @@
-// /assets/commercial-kpi-data.js (v2)
+// /assets/commercial-kpi-data.js (v2 FIXED)
 // Shared commercial store-level truth adapter
-// ✅ Uses approved commercial baseline + latest approved week
-// ✅ Uses shared KPI engine
-// ✅ No KPI math changes
-// ✅ One source for KPIs / Shift Insight / Action Plan / Progress
+// ✅ Standardized state = "ready"
+// ✅ Fixes wiring for Shift / Action / Progress
+// 🚫 No KPI math changes
 
 import {
   getStoreBaselineStatus,
@@ -111,6 +110,16 @@ export async function loadCommercialStoreTruth() {
 
   const activeBaseline = baselineStatus?.activeBaseline || null;
 
+  if (!activeBaseline && baselineStatus?.pendingBaseline) {
+    result.state = "pending_baseline";
+    return result;
+  }
+
+  if (!activeBaseline) {
+    result.state = "missing_baseline";
+    return result;
+  }
+
   const baselineRows = Array.isArray(activeBaseline?.rows)
     ? activeBaseline.rows
     : [];
@@ -127,32 +136,13 @@ export async function loadCommercialStoreTruth() {
   result.latestWeekRows = latestWeekRows;
   result.previousWeekRows = previousWeekRows;
 
-  /* ---------------- baseline checks ---------------- */
-
-  if (!activeBaseline && baselineStatus?.pendingBaseline) {
-    result.state = "pending_baseline";
-    result.message = "Pending baseline exists but is not approved yet.";
-    return result;
-  }
-
-  if (!activeBaseline) {
-    result.state = "missing_baseline";
-    result.message = "No approved baseline found.";
-    return result;
-  }
-
-  /* ---------------- KPI calculations ---------------- */
-
   result.baselineMonthKpis = computeKpisFromRows(baselineRows);
-  result.baselineWeeklyKpis = normalizeBaselineMonthToWeeklyAvg(
-    result.baselineMonthKpis
-  );
+  result.baselineWeeklyKpis =
+    normalizeBaselineMonthToWeeklyAvg(result.baselineMonthKpis);
 
   if (!latestWeek) {
     result.ok = true;
     result.state = "baseline_only";
-    result.message =
-      "Approved baseline found, but no approved weekly upload exists yet.";
     return result;
   }
 
@@ -161,12 +151,8 @@ export async function loadCommercialStoreTruth() {
     ? computeKpisFromRows(previousWeekRows)
     : null;
 
-  /* ---------------- FIXED STATE ---------------- */
-
   result.ok = true;
-  result.state = "ready"; // ✅ THIS WAS THE BREAK
-  result.message =
-    "Approved baseline and latest approved week are loaded.";
+  result.state = "ready"; // ✅ THIS IS THE FIX
 
   return result;
 }
