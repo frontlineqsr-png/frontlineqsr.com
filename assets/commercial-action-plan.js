@@ -1,13 +1,11 @@
-// /assets/commercial-action-plan.js (v1)
-// Commercial Action Plan
+// /assets/commercial-action-plan.js (v2)
+// Commercial Action Plan — live store-level wiring
+// ✅ Uses commercial-kpi-data.js shared adapter
+// ✅ Uses approved baseline + latest approved week
 // ✅ Aligns to pilot Action Plan hierarchy
-// ✅ Uses commercial session + selected scope
-// ✅ Reads commercial baseline status
-// ✅ Honest pending-state until commercial weekly comparison is wired
-// 🚫 No fake math
-// 🚫 No invented weekly comparisons
+// 🚫 No KPI math changes
 
-import { getStoreBaselineStatus } from "./commercial-db.js";
+import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
 
 const ROOT_ID = "commercialActionPlanRoot";
 const $ = (id) => document.getElementById(id);
@@ -211,198 +209,183 @@ function setupLogout() {
   });
 }
 
-function resolveScopeLabel() {
-  const store = getStoreFromUrl();
-  const district = getDistrictFromUrl();
-  const region = getRegionFromUrl();
-
-  if (store) return `Store — ${prettyLabel(store)}`;
-  if (district) return `District — ${prettyLabel(district)}`;
-  if (region) return `Region — ${prettyLabel(region)}`;
-  return "Selected Commercial Scope";
+function money0(x) {
+  const n = Number(x || 0);
+  return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
-function renderScopePending(scopeLabel) {
+function pct1(x) {
+  return (Number(x || 0) * 100).toFixed(1) + "%";
+}
+
+function pts2(x) {
+  return (Number(x || 0) * 100).toFixed(2) + " pts";
+}
+
+function signMoney0(x) {
+  const n = Number(x || 0);
+  const s = money0(Math.abs(n));
+  return (n >= 0 ? "+" : "–") + s.replace("-", "");
+}
+
+function signInt(x) {
+  const n = Math.round(Number(x || 0));
+  const s = Math.abs(n).toLocaleString();
+  return (n >= 0 ? "+" : "–") + s.replace("-", "");
+}
+
+function buildNarrative({ base, cur }) {
+  const dSales = (cur.sales || 0) - (base.sales || 0);
+  const dTx = (cur.transactions || 0) - (base.transactions || 0);
+  const dLp = (cur.laborPct || 0) - (base.laborPct || 0);
+
+  const salesPct = (base.sales > 0) ? (dSales / base.sales) : 0;
+  const txPct = (base.transactions > 0) ? (dTx / base.transactions) : 0;
+
+  const SALES_DOWN = salesPct <= -0.015;
+  const SALES_UP = salesPct >= 0.015;
+  const TX_DOWN = txPct <= -0.015;
+  const TX_UP = txPct >= 0.015;
+  const LABOR_UP = dLp >= 0.003;
+  const LABOR_DOWN = dLp <= -0.003;
+
+  const candidates = [
+    { key: "sales", score: Math.abs(salesPct) * 1.0, flag: (SALES_DOWN || SALES_UP) },
+    { key: "tx", score: Math.abs(txPct) * 0.95, flag: (TX_DOWN || TX_UP) },
+    { key: "labor", score: Math.abs(dLp) * 1.25, flag: (LABOR_UP || LABOR_DOWN) }
+  ].filter(x => x.flag);
+
+  candidates.sort((a, b) => b.score - a.score);
+  const primary = candidates[0]?.key || "mixed";
+
+  let headline = "Execution Stabilization";
+  let interpretation =
+    "Stay composed. Avoid broad corrections. Reinforce strengths while isolating weak execution windows.";
+
+  if (SALES_UP && (TX_UP || !TX_DOWN) && (LABOR_DOWN || !LABOR_UP)) {
+    headline = "Controlled Improvement";
+    interpretation =
+      "This week shows controlled directional improvement. Protect the behaviors creating stability and avoid over-correcting.";
+  } else if ((SALES_DOWN || TX_DOWN) && LABOR_UP) {
+    headline = "Under Pressure";
+    interpretation =
+      "This week shows a pressure pattern: demand softened while labor guardrails drifted. Corrections must be isolated and enforced daily.";
+  } else if (SALES_DOWN || TX_DOWN) {
+    headline = "Recovery in Progress";
+    interpretation =
+      "Demand softened versus baseline weekly equivalent. Focus on throughput, conversion discipline, and shift consistency before changing strategy.";
+  } else if (LABOR_UP) {
+    headline = "Guardrail Drift";
+    interpretation =
+      "Labor guardrails drifted upward. Tighten deployment and station discipline while protecting guest-facing speed.";
+  }
+
+  const priorities = [];
+  if (primary === "sales") {
+    priorities.push("Protect peak-hour throughput (speed with accuracy — no re-makes).");
+    priorities.push("Rebuild conversion discipline (line flow, expo control, and order accuracy).");
+    priorities.push("Eliminate slow-bleed hours — assign ownership to the weakest daypart.");
+  } else if (primary === "tx") {
+    priorities.push("Restore transaction consistency (greeting speed, line engagement, and order completion).");
+    priorities.push("Reduce abandonment in peak windows (position lock + fast handoff).");
+    priorities.push("Coach the register / expo handoff — it’s where ticket loss hides.");
+  } else if (primary === "labor") {
+    priorities.push("Re-tighten labor deployment (right roles on the floor, no floating).");
+    priorities.push("Stagger breaks to protect peaks; prevent uncovered stations.");
+    priorities.push("Hold staffing to transaction flow (not schedule habit).");
+  } else {
+    priorities.push("Isolate the weakest shift window and coach repeatable behaviors.");
+    priorities.push("Protect labor guardrails during peak hours.");
+    priorities.push("Reinforce position lock and clean handoffs between shifts.");
+  }
+
+  const discipline = [
+    "Hold a daily 5-minute huddle focused on the most vulnerable shift window.",
+    "Assign 1 accountable owner per priority.",
+    "Review progress midweek before changing strategy.",
+    "Avoid broad changes — isolate corrections and confirm impact."
+  ];
+
+  let driverNote = "";
+  if (primary === "sales") driverNote = `Primary driver: sales variance (${pct1(salesPct)}) vs baseline weekly equivalent.`;
+  else if (primary === "tx") driverNote = `Primary driver: transaction variance (${pct1(txPct)}) vs baseline weekly equivalent.`;
+  else if (primary === "labor") driverNote = `Primary driver: labor guardrail movement (${dLp >= 0 ? "+" : ""}${pts2(dLp)}) vs baseline weekly equivalent.`;
+  else driverNote = "Primary driver: mixed movement — isolate the weakest window first.";
+
+  const metrics = {
+    salesLine: `Sales movement vs baseline week: ${signMoney0(dSales)} (${pct1(salesPct)})`,
+    txLine: `Transaction movement vs baseline week: ${signInt(dTx)} (${pct1(txPct)})`,
+    laborLine: `Labor guardrail movement vs baseline week: ${dLp >= 0 ? "+" : ""}${pts2(dLp)}`
+  };
+
+  return {
+    headline,
+    interpretation,
+    priorities,
+    discipline,
+    driverNote,
+    metrics
+  };
+}
+
+function renderLocked(title, line1, line2 = "") {
+  setHtml(ROOT_ID, `
+    <div class="card" style="margin-bottom:18px;">
+      <h2>${title}</h2>
+      <div class="meta">${line1}</div>
+      ${line2 ? `<div class="meta" style="margin-top:8px;opacity:.85;">${line2}</div>` : ""}
+    </div>
+  `);
+}
+
+function renderLiveActionPlan(truth) {
+  const baselineLabel =
+    truth.baselineStatus?.activeBaseline?.label ||
+    truth.baselineStatus?.activeBaseline?.year ||
+    "Approved baseline";
+
+  const weekLabel = truth.latestWeek?.weekStart || "Approved week";
+
+  const narrative = buildNarrative({
+    base: truth.baselineWeeklyKpis,
+    cur: truth.latestWeekKpis
+  });
+
+  const primaryAction = narrative.priorities[0] || "Protect execution discipline in the most vulnerable window.";
+  const secondaryAction = narrative.priorities[1] || "Support the correction with tighter ownership and cadence.";
+
   setHtml(ROOT_ID, `
     <div class="card" style="margin-bottom:18px;">
       <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:start;">
         <div>
-          <div class="small">Execution alignment summary</div>
-          <h2 style="margin:4px 0 8px 0;">Awaiting Commercial Weekly Comparison</h2>
-          <div class="meta">Scope: <b>${scopeLabel}</b></div>
+          <div class="small">Primary correction this week</div>
+          <h2 style="margin:4px 0 8px 0;">${narrative.headline}</h2>
+          <div class="meta">Scope: <b>Store — ${prettyLabel(truth.storeId)}</b></div>
+          <div class="meta" style="margin-top:6px;">Reference: <b>${baselineLabel}</b> → <b>${weekLabel}</b></div>
         </div>
-        <div class="cap-badge">Alignment Plan</div>
+        <div class="cap-badge">Execution Plan</div>
       </div>
 
       <div class="cap-grid-3" style="margin-top:14px;">
         <div class="cap-metric">
-          <div class="small">Sales Movement</div>
-          <div class="cap-metric-value">—</div>
+          <div class="small">Sales</div>
+          <div class="cap-metric-value">${narrative.metrics.salesLine}</div>
         </div>
         <div class="cap-metric">
           <div class="small">Transactions</div>
-          <div class="cap-metric-value">—</div>
+          <div class="cap-metric-value">${narrative.metrics.txLine}</div>
         </div>
         <div class="cap-metric">
           <div class="small">Labor Guardrail</div>
-          <div class="cap-metric-value">—</div>
-        </div>
-      </div>
-
-      <div class="hr"></div>
-
-      <div style="font-weight:800;margin-bottom:6px;">Why this is pending</div>
-      <div class="meta">
-        Commercial Action Plan is structured and ready, but a live alignment narrative requires approved commercial weekly comparison logic across the selected scope.
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:18px;">
-      <h3 style="margin:0 0 8px 0;">Top Corrections to Hold</h3>
-      <div class="cap-grid-2" style="margin-top:12px;">
-        <div class="cap-action-box">
-          <div class="small">Primary correction</div>
-          <div class="cap-action-text">Establish approved weekly comparison across the selected commercial scope so the system can identify the primary alignment gap first.</div>
-        </div>
-        <div class="cap-action-box">
-          <div class="small">Secondary correction</div>
-          <div class="cap-action-text">Keep shift-level and store-level naming consistent so future action plans remain clean, assignable, and trustworthy.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:18px;">
-      <h3 style="margin:0 0 8px 0;">Operational Discipline This Week</h3>
-      <div style="display:flex;flex-direction:column;gap:7px;margin-top:10px;">
-        <div>• Keep commercial baseline governance clean before layering weekly comparison.</div>
-        <div>• Maintain one source of truth by scope (store, district, region, org).</div>
-        <div>• Avoid broad corrections until approved weekly comparison is live.</div>
-        <div>• Translate pilot logic carefully — polish matters as much as speed.</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 8px 0;">Supporting Context</h3>
-      <div class="meta" style="margin-bottom:10px;opacity:.86;">
-        This commercial page is intentionally built now so the system language is ready before the live multi-unit comparison layer is connected.
-      </div>
-      <div style="display:flex;flex-direction:column;gap:7px;">
-        <div>• Pilot proved the correction hierarchy.</div>
-        <div>• Commercial is now shaping the same logic into an aligned multi-unit experience.</div>
-        <div>• Weekly comparison wiring is the next data step — not a redesign step.</div>
-      </div>
-    </div>
-  `);
-}
-
-function renderStoreReady(storeLabel, baselineLabel, rowCount) {
-  setHtml(ROOT_ID, `
-    <div class="card" style="margin-bottom:18px;">
-      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:start;">
-        <div>
-          <div class="small">Execution alignment summary</div>
-          <h2 style="margin:4px 0 8px 0;">Commercial Store Baseline Approved</h2>
-          <div class="meta">Scope: <b>${storeLabel}</b></div>
-          <div class="meta" style="margin-top:6px;">Reference: <b>${baselineLabel}</b></div>
-        </div>
-        <div class="cap-badge">Store Scope Ready</div>
-      </div>
-
-      <div class="cap-grid-3" style="margin-top:14px;">
-        <div class="cap-metric">
-          <div class="small">Baseline Status</div>
-          <div class="cap-metric-value">Approved</div>
-        </div>
-        <div class="cap-metric">
-          <div class="small">Row Count</div>
-          <div class="cap-metric-value">${rowCount || 0}</div>
-        </div>
-        <div class="cap-metric">
-          <div class="small">Weekly Comparison</div>
-          <div class="cap-metric-value">Pending</div>
-        </div>
-      </div>
-
-      <div class="hr"></div>
-
-      <div style="font-weight:800;margin-bottom:6px;">Why this matters</div>
-      <div class="meta">
-        The commercial store baseline is approved and locked. The next layer is weekly comparison so this page can move from readiness to live correction planning.
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:18px;">
-      <h3 style="margin:0 0 8px 0;">Top Corrections to Hold</h3>
-      <div class="cap-grid-2" style="margin-top:12px;">
-        <div class="cap-action-box">
-          <div class="small">Primary correction</div>
-          <div class="cap-action-text">Connect the latest approved commercial weekly upload so the plan can identify the primary alignment gap against this baseline.</div>
-        </div>
-        <div class="cap-action-box">
-          <div class="small">Secondary correction</div>
-          <div class="cap-action-text">Keep this store isolated from all other scopes so future commercial plans remain clean and non-blended.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:18px;">
-      <h3 style="margin:0 0 8px 0;">Operational Discipline This Week</h3>
-      <div style="display:flex;flex-direction:column;gap:7px;margin-top:10px;">
-        <div>• Preserve this approved baseline as the commercial truth source.</div>
-        <div>• Add weekly comparison only after approval status is clean.</div>
-        <div>• Keep correction language tight: one primary issue first, then supporting issues.</div>
-        <div>• Protect store-level isolation before layering district or region roll-ups.</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 8px 0;">Supporting Context</h3>
-      <div class="meta" style="margin-bottom:10px;opacity:.86;">
-        This store is ready for the next live data layer. Once weekly comparison is wired, the page can move into a true commercial action plan.
-      </div>
-      <div style="display:flex;flex-direction:column;gap:7px;">
-        <div>• Approved baseline is present.</div>
-        <div>• Store scope is identified.</div>
-        <div>• Weekly alignment comparison is the next active build step.</div>
-      </div>
-    </div>
-  `);
-}
-
-function renderStorePending(storeLabel, baselineLabel, rowCount) {
-  setHtml(ROOT_ID, `
-    <div class="card" style="margin-bottom:18px;">
-      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:start;">
-        <div>
-          <div class="small">Execution alignment summary</div>
-          <h2 style="margin:4px 0 8px 0;">Commercial Store Baseline Pending Approval</h2>
-          <div class="meta">Scope: <b>${storeLabel}</b></div>
-          <div class="meta" style="margin-top:6px;">Pending reference: <b>${baselineLabel}</b></div>
-        </div>
-        <div class="cap-badge">Pending Approval</div>
-      </div>
-
-      <div class="cap-grid-3" style="margin-top:14px;">
-        <div class="cap-metric">
-          <div class="small">Baseline Status</div>
-          <div class="cap-metric-value">Pending</div>
-        </div>
-        <div class="cap-metric">
-          <div class="small">Row Count</div>
-          <div class="cap-metric-value">${rowCount || 0}</div>
-        </div>
-        <div class="cap-metric">
-          <div class="small">Weekly Comparison</div>
-          <div class="cap-metric-value">Blocked</div>
+          <div class="cap-metric-value">${narrative.metrics.laborLine}</div>
         </div>
       </div>
 
       <div class="hr"></div>
 
       <div style="font-weight:800;margin-bottom:6px;">Why this needs attention</div>
-      <div class="meta">
-        A pending baseline exists, but commercial action planning should not move forward until the baseline is formally approved and locked.
-      </div>
+      <div class="meta" style="margin-bottom:10px;opacity:.92;">${narrative.driverNote}</div>
+      <div class="meta" style="opacity:.95;">${narrative.interpretation}</div>
     </div>
 
     <div class="card" style="margin-bottom:18px;">
@@ -410,11 +393,11 @@ function renderStorePending(storeLabel, baselineLabel, rowCount) {
       <div class="cap-grid-2" style="margin-top:12px;">
         <div class="cap-action-box">
           <div class="small">Primary correction</div>
-          <div class="cap-action-text">Approve the pending commercial baseline so the store has one locked truth source before weekly correction logic is layered.</div>
+          <div class="cap-action-text">${primaryAction}</div>
         </div>
         <div class="cap-action-box">
           <div class="small">Secondary correction</div>
-          <div class="cap-action-text">Avoid interpreting store drift until baseline governance is complete and stable.</div>
+          <div class="cap-action-text">${secondaryAction}</div>
         </div>
       </div>
     </div>
@@ -422,68 +405,61 @@ function renderStorePending(storeLabel, baselineLabel, rowCount) {
     <div class="card" style="margin-bottom:18px;">
       <h3 style="margin:0 0 8px 0;">Operational Discipline This Week</h3>
       <div style="display:flex;flex-direction:column;gap:7px;margin-top:10px;">
-        <div>• Finish baseline governance before opening correction planning.</div>
-        <div>• Keep pending baseline separate from approved commercial truth.</div>
-        <div>• Prevent weekly uploads from being interpreted against an unlocked reference.</div>
-        <div>• Protect trust by making approval status explicit.</div>
+        ${narrative.discipline.map(x => `<div>• ${x}</div>`).join("")}
       </div>
     </div>
 
     <div class="card">
       <h3 style="margin:0 0 8px 0;">Supporting Context</h3>
       <div class="meta" style="margin-bottom:10px;opacity:.86;">
-        Commercial action plans should never outrun governance. Approval comes first, then correction planning.
+        Additional correction ideas remain visible, but execution should begin with the primary and secondary holds above.
       </div>
       <div style="display:flex;flex-direction:column;gap:7px;">
-        <div>• Pending baseline is present.</div>
-        <div>• Store scope is identified.</div>
-        <div>• Approval is the gating step before live action planning.</div>
+        ${narrative.priorities.map(x => `<div>• ${x}</div>`).join("")}
       </div>
     </div>
   `);
 }
 
 async function loadCommercialActionPlan() {
-  const session = readSession();
-  const orgId = String(session?.orgId || "").trim();
-
-  const store = getStoreFromUrl();
-  const district = getDistrictFromUrl();
-  const region = getRegionFromUrl();
-
-  const scopeLabel = resolveScopeLabel();
-
-  if (!orgId) {
-    renderScopePending(scopeLabel);
-    return;
-  }
-
-  if (!store) {
-    renderScopePending(scopeLabel);
-    return;
-  }
-
   try {
-    const status = await getStoreBaselineStatus(orgId, store);
+    const truth = await loadCommercialStoreTruth();
 
-    if (status?.activeBaseline) {
-      const label = status.activeBaseline.label || status.activeBaseline.year || "Approved baseline";
-      const rows = Number(status.activeBaseline.rowCount || 0);
-      renderStoreReady(prettyLabel(store), label, rows);
+    if (truth.state === "missing_context") {
+      renderLocked("Commercial Action Plan", "Missing org or store context.");
       return;
     }
 
-    if (status?.pendingBaseline) {
-      const label = status.pendingBaseline.label || status.pendingBaseline.year || "Pending baseline";
-      const rows = Number(status.pendingBaseline.rowCount || 0);
-      renderStorePending(prettyLabel(store), label, rows);
+    if (truth.state === "pending_baseline") {
+      renderLocked(
+        `Commercial Action Plan — ${prettyLabel(truth.storeId)}`,
+        "A pending baseline exists, but it is not approved yet.",
+        "Approve the commercial baseline before generating a live action plan."
+      );
       return;
     }
 
-    renderScopePending(scopeLabel);
+    if (truth.state === "missing_baseline") {
+      renderLocked(
+        `Commercial Action Plan — ${prettyLabel(truth.storeId)}`,
+        "No approved baseline found for this store."
+      );
+      return;
+    }
+
+    if (truth.state === "baseline_only") {
+      renderLocked(
+        `Commercial Action Plan — ${prettyLabel(truth.storeId)}`,
+        "Approved baseline exists, but no approved weekly upload has been saved yet.",
+        "Save an approved weekly upload to generate a live action plan."
+      );
+      return;
+    }
+
+    renderLiveActionPlan(truth);
   } catch (e) {
     console.error("[commercial-action-plan] load failed:", e);
-    renderScopePending(scopeLabel);
+    renderLocked("Commercial Action Plan", "Unable to load commercial action plan right now.");
   }
 }
 
