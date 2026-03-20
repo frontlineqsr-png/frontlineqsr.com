@@ -1,8 +1,9 @@
-// /assets/commercial-action-plan.js (v4)
+// /assets/commercial-action-plan.js (v5)
 // Commercial Action Plan — unified light-card commercial design
 // ✅ Uses commercial-kpi-data.js shared adapter
 // ✅ Resolves active store from URL, session, localStorage, or assigned stores
 // ✅ Uses approved baseline + latest approved week
+// ✅ Includes labor points + labor dollar impact
 // ✅ Matches commercial light-card system
 // 🚫 No KPI math changes
 
@@ -324,6 +325,7 @@ function buildNarrative({ base, cur }) {
   const dSales = (cur.sales || 0) - (base.sales || 0);
   const dTx = (cur.transactions || 0) - (base.transactions || 0);
   const dLp = (cur.laborPct || 0) - (base.laborPct || 0);
+  const laborDollarImpact = dLp * (cur.sales || 0);
 
   const salesPct = (base.sales > 0) ? (dSales / base.sales) : 0;
   const txPct = (base.transactions > 0) ? (dTx / base.transactions) : 0;
@@ -401,7 +403,7 @@ function buildNarrative({ base, cur }) {
   const metrics = {
     salesLine: `Sales movement vs baseline week: ${signMoney0(dSales)} (${pct1(salesPct)})`,
     txLine: `Transaction movement vs baseline week: ${signInt(dTx)} (${pct1(txPct)})`,
-    laborLine: `Labor guardrail movement vs baseline week: ${dLp >= 0 ? "+" : ""}${pts2(dLp)}`
+    laborLine: `Labor guardrail movement vs baseline week: ${dLp >= 0 ? "+" : ""}${pts2(dLp)} (${signMoney0(laborDollarImpact)})`
   };
 
   return {
