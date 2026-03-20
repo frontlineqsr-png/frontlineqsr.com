@@ -161,6 +161,16 @@
       background:#f8fafc;
     }
 
+    .btnx.danger{
+      background:#7f1d1d;
+      color:#fff;
+      border-color:#7f1d1d;
+    }
+
+    .btnx.danger:hover{
+      background:#991b1b;
+    }
+
     .hr{
       height:1px;
       background:var(--line);
@@ -327,7 +337,7 @@
             <div>
               <h2 class="admin-title">Admin Hub</h2>
               <p class="admin-sub">
-                Manage organizations, stores, user access, baseline intake, weekly uploads, baseline governance, and launch inspection views from one workspace.
+                Manage organizations, stores, user access, baseline intake, weekly uploads, baseline governance, inspection views, and controlled store cleanup from one workspace.
               </p>
               <p id="sessionInfo" class="admin-sub" style="margin-top:8px;">Loading session…</p>
               <p id="adminContext" class="admin-sub" style="margin-top:8px;"></p>
@@ -485,6 +495,45 @@
 
           <div class="hr"></div>
 
+          <div class="panel">
+            <h3>Store Reset / Cleanup</h3>
+            <p class="admin-sub" style="margin-bottom:12px;">
+              Super admin only. Use this to remove a bad week, clear a baseline, or fully reset one store’s uploaded test data without deleting the store itself.
+            </p>
+
+            <div class="grid-2">
+              <div>
+                <label class="small">Org Id</label>
+                <input class="input" id="resetOrgId" placeholder="Paste orgId" />
+              </div>
+
+              <div>
+                <label class="small">Store Id</label>
+                <input class="input" id="resetStoreId" placeholder="Paste storeId" />
+              </div>
+
+              <div>
+                <label class="small">Week Id / Week Start (for single week delete)</label>
+                <input class="input" id="resetWeekId" placeholder="Example: 2026-03-16" />
+              </div>
+
+              <div>
+                <label class="small">Type DELETE to confirm</label>
+                <input class="input" id="resetConfirmText" placeholder="DELETE" />
+              </div>
+            </div>
+
+            <div class="launch-grid" style="grid-template-columns:repeat(3, minmax(0, 1fr));">
+              <button class="btnx danger" id="deleteWeekBtn" type="button">Delete One Week</button>
+              <button class="btnx danger" id="deleteBaselineBtn" type="button">Delete Baseline</button>
+              <button class="btnx danger" id="resetStoreBtn" type="button">Full Store Reset</button>
+            </div>
+
+            <div class="msg" id="resetMsg"></div>
+          </div>
+
+          <div class="hr"></div>
+
           <div class="grid">
             <div class="panel">
               <h3>Create Org</h3>
@@ -592,6 +641,6 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-admin.js?v=8"></script>
+  <script type="module" src="assets/commercial-admin.js?v=10"></script>
 </body>
 </html>
