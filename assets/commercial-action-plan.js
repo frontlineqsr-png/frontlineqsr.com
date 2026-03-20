@@ -1,9 +1,9 @@
-// /assets/commercial-action-plan.js (v3)
-// Commercial Action Plan — live store-level wiring
+// /assets/commercial-action-plan.js (v4)
+// Commercial Action Plan — unified light-card commercial design
 // ✅ Uses commercial-kpi-data.js shared adapter
 // ✅ Resolves active store from URL, session, localStorage, or assigned stores
 // ✅ Uses approved baseline + latest approved week
-// ✅ Aligns to pilot Action Plan hierarchy
+// ✅ Matches commercial light-card system
 // 🚫 No KPI math changes
 
 import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
@@ -112,6 +112,10 @@ function injectStyles() {
   const style = document.createElement("style");
   style.id = "commercialActionPlanStyles";
   style.textContent = `
+    #${ROOT_ID}{
+      color:#0f172a;
+    }
+
     #${ROOT_ID} .cap-badge{
       display:inline-flex;
       align-items:center;
@@ -120,8 +124,9 @@ function injectStyles() {
       border-radius:999px;
       font-size:12px;
       font-weight:800;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.04);
+      border:1px solid rgba(15,23,42,.10);
+      background:rgba(15,23,42,.05);
+      color:#0f172a;
     }
 
     #${ROOT_ID} .cap-grid-3{
@@ -137,40 +142,57 @@ function injectStyles() {
     }
 
     #${ROOT_ID} .cap-metric{
-      padding:12px;
+      padding:14px;
       border-radius:12px;
-      background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.08);
+      background:#f8fafc;
+      border:1px solid rgba(15,23,42,.08);
+      box-shadow:0 8px 24px rgba(15,23,42,.05);
+      color:#0f172a;
     }
 
     #${ROOT_ID} .cap-metric-value{
       font-weight:900;
       font-size:22px;
-      line-height:1.1;
+      line-height:1.3;
+      color:#0f172a;
     }
 
     #${ROOT_ID} .cap-action-box{
       padding:14px;
       border-radius:12px;
-      background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.08);
+      background:#f8fafc;
+      border:1px solid rgba(15,23,42,.08);
+      box-shadow:0 8px 24px rgba(15,23,42,.05);
+      color:#0f172a;
     }
 
     #${ROOT_ID} .cap-action-text{
       font-weight:700;
-      line-height:1.45;
+      line-height:1.5;
+      color:#0f172a;
     }
 
     #${ROOT_ID} .small{
       font-size:12px;
-      opacity:.75;
+      line-height:1.4;
+      color:rgba(15,23,42,.62);
       margin-bottom:6px;
+      font-weight:700;
     }
 
     #${ROOT_ID} .meta{
       font-size:14px;
-      line-height:1.45;
-      opacity:.9;
+      line-height:1.5;
+      color:rgba(15,23,42,.74);
+    }
+
+    #${ROOT_ID} .cap-bullet-list{
+      display:flex;
+      flex-direction:column;
+      gap:7px;
+      margin-top:10px;
+      color:rgba(15,23,42,.82);
+      line-height:1.5;
     }
 
     @media (max-width: 720px){
@@ -194,7 +216,7 @@ function setHeaderContext() {
   const selectedDistrict = getDistrictFromUrl();
   const selectedRegion = getRegionFromUrl();
 
-  setText("apContext", `Org: ${orgId} | Role: ${role} | Commercial Action Plan`);
+  setText("apContext", `Org: ${orgId} | Role: ${role} | Action Plan`);
 
   let scopeText = "Scope: Assigned commercial access";
   if (selectedStore) {
@@ -217,6 +239,7 @@ function setupViewSelector() {
   const selectedStore = resolveSelectedStore();
   const selectedDistrict = getDistrictFromUrl();
   const selectedRegion = getRegionFromUrl();
+  const orgId = String(readSession()?.orgId || "").trim();
 
   selector.value = "sm";
 
@@ -224,12 +247,18 @@ function setupViewSelector() {
     const view = String(e.target.value || "").trim();
 
     if (view === "vp") {
-      window.location.href = "./commercial-vp.html";
+      const next = new URL("./commercial-vp.html", window.location.href);
+      if (orgId) next.searchParams.set("org", orgId);
+      if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
+      if (selectedStore) next.searchParams.set("store", selectedStore);
+      window.location.href = next.toString();
       return;
     }
 
     if (view === "rm") {
       const next = new URL("./commercial-rm.html", window.location.href);
+      if (orgId) next.searchParams.set("org", orgId);
       if (selectedRegion) next.searchParams.set("region", selectedRegion);
       if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
       if (selectedStore) next.searchParams.set("store", selectedStore);
@@ -239,6 +268,7 @@ function setupViewSelector() {
 
     if (view === "dm") {
       const next = new URL("./commercial-dm.html", window.location.href);
+      if (orgId) next.searchParams.set("org", orgId);
       if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
       if (selectedRegion) next.searchParams.set("region", selectedRegion);
       if (selectedStore) next.searchParams.set("store", selectedStore);
@@ -246,13 +276,12 @@ function setupViewSelector() {
       return;
     }
 
-    if (view === "sm") {
-      const next = new URL("./commercial-action-plan.html", window.location.href);
-      if (selectedStore) next.searchParams.set("store", selectedStore);
-      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
-      if (selectedRegion) next.searchParams.set("region", selectedRegion);
-      window.location.href = next.toString();
-    }
+    const next = new URL("./commercial-action-plan.html", window.location.href);
+    if (orgId) next.searchParams.set("org", orgId);
+    if (selectedStore) next.searchParams.set("store", selectedStore);
+    if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
+    if (selectedRegion) next.searchParams.set("region", selectedRegion);
+    window.location.href = next.toString();
   });
 }
 
@@ -390,7 +419,7 @@ function renderLocked(title, line1, line2 = "") {
     <div class="card" style="margin-bottom:18px;">
       <h2>${title}</h2>
       <div class="meta">${line1}</div>
-      ${line2 ? `<div class="meta" style="margin-top:8px;opacity:.85;">${line2}</div>` : ""}
+      ${line2 ? `<div class="meta" style="margin-top:8px;">${line2}</div>` : ""}
     </div>
   `);
 }
@@ -417,7 +446,7 @@ function renderLiveActionPlan(truth) {
         <div>
           <div class="small">Primary correction this week</div>
           <h2 style="margin:4px 0 8px 0;">${narrative.headline}</h2>
-          <div class="meta">Scope: <b>Store — ${prettyLabel(truth.storeId)}</b></div>
+          <div class="meta">Scope: <b>${prettyLabel(truth.storeId)}</b></div>
           <div class="meta" style="margin-top:6px;">Reference: <b>${baselineLabel}</b> → <b>${weekLabel}</b></div>
         </div>
         <div class="cap-badge">Execution Plan</div>
@@ -440,9 +469,9 @@ function renderLiveActionPlan(truth) {
 
       <div class="hr"></div>
 
-      <div style="font-weight:800;margin-bottom:6px;">Why this needs attention</div>
-      <div class="meta" style="margin-bottom:10px;opacity:.92;">${narrative.driverNote}</div>
-      <div class="meta" style="opacity:.95;">${narrative.interpretation}</div>
+      <div style="font-weight:800;margin-bottom:6px;color:#0f172a;">Why this needs attention</div>
+      <div class="meta" style="margin-bottom:10px;">${narrative.driverNote}</div>
+      <div class="meta">${narrative.interpretation}</div>
     </div>
 
     <div class="card" style="margin-bottom:18px;">
@@ -461,17 +490,17 @@ function renderLiveActionPlan(truth) {
 
     <div class="card" style="margin-bottom:18px;">
       <h3 style="margin:0 0 8px 0;">Operational Discipline This Week</h3>
-      <div style="display:flex;flex-direction:column;gap:7px;margin-top:10px;">
+      <div class="cap-bullet-list">
         ${narrative.discipline.map(x => `<div>• ${x}</div>`).join("")}
       </div>
     </div>
 
     <div class="card">
       <h3 style="margin:0 0 8px 0;">Supporting Context</h3>
-      <div class="meta" style="margin-bottom:10px;opacity:.86;">
+      <div class="meta" style="margin-bottom:10px;">
         Additional correction ideas remain visible, but execution should begin with the primary and secondary holds above.
       </div>
-      <div style="display:flex;flex-direction:column;gap:7px;">
+      <div class="cap-bullet-list">
         ${narrative.priorities.map(x => `<div>• ${x}</div>`).join("")}
       </div>
     </div>
@@ -490,22 +519,22 @@ async function loadCommercialActionPlan() {
     if (truth?.storeId) setStoredActiveStore(truth.storeId);
 
     if (truth.state === "missing_context") {
-      renderLocked("Commercial Action Plan", "Missing org or store context.");
+      renderLocked("Action Plan", "Missing org or store context.");
       return;
     }
 
     if (truth.state === "pending_baseline") {
       renderLocked(
-        `Commercial Action Plan — ${prettyLabel(truth.storeId || resolvedStore)}`,
+        `Action Plan — ${prettyLabel(truth.storeId || resolvedStore)}`,
         "A pending baseline exists, but it is not approved yet.",
-        "Approve the commercial baseline before generating a live action plan."
+        "Approve the baseline before generating a live action plan."
       );
       return;
     }
 
     if (truth.state === "missing_baseline") {
       renderLocked(
-        `Commercial Action Plan — ${prettyLabel(truth.storeId || resolvedStore)}`,
+        `Action Plan — ${prettyLabel(truth.storeId || resolvedStore)}`,
         "No approved baseline found for this store."
       );
       return;
@@ -513,7 +542,7 @@ async function loadCommercialActionPlan() {
 
     if (truth.state === "baseline_only") {
       renderLocked(
-        `Commercial Action Plan — ${prettyLabel(truth.storeId || resolvedStore)}`,
+        `Action Plan — ${prettyLabel(truth.storeId || resolvedStore)}`,
         "Approved baseline exists, but no approved weekly upload has been saved yet.",
         "Save an approved weekly upload to generate a live action plan."
       );
@@ -523,7 +552,7 @@ async function loadCommercialActionPlan() {
     renderLiveActionPlan(truth);
   } catch (e) {
     console.error("[commercial-action-plan] load failed:", e);
-    renderLocked("Commercial Action Plan", "Unable to load commercial action plan right now.");
+    renderLocked("Action Plan", "Unable to load action plan right now.");
   }
 }
 
