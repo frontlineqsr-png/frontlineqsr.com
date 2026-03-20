@@ -3,362 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FrontlineQSR | Commercial Portal</title>
+  <title>FrontlineQSR | Portal</title>
   <link rel="stylesheet" href="assets/styles.css" />
   <meta name="robots" content="noindex" />
-
-  <style>
-    :root{
-      --bg-1:#0b1220;
-      --bg-2:#0a1020;
-      --bg-3:#070b14;
-      --card-bg:rgba(255,255,255,.95);
-      --card-border:rgba(15,23,42,.12);
-      --text:#0f172a;
-      --muted:rgba(15,23,42,.74);
-      --line:rgba(15,23,42,.10);
-      --shadow:0 18px 50px rgba(0,0,0,.35);
-      --radius:16px;
-      --brand-glow:rgba(80,200,255,.18);
-      --tab-bg:rgba(15,23,42,.06);
-      --tab-active:#111827;
-      --tab-active-text:#fff;
-      --good:#166534;
-      --bad:#991b1b;
-      --pending:#92400e;
-      --soft:#f8fafc;
-    }
-
-    *{ box-sizing:border-box; }
-
-    body{
-      margin:0;
-      color:#fff;
-      background:
-        radial-gradient(1200px 700px at 50% 0%, rgba(255,255,255,0.10), rgba(0,0,0,0) 60%),
-        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 55%, var(--bg-3) 100%);
-      font-family: Georgia, "Times New Roman", serif;
-    }
-
-    .page{ min-height:100vh; }
-    .hero{ padding:28px 16px 56px; }
-    .shell{ max-width:1100px; margin:0 auto; }
-
-    .brand-bar{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:12px;
-      margin-bottom:18px;
-      padding:12px 16px;
-      border-radius:14px;
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.08);
-      box-shadow:0 10px 30px rgba(0,0,0,.20);
-      backdrop-filter:blur(6px);
-    }
-
-    .brand-mark{
-      width:48px;
-      height:48px;
-      border-radius:12px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      overflow:hidden;
-      background:rgba(255,255,255,.10);
-      box-shadow:0 0 24px var(--brand-glow);
-      flex:0 0 auto;
-    }
-
-    .brand-mark img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      display:block;
-    }
-
-    .brand-title{
-      margin:0;
-      font-size:18px;
-      font-weight:800;
-      color:#fff;
-      line-height:1.1;
-    }
-
-    .brand-sub{
-      margin:3px 0 0;
-      font-size:12px;
-      color:rgba(255,255,255,.76);
-    }
-
-    .anchor{
-      text-align:center;
-      letter-spacing:.2px;
-      font-weight:800;
-      opacity:.86;
-      margin:0 0 14px;
-      font-size:13px;
-    }
-
-    .page-card{
-      margin:0 auto;
-      padding:24px;
-      border-radius:var(--radius);
-      background:var(--card-bg);
-      border:1px solid var(--card-border);
-      box-shadow:var(--shadow);
-      color:var(--text);
-    }
-
-    .header-row{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:16px;
-      margin-bottom:18px;
-    }
-
-    .title{
-      margin:0 0 10px 0;
-      font-weight:900;
-      font-size:30px;
-      line-height:1.1;
-    }
-
-    .sub{
-      margin:0;
-      color:var(--muted);
-      line-height:1.5;
-      font-size:15px;
-    }
-
-    .status-wrap{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      margin-top:14px;
-    }
-
-    .status-pill{
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      padding:8px 12px;
-      border-radius:999px;
-      background:rgba(15,23,42,.06);
-      border:1px solid rgba(15,23,42,.08);
-      color:var(--muted);
-      font-size:13px;
-      font-weight:700;
-    }
-
-    .status-dot{
-      width:8px;
-      height:8px;
-      border-radius:999px;
-      background:#22c55e;
-    }
-
-    .hr{
-      height:1px;
-      background:var(--line);
-      border:0;
-      margin:18px 0;
-    }
-
-    .actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-
-    .btnx{
-      padding:12px 16px;
-      border-radius:12px;
-      border:1px solid rgba(15,23,42,.12);
-      background:#111827;
-      color:#fff;
-      cursor:pointer;
-      font-weight:800;
-      font-size:14px;
-    }
-
-    .btnx.secondary{
-      background:#fff;
-      color:#111827;
-    }
-
-    .view-select{
-      min-width:220px;
-      padding:12px 14px;
-      border-radius:12px;
-      border:1px solid rgba(15,23,42,.12);
-      background:#fff;
-      color:#111827;
-      font-weight:800;
-      font-size:14px;
-      outline:none;
-      cursor:pointer;
-    }
-
-    .view-select:focus{
-      border-color:rgba(15,23,42,.28);
-      box-shadow:0 0 0 3px rgba(15,23,42,.08);
-    }
-
-    .tabs{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin:0 0 18px 0;
-      padding:8px;
-      border-radius:14px;
-      background:rgba(15,23,42,.06);
-      border:1px solid rgba(15,23,42,.08);
-    }
-
-    .tab-btn{
-      border:0;
-      background:transparent;
-      color:#0f172a;
-      padding:10px 14px;
-      border-radius:10px;
-      font-weight:800;
-      cursor:pointer;
-      font-size:14px;
-    }
-
-    .tab-btn.active{
-      background:#111827;
-      color:#fff;
-    }
-
-    .tab-panel{
-      display:none;
-    }
-
-    .tab-panel.active{
-      display:block;
-    }
-
-    .section-title{
-      margin:0 0 10px;
-      font-size:22px;
-      font-weight:900;
-    }
-
-    .kpi-grid{
-      display:grid;
-      grid-template-columns:repeat(4, minmax(0, 1fr));
-      gap:14px;
-      margin-bottom:16px;
-    }
-
-    .kpi-card{
-      background:var(--soft);
-      border:1px solid rgba(15,23,42,.08);
-      border-radius:14px;
-      padding:16px;
-      min-height:118px;
-    }
-
-    .kpi-label{
-      margin:0 0 8px;
-      font-size:13px;
-      color:var(--muted);
-      font-weight:700;
-    }
-
-    .kpi-value{
-      margin:0;
-      font-size:28px;
-      line-height:1;
-      font-weight:900;
-      color:var(--text);
-    }
-
-    .kpi-sub{
-      margin:10px 0 0;
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.4;
-    }
-
-    .kpi-delta{
-      margin:8px 0 0;
-      font-size:13px;
-      font-weight:800;
-    }
-
-    .kpi-delta.good{ color:var(--good); }
-    .kpi-delta.bad{ color:var(--bad); }
-    .kpi-delta.pending{ color:var(--pending); }
-
-    .info-box{
-      border-radius:14px;
-      padding:16px;
-      border:1px solid rgba(15,23,42,.08);
-      background:rgba(15,23,42,.03);
-      color:var(--text);
-    }
-
-    .info-box h4{
-      margin:0 0 8px;
-      font-size:16px;
-      font-weight:900;
-    }
-
-    .info-box p{
-      margin:0;
-      font-size:14px;
-      line-height:1.5;
-      color:var(--muted);
-    }
-
-    .meta-grid{
-      display:grid;
-      grid-template-columns:repeat(2, minmax(0, 1fr));
-      gap:14px;
-      margin-top:14px;
-    }
-
-    @media (max-width: 900px){
-      .kpi-grid{
-        grid-template-columns:repeat(2, minmax(0, 1fr));
-      }
-      .meta-grid{
-        grid-template-columns:1fr;
-      }
-    }
-
-    @media (max-width:640px){
-      .hero{ padding:22px 14px 44px; }
-      .brand-bar{ justify-content:flex-start; }
-      .page-card{ padding:18px; }
-      .title{ font-size:26px; }
-
-      .header-row{
-        flex-direction:column;
-      }
-
-      .actions{
-        width:100%;
-      }
-
-      .actions .btnx,
-      .actions .view-select{
-        width:100%;
-        box-sizing:border-box;
-        text-align:center;
-      }
-
-      .kpi-grid{
-        grid-template-columns:1fr;
-      }
-    }
-  </style>
 
   <script type="module">
     import { bootCommercialPage } from "./assets/commercial-page-boot.js";
@@ -379,35 +26,34 @@
           <div class="brand-mark">
             <img src="assets/restaurant-excellence-system.png" alt="Restaurant Excellence System logo" />
           </div>
-          <div>
+          <div class="brand-copy">
             <p class="brand-title">Restaurant Excellence System™</p>
-            <p class="brand-sub">Powered by FrontlineQSR — Commercial leadership workspace</p>
+            <p class="brand-sub">Powered by FrontlineQSR</p>
           </div>
         </div>
 
-        <p class="anchor">Commercial — Store Manager</p>
+        <p class="anchor">Store Manager</p>
 
         <div class="page-card">
 
           <div class="header-row">
-            <div>
-              <h2 class="title">Store Manager Portal</h2>
-
+            <div class="header-copy">
+              <h1 class="title">Portal</h1>
               <p id="sessionInfo" class="sub">Loading session…</p>
-              <p id="smContext" class="sub" style="margin-top:8px;"></p>
-              <p id="activeStore" class="sub" style="margin-top:8px;"></p>
+              <p id="smContext" class="sub sub-tight"></p>
+              <p id="activeStore" class="sub sub-tight"></p>
 
               <div class="status-wrap">
                 <div class="status-pill">
                   <span class="status-dot"></span>
-                  Store access active
+                  Access active
                 </div>
                 <div class="status-pill">Baseline Year: 2026</div>
-                <div class="status-pill">Upload Cadence: Weekly</div>
+                <div class="status-pill">Weekly uploads</div>
               </div>
             </div>
 
-            <div class="actions">
+            <div class="header-actions">
               <select id="viewSelector" class="view-select" aria-label="View selector">
                 <option value="vp">Enterprise View</option>
                 <option value="rm">Region View</option>
@@ -429,65 +75,65 @@
           </div>
 
           <section class="tab-panel active" id="tab-kpis">
-            <h3 class="section-title">KPIs</h3>
-            <p class="sub" style="margin-bottom:14px;">Review store performance against the approved baseline.</p>
+            <h2 class="section-title">KPIs</h2>
+            <p class="section-sub">Review store performance against the approved baseline.</p>
 
             <div class="kpi-grid">
               <div class="kpi-card">
                 <p class="kpi-label">Sales</p>
                 <p class="kpi-value" id="kpiSalesValue">—</p>
-                <p class="kpi-delta pending" id="kpiSalesDelta">Awaiting approved commercial data</p>
+                <p class="kpi-delta pending" id="kpiSalesDelta">Awaiting approved data</p>
                 <p class="kpi-sub" id="kpiSalesSub">Latest approved week vs baseline weekly equivalent</p>
               </div>
 
               <div class="kpi-card">
                 <p class="kpi-label">Transactions</p>
                 <p class="kpi-value" id="kpiTransactionsValue">—</p>
-                <p class="kpi-delta pending" id="kpiTransactionsDelta">Awaiting approved commercial data</p>
+                <p class="kpi-delta pending" id="kpiTransactionsDelta">Awaiting approved data</p>
                 <p class="kpi-sub" id="kpiTransactionsSub">Latest approved week vs baseline weekly equivalent</p>
               </div>
 
               <div class="kpi-card">
                 <p class="kpi-label">Labor %</p>
                 <p class="kpi-value" id="kpiLaborPctValue">—</p>
-                <p class="kpi-delta pending" id="kpiLaborPctDelta">Awaiting approved commercial data</p>
+                <p class="kpi-delta pending" id="kpiLaborPctDelta">Awaiting approved data</p>
                 <p class="kpi-sub" id="kpiLaborPctSub">Latest approved week vs approved baseline</p>
               </div>
 
               <div class="kpi-card">
                 <p class="kpi-label">Average Ticket</p>
                 <p class="kpi-value" id="kpiAvgTicketValue">—</p>
-                <p class="kpi-delta pending" id="kpiAvgTicketDelta">Awaiting approved commercial data</p>
+                <p class="kpi-delta pending" id="kpiAvgTicketDelta">Awaiting approved data</p>
                 <p class="kpi-sub" id="kpiAvgTicketSub">Latest approved week vs approved baseline</p>
               </div>
             </div>
 
             <div class="meta-grid">
               <div class="info-box">
-                <h4>Baseline Status</h4>
-                <p id="baselineStatusText">No approved commercial baseline loaded for this selected store yet.</p>
+                <h3>Baseline Status</h3>
+                <p id="baselineStatusText">No approved baseline loaded yet.</p>
               </div>
 
               <div class="info-box">
-                <h4>Weekly Upload Status</h4>
-                <p id="weeklyStatusText">No approved weekly commercial upload loaded for this selected store yet.</p>
+                <h3>Weekly Upload Status</h3>
+                <p id="weeklyStatusText">No approved weekly upload loaded yet.</p>
               </div>
             </div>
           </section>
 
           <section class="tab-panel" id="tab-shift-insight">
-            <h3>Shift Insight</h3>
-            <p class="sub">Identify operational patterns shaping store performance.</p>
+            <h2 class="section-title">Shift Insight</h2>
+            <p class="section-sub">Identify operational patterns shaping store performance.</p>
           </section>
 
           <section class="tab-panel" id="tab-action-plan">
-            <h3>Action Plan</h3>
-            <p class="sub">Translate signals into specific leadership action.</p>
+            <h2 class="section-title">Action Plan</h2>
+            <p class="section-sub">Translate signals into specific leadership action.</p>
           </section>
 
           <section class="tab-panel" id="tab-progress">
-            <h3>Progress</h3>
-            <p class="sub">Track progress against the approved baseline.</p>
+            <h2 class="section-title">Progress</h2>
+            <p class="section-sub">Track performance against the approved baseline over time.</p>
           </section>
 
         </div>
@@ -495,7 +141,6 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-portal.js?v=6"></script>
-
+  <script type="module" src="assets/commercial-portal.js?v=7"></script>
 </body>
 </html>
