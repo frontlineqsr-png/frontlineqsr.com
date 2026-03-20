@@ -1,8 +1,8 @@
-// /assets/commercial-progress.js (v5)
-// Commercial Progress — unified KPI engine
-// ✅ Uses shared KPI engine (FIXED)
-// ✅ Baseline weekly vs all weeks
-// ✅ WoW + trend + heat map
+// /assets/commercial-progress.js (v6)
+// Progress — trend-first UX
+// ✅ Uses shared KPI engine
+// ✅ WoW is primary signal
+// ✅ Baseline comparison is neutral reference
 // 🚫 No KPI math changes
 
 import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
@@ -10,8 +10,6 @@ import { computeKpisFromRows } from "./core-kpi-engine.js";
 
 const ROOT_ID = "commercialProgressRoot";
 const $ = (id) => document.getElementById(id);
-
-const LS_COMM_ACTIVE_STORE = "FLQSR_COMM_ACTIVE_STORE_ID";
 
 /* ---------------- helpers ---------------- */
 
@@ -41,11 +39,6 @@ function resolveSelectedStore() {
   ).trim();
 }
 
-function setText(id, text) {
-  const el = $(id);
-  if (el) el.textContent = text;
-}
-
 function setHtml(id, html) {
   const el = $(id);
   if (el) el.innerHTML = html;
@@ -69,7 +62,11 @@ function injectStyles() {
       border:1px solid rgba(255,255,255,.08);
       background:rgba(255,255,255,.04);
       border-radius:14px;
-      padding:14px;
+      padding:16px;
+    }
+
+    #${ROOT_ID} .progCard + .progCard{
+      margin-top:14px;
     }
 
     #${ROOT_ID} .progGrid3{
@@ -79,20 +76,87 @@ function injectStyles() {
       margin-top:14px;
     }
 
+    #${ROOT_ID} .progMetric{
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03);
+      border-radius:12px;
+      padding:14px;
+    }
+
+    #${ROOT_ID} .progMetricLabel{
+      font-size:12px;
+      opacity:.76;
+      margin-bottom:6px;
+    }
+
     #${ROOT_ID} .progMetricValue{
       font-size:24px;
       font-weight:900;
+      line-height:1.1;
+      margin-bottom:8px;
     }
 
-    #${ROOT_ID} .progHeatCell{
-      padding:6px 10px;
-      border-radius:8px;
+    #${ROOT_ID} .progMetricTrend{
+      font-size:13px;
+      font-weight:800;
+      margin-bottom:6px;
+    }
+
+    #${ROOT_ID} .progMetricBase{
+      font-size:12px;
+      opacity:.78;
+      line-height:1.4;
+    }
+
+    #${ROOT_ID} .trend-good{
+      color:#22c55e;
+    }
+
+    #${ROOT_ID} .trend-bad{
+      color:#ef4444;
+    }
+
+    #${ROOT_ID} .trend-neutral{
+      color:#f59e0b;
+    }
+
+    #${ROOT_ID} .progTableWrap{
+      overflow:auto;
+      margin-top:12px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:12px;
+    }
+
+    #${ROOT_ID} table{
+      width:100%;
+      min-width:760px;
+      border-collapse:collapse;
+    }
+
+    #${ROOT_ID} th,
+    #${ROOT_ID} td{
+      padding:10px 12px;
+      text-align:left;
+      border-bottom:1px solid rgba(255,255,255,.06);
+      font-size:13px;
+      vertical-align:top;
+    }
+
+    #${ROOT_ID} th{
       font-weight:900;
+      background:rgba(255,255,255,.04);
     }
 
-    .heat-good{ color:#22c55e; }
-    .heat-bad{ color:#ef4444; }
-    .heat-watch{ color:#f59e0b; }
+    #${ROOT_ID} .refText{
+      opacity:.78;
+      font-size:12px;
+    }
+
+    @media (max-width: 900px){
+      #${ROOT_ID} .progGrid3{
+        grid-template-columns:1fr;
+      }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -107,8 +171,41 @@ function fmtMoney(x) {
   });
 }
 
+function fmtMoneySigned(x) {
+  const n = Number(x || 0);
+  const abs = Math.abs(n).toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0
+  });
+  return `${n > 0 ? "+" : n < 0 ? "−" : ""}${abs.replace("-", "")}`;
+}
+
+function fmtInt(x) {
+  return Number(x || 0).toLocaleString(undefined, {
+    maximumFractionDigits: 0
+  });
+}
+
+function fmtIntSigned(x) {
+  const n = Number(x || 0);
+  const abs = Math.abs(n).toLocaleString(undefined, {
+    maximumFractionDigits: 0
+  });
+  return `${n > 0 ? "+" : n < 0 ? "−" : ""}${abs.replace("-", "")}`;
+}
+
 function fmtPct(x) {
-  return (Number(x || 0)).toFixed(2) + "%";
+  const n = Number(x);
+  if (!isFinite(n)) return "—";
+  return `${n.toFixed(2)}%`;
+}
+
+function fmtPtsSigned(x) {
+  const n = Number(x);
+  if (!isFinite(n)) return "—";
+  const abs = Math.abs(n).toFixed(2);
+  return `${n > 0 ? "+" : n < 0 ? "−" : ""}${abs}`;
 }
 
 function delta(a, b) {
@@ -120,16 +217,69 @@ function pctDelta(a, b) {
   return ((a - b) / b) * 100;
 }
 
-function heatClass(val) {
-  if (val > 2) return "heat-good";
-  if (val < -2) return "heat-bad";
-  return "heat-watch";
+function trendClass(deltaValue, favorableDirection = "up") {
+  const n = Number(deltaValue);
+  if (!isFinite(n) || n === 0) return "trend-neutral";
+  if (favorableDirection === "down") {
+    return n < 0 ? "trend-good" : "trend-bad";
+  }
+  return n > 0 ? "trend-good" : "trend-bad";
+}
+
+function baselineRefClass(deltaPct) {
+  const n = Number(deltaPct);
+  if (!isFinite(n)) return "trend-neutral";
+  if (Math.abs(n) <= 2) return "trend-neutral";
+  return n > 0 ? "trend-good" : "trend-bad";
 }
 
 /* ---------------- render ---------------- */
 
 function renderLocked(msg) {
   setHtml(ROOT_ID, `<div class="card"><h2>${msg}</h2></div>`);
+}
+
+function buildSummaryMetrics(latest, baseline) {
+  const wowSales = latest.wow ? latest.wow.sales : null;
+  const wowTx = latest.wow ? latest.wow.tx : null;
+  const wowLabor = latest.wow ? latest.wow.labor : null;
+
+  return `
+    <div class="progGrid3">
+      <div class="progMetric">
+        <div class="progMetricLabel">Sales</div>
+        <div class="progMetricValue">${fmtMoney(latest.k.sales)}</div>
+        <div class="progMetricTrend ${trendClass(wowSales, "up")}">
+          ${latest.wow ? `${fmtMoneySigned(wowSales)} vs last week` : "No prior week yet"}
+        </div>
+        <div class="progMetricBase ${baselineRefClass(latest.vsBase.sales)}">
+          Reference: ${latest.vsBase.sales.toFixed(1)}% vs baseline week
+        </div>
+      </div>
+
+      <div class="progMetric">
+        <div class="progMetricLabel">Transactions</div>
+        <div class="progMetricValue">${fmtInt(latest.k.transactions)}</div>
+        <div class="progMetricTrend ${trendClass(wowTx, "up")}">
+          ${latest.wow ? `${fmtIntSigned(wowTx)} vs last week` : "No prior week yet"}
+        </div>
+        <div class="progMetricBase ${baselineRefClass(latest.vsBase.tx)}">
+          Reference: ${latest.vsBase.tx.toFixed(1)}% vs baseline week
+        </div>
+      </div>
+
+      <div class="progMetric">
+        <div class="progMetricLabel">Labor %</div>
+        <div class="progMetricValue">${fmtPct(latest.k.laborPct)}</div>
+        <div class="progMetricTrend ${trendClass(wowLabor, "down")}">
+          ${latest.wow ? `${fmtPtsSigned(wowLabor)} pts vs last week` : "No prior week yet"}
+        </div>
+        <div class="progMetricBase ${baselineRefClass(-latest.vsBase.labor)}">
+          Reference: ${fmtPtsSigned(latest.vsBase.labor)} pts vs baseline
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderProgress(truth) {
@@ -169,51 +319,50 @@ function renderProgress(truth) {
     <tr>
       <td>${r.label}</td>
       <td>${fmtMoney(r.k.sales)}</td>
-      <td>${r.k.transactions}</td>
+      <td>${fmtInt(r.k.transactions)}</td>
       <td>${fmtPct(r.k.laborPct)}</td>
-      <td class="${heatClass(r.vsBase.sales)}">${r.vsBase.sales.toFixed(1)}%</td>
+      <td class="${r.wow ? trendClass(r.wow.sales, "up") : "trend-neutral"}">
+        ${r.wow ? fmtMoneySigned(r.wow.sales) : "—"}
+      </td>
+      <td class="${r.wow ? trendClass(r.wow.tx, "up") : "trend-neutral"}">
+        ${r.wow ? fmtIntSigned(r.wow.tx) : "—"}
+      </td>
+      <td class="${r.wow ? trendClass(r.wow.labor, "down") : "trend-neutral"}">
+        ${r.wow ? `${fmtPtsSigned(r.wow.labor)} pts` : "—"}
+      </td>
+      <td class="${baselineRefClass(r.vsBase.sales)}">
+        ${r.vsBase.sales.toFixed(1)}%
+        <div class="refText">vs baseline sales</div>
+      </td>
     </tr>
   `).join("");
 
   setHtml(ROOT_ID, `
     <div class="progCard">
       <h2>Progress — ${prettyLabel(truth.storeId)}</h2>
-
-      <div class="progGrid3">
-        <div>
-          <div>Sales</div>
-          <div class="progMetricValue">${fmtMoney(latest.k.sales)}</div>
-          <div>${latest.vsBase.sales.toFixed(1)}% vs baseline</div>
-        </div>
-
-        <div>
-          <div>Transactions</div>
-          <div class="progMetricValue">${latest.k.transactions}</div>
-          <div>${latest.vsBase.tx.toFixed(1)}% vs baseline</div>
-        </div>
-
-        <div>
-          <div>Labor %</div>
-          <div class="progMetricValue">${fmtPct(latest.k.laborPct)}</div>
-          <div>${latest.vsBase.labor.toFixed(2)} vs baseline</div>
-        </div>
-      </div>
+      <div class="refText">Trend view uses week-over-week movement as the primary signal. Baseline remains a reference point.</div>
+      ${buildSummaryMetrics(latest, baseline)}
     </div>
 
-    <div class="progCard" style="margin-top:14px;">
+    <div class="progCard">
       <h3>Weekly Trend</h3>
-      <table style="width:100%;margin-top:10px;">
-        <thead>
-          <tr>
-            <th>Week</th>
-            <th>Sales</th>
-            <th>Tx</th>
-            <th>Labor %</th>
-            <th>vs Base</th>
-          </tr>
-        </thead>
-        <tbody>${table}</tbody>
-      </table>
+      <div class="progTableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Week</th>
+              <th>Sales</th>
+              <th>Transactions</th>
+              <th>Labor %</th>
+              <th>WoW Sales</th>
+              <th>WoW Tx</th>
+              <th>WoW Labor</th>
+              <th>Baseline Ref</th>
+            </tr>
+          </thead>
+          <tbody>${table}</tbody>
+        </table>
+      </div>
     </div>
   `);
 }
