@@ -1,10 +1,10 @@
-// /assets/commercial-shift-insight.js (v3)
-// Commercial Shift Insight — live store-level wiring
+// /assets/commercial-shift-insight.js (v4)
+// Commercial Shift Insight — unified light-card commercial design
 // ✅ Uses commercial-kpi-data.js shared adapter
 // ✅ Resolves active store from URL, session, localStorage, or assigned stores
 // ✅ Uses approved baseline + latest approved week + previous week
-// ✅ Matches pilot shift-insight hierarchy
 // ✅ Honest fallback if shift/daypart data is not present
+// ✅ Matches commercial light-card system
 // 🚫 No KPI math changes
 
 import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
@@ -149,6 +149,7 @@ function setupViewSelector() {
   const selectedStore = resolveSelectedStore();
   const selectedDistrict = getDistrictFromUrl();
   const selectedRegion = getRegionFromUrl();
+  const orgId = String(readSession()?.orgId || "").trim();
 
   selector.value = "sm";
 
@@ -156,12 +157,18 @@ function setupViewSelector() {
     const view = String(e.target.value || "").trim();
 
     if (view === "vp") {
-      window.location.href = "./commercial-vp.html";
+      const next = new URL("./commercial-vp.html", window.location.href);
+      if (orgId) next.searchParams.set("org", orgId);
+      if (selectedRegion) next.searchParams.set("region", selectedRegion);
+      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
+      if (selectedStore) next.searchParams.set("store", selectedStore);
+      window.location.href = next.toString();
       return;
     }
 
     if (view === "rm") {
       const next = new URL("./commercial-rm.html", window.location.href);
+      if (orgId) next.searchParams.set("org", orgId);
       if (selectedRegion) next.searchParams.set("region", selectedRegion);
       if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
       if (selectedStore) next.searchParams.set("store", selectedStore);
@@ -171,6 +178,7 @@ function setupViewSelector() {
 
     if (view === "dm") {
       const next = new URL("./commercial-dm.html", window.location.href);
+      if (orgId) next.searchParams.set("org", orgId);
       if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
       if (selectedRegion) next.searchParams.set("region", selectedRegion);
       if (selectedStore) next.searchParams.set("store", selectedStore);
@@ -178,13 +186,12 @@ function setupViewSelector() {
       return;
     }
 
-    if (view === "sm") {
-      const next = new URL("./commercial-shift-insight.html", window.location.href);
-      if (selectedStore) next.searchParams.set("store", selectedStore);
-      if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
-      if (selectedRegion) next.searchParams.set("region", selectedRegion);
-      window.location.href = next.toString();
-    }
+    const next = new URL("./commercial-shift-insight.html", window.location.href);
+    if (orgId) next.searchParams.set("org", orgId);
+    if (selectedStore) next.searchParams.set("store", selectedStore);
+    if (selectedDistrict) next.searchParams.set("district", selectedDistrict);
+    if (selectedRegion) next.searchParams.set("region", selectedRegion);
+    window.location.href = next.toString();
   });
 }
 
@@ -204,15 +211,22 @@ function injectShiftInsightStyles() {
   const style = document.createElement("style");
   style.id = "commercialShiftInsightStyles";
   style.textContent = `
+    #shiftInsightRoot{
+      color:#0f172a;
+    }
+
     #shiftInsightRoot .small{
       font-size:12px;
-      opacity:.75;
+      line-height:1.4;
+      color:rgba(15,23,42,.62);
       margin-bottom:6px;
+      font-weight:700;
     }
 
     #shiftInsightRoot .meta{
       font-size:14px;
-      line-height:1.45;
+      line-height:1.5;
+      color:rgba(15,23,42,.74);
     }
 
     #shiftInsightRoot .csi-badge{
@@ -223,26 +237,27 @@ function injectShiftInsightStyles() {
       border-radius:999px;
       font-size:12px;
       font-weight:800;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.04);
+      border:1px solid rgba(15,23,42,.10);
+      background:rgba(15,23,42,.05);
+      color:#0f172a;
     }
 
     #shiftInsightRoot .csi-high{
-      background:rgba(153,27,27,.14);
-      color:#fecaca;
-      border-color:rgba(153,27,27,.35);
+      background:rgba(185,28,28,.08);
+      color:#991b1b;
+      border-color:rgba(185,28,28,.14);
     }
 
     #shiftInsightRoot .csi-watch{
-      background:rgba(180,83,9,.14);
-      color:#fde68a;
-      border-color:rgba(180,83,9,.35);
+      background:rgba(180,83,9,.08);
+      color:#92400e;
+      border-color:rgba(180,83,9,.16);
     }
 
     #shiftInsightRoot .csi-stable{
-      background:rgba(22,101,52,.14);
-      color:#bbf7d0;
-      border-color:rgba(22,101,52,.35);
+      background:rgba(22,101,52,.08);
+      color:#166534;
+      border-color:rgba(22,101,52,.14);
     }
 
     #shiftInsightRoot .csi-metric-grid{
@@ -253,16 +268,18 @@ function injectShiftInsightStyles() {
     }
 
     #shiftInsightRoot .csi-metric{
-      padding:12px;
+      padding:14px;
       border-radius:12px;
-      background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.08);
+      background:#f8fafc;
+      border:1px solid rgba(15,23,42,.08);
+      box-shadow:0 8px 24px rgba(15,23,42,.05);
     }
 
     #shiftInsightRoot .csi-metric-value{
       font-weight:900;
       font-size:22px;
       line-height:1.1;
+      color:#0f172a;
     }
 
     #shiftInsightRoot .csi-coach-grid{
@@ -273,10 +290,11 @@ function injectShiftInsightStyles() {
     }
 
     #shiftInsightRoot .csi-coach-box{
-      padding:12px;
+      padding:14px;
       border-radius:12px;
-      background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.08);
+      background:#f8fafc;
+      border:1px solid rgba(15,23,42,.08);
+      box-shadow:0 8px 24px rgba(15,23,42,.05);
     }
 
     #shiftInsightRoot .csi-secondary-grid{
@@ -289,16 +307,17 @@ function injectShiftInsightStyles() {
     #shiftInsightRoot .csi-secondary-card{
       flex:1;
       min-width:220px;
-      padding:12px;
+      padding:14px;
       border-radius:12px;
-      background:rgba(255,255,255,.04);
-      border:1px solid rgba(255,255,255,.08);
+      background:#f8fafc;
+      border:1px solid rgba(15,23,42,.08);
+      box-shadow:0 8px 24px rgba(15,23,42,.05);
     }
 
     #shiftInsightRoot .csi-note{
       font-size:13px;
-      line-height:1.45;
-      opacity:.86;
+      line-height:1.5;
+      color:rgba(15,23,42,.76);
     }
 
     @media (max-width: 720px){
@@ -598,10 +617,10 @@ function renderFallbackFromTruth(truth) {
       <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:start;">
         <div>
           <div class="small">Primary shift opportunity</div>
-          <h3 style="margin:4px 0 4px 0;">Awaiting Commercial Shift Data</h3>
-          <div class="meta" style="opacity:.88;">${prettyStore}</div>
+          <h3 style="margin:4px 0 4px 0;">Awaiting Shift Data</h3>
+          <div class="meta">${prettyStore}</div>
         </div>
-        <div class="csi-badge">Commercial V3</div>
+        <div class="csi-badge">Live</div>
       </div>
 
       <div class="csi-metric-grid">
@@ -621,9 +640,9 @@ function renderFallbackFromTruth(truth) {
 
       <div class="hr"></div>
 
-      <div style="font-weight:800;margin-bottom:6px;">Why this is pending</div>
+      <div style="font-weight:800;margin-bottom:6px;color:#0f172a;">Why this is pending</div>
       <div class="csi-note">
-        Commercial Shift Insight is now live against the shared commercial truth source, but this selected weekly data does not include enough shift/daypart detail yet to surface one coaching shift.
+        The selected weekly data does not include enough shift or daypart detail yet to isolate one primary coaching shift.
       </div>
 
       <div class="csi-coach-grid">
@@ -633,42 +652,42 @@ function renderFallbackFromTruth(truth) {
         </div>
         <div class="csi-coach-box">
           <div class="small">Next wiring step</div>
-          <div class="csi-note">Use weekly uploads that include Shift / Daypart or time-based rows so the system can isolate one primary shift first, then supporting shifts below.</div>
+          <div class="csi-note">Use weekly uploads that include Shift, Daypart, or time-based rows so the system can surface one primary shift first, then supporting shifts below.</div>
         </div>
       </div>
     </div>
 
     <div class="card" style="margin-bottom:14px;">
       <h3 style="margin:0 0 8px 0;">Coaching Context</h3>
-      <div style="display:flex;flex-direction:column;gap:7px;">
-        <div style="opacity:.92;">• Week lens: latest approved commercial week is loaded when available</div>
-        <div style="opacity:.92;">• Driver: weekly rows do not contain enough shift/daypart detail or no store scope resolved</div>
-        <div style="opacity:.92;">• Rule: once shift detail is present, isolate one shift first — do not coach the whole day</div>
+      <div style="display:flex;flex-direction:column;gap:7px;color:rgba(15,23,42,.78);">
+        <div>• Week lens: latest approved week is loaded when available</div>
+        <div>• Driver: weekly rows do not contain enough shift or daypart detail, or no store scope resolved</div>
+        <div>• Rule: once shift detail is present, isolate one shift first — do not coach the whole day</div>
       </div>
     </div>
 
     <div class="card">
       <h3 style="margin:0 0 8px 0;">Full Day View</h3>
-      <div class="meta" style="margin-bottom:12px;opacity:.86;">
-        Supporting shifts stay available here once commercial weekly rows contain usable shift/daypart detail.
+      <div class="meta" style="margin-bottom:12px;">
+        Supporting shifts stay available here once weekly rows contain usable shift or daypart detail.
       </div>
 
       <div class="csi-secondary-grid">
         <div class="csi-secondary-card">
-          <div style="font-weight:900;">AM</div>
-          <div class="meta" style="opacity:.82;margin:6px 0 10px 0;">Awaiting usable data</div>
+          <div style="font-weight:900;color:#0f172a;">AM</div>
+          <div class="meta" style="margin-top:6px;">Awaiting usable data</div>
         </div>
         <div class="csi-secondary-card">
-          <div style="font-weight:900;">Midday</div>
-          <div class="meta" style="opacity:.82;margin:6px 0 10px 0;">Awaiting usable data</div>
+          <div style="font-weight:900;color:#0f172a;">Midday</div>
+          <div class="meta" style="margin-top:6px;">Awaiting usable data</div>
         </div>
         <div class="csi-secondary-card">
-          <div style="font-weight:900;">PM</div>
-          <div class="meta" style="opacity:.82;margin:6px 0 10px 0;">Awaiting usable data</div>
+          <div style="font-weight:900;color:#0f172a;">PM</div>
+          <div class="meta" style="margin-top:6px;">Awaiting usable data</div>
         </div>
         <div class="csi-secondary-card">
-          <div style="font-weight:900;">Close</div>
-          <div class="meta" style="opacity:.82;margin:6px 0 10px 0;">Awaiting usable data</div>
+          <div style="font-weight:900;color:#0f172a;">Close</div>
+          <div class="meta" style="margin-top:6px;">Awaiting usable data</div>
         </div>
       </div>
     </div>
@@ -713,15 +732,15 @@ function renderLiveShiftInsight(truth, analysis) {
     }
 
     return `
-      <div class="csi-secondary-card" style="opacity:${shiftKey === best.sh ? "1" : ".96"};">
+      <div class="csi-secondary-card" style="opacity:${shiftKey === best.sh ? "1" : ".98"};">
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:start;">
-          <div style="font-weight:900;">${header}</div>
+          <div style="font-weight:900;color:#0f172a;">${header}</div>
           ${badgeHtml}
         </div>
 
-        <div class="meta" style="opacity:.82;margin:6px 0 10px 0;">${status}</div>
+        <div class="meta" style="margin:6px 0 10px 0;">${status}</div>
 
-        <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;color:#0f172a;">
           <div>
             <div class="small">Sales</div>
             <div style="font-weight:800;">${fmtMoney(cur.sales)}</div>
@@ -745,11 +764,11 @@ function renderLiveShiftInsight(truth, analysis) {
         <div>
           <div class="small">Primary shift opportunity</div>
           <h3 style="margin:4px 0 4px 0;">${SHIFT_LABELS[best.sh] || best.sh}</h3>
-          <div class="meta" style="opacity:.88;">${prettyLabel(truth.storeId)} • ${latestWeekLabel}</div>
+          <div class="meta">${prettyLabel(truth.storeId)} • ${latestWeekLabel}</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           ${priorityBadge(priority)}
-          <span class="csi-badge">Commercial Live</span>
+          <span class="csi-badge">Live</span>
         </div>
       </div>
 
@@ -770,7 +789,7 @@ function renderLiveShiftInsight(truth, analysis) {
 
       <div class="hr"></div>
 
-      <div style="font-weight:800;margin-bottom:6px;">Why this shift was surfaced</div>
+      <div style="font-weight:800;margin-bottom:6px;color:#0f172a;">Why this shift was surfaced</div>
       <div class="csi-note">${buildShortDriverText(best)}</div>
 
       <div class="csi-coach-grid">
@@ -787,14 +806,14 @@ function renderLiveShiftInsight(truth, analysis) {
 
     <div class="card" style="margin-bottom:14px;">
       <h3 style="margin:0 0 8px 0;">Coaching Context</h3>
-      <div style="display:flex;flex-direction:column;gap:7px;">
-        ${bullets.map(x => `<div style="opacity:.92;">• ${x}</div>`).join("")}
+      <div style="display:flex;flex-direction:column;gap:7px;color:rgba(15,23,42,.78);">
+        ${bullets.map(x => `<div>• ${x}</div>`).join("")}
       </div>
     </div>
 
     <div class="card">
       <h3 style="margin:0 0 8px 0;">Full Day View</h3>
-      <div class="meta" style="margin-bottom:12px;opacity:.86;">
+      <div class="meta" style="margin-bottom:12px;">
         Supporting shifts stay visible, but coaching should begin with the primary shift opportunity above.
       </div>
 
