@@ -1,10 +1,9 @@
-// /assets/commercial-kpis.js (v3)
-// Commercial KPIs — live store-level wiring
+// /assets/commercial-kpis.js (v4)
+// Commercial KPIs — unified light-card commercial design
 // ✅ Uses commercial-kpi-data.js shared adapter
 // ✅ Uses approved baseline + latest approved week + previous week
 // ✅ Falls back to session org/store when URL context is incomplete
-// ✅ Aligns to pilot KPI hierarchy
-// ✅ Passes resolved store context into shared loader
+// ✅ Uses shared commercial styles direction
 // 🚫 No KPI math changes
 
 import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
@@ -53,18 +52,6 @@ function getResolvedContext() {
   };
 }
 
-function getStoreFromUrl() {
-  return getResolvedContext().storeId;
-}
-
-function getDistrictFromUrl() {
-  return getResolvedContext().districtId;
-}
-
-function getRegionFromUrl() {
-  return getResolvedContext().regionId;
-}
-
 function prettyLabel(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -89,36 +76,91 @@ function injectStyles() {
   const style = document.createElement("style");
   style.id = "commercialKpiStyles";
   style.textContent = `
+    #${ROOT_ID}{
+      color:#0f172a;
+    }
+
+    #${ROOT_ID} .ckpi-hero{
+      margin-bottom:18px;
+    }
+
     #${ROOT_ID} .ckpi-grid{
       display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+      grid-template-columns:repeat(4, minmax(0, 1fr));
       gap:14px;
       margin-bottom:18px;
     }
 
-    #${ROOT_ID} .small{
-      font-size:12px;
-      opacity:.8;
-      margin-bottom:6px;
+    #${ROOT_ID} .ckpi-card{
+      background:#f8fafc;
+      border:1px solid rgba(15,23,42,.08);
+      border-radius:14px;
+      padding:16px;
+      min-height:118px;
+      color:#0f172a;
+      box-shadow:0 8px 24px rgba(15,23,42,.05);
+    }
+
+    #${ROOT_ID} .ckpi-label{
+      margin:0 0 8px;
+      font-size:13px;
+      line-height:1.4;
+      color:rgba(15,23,42,.68);
+      font-weight:700;
     }
 
     #${ROOT_ID} .ckpi-value{
+      margin:0;
       font-size:28px;
-      font-weight:700;
-      margin-top:8px;
+      line-height:1;
+      font-weight:900;
+      color:#0f172a;
     }
 
     #${ROOT_ID} .ckpi-delta{
-      margin-top:8px;
-      opacity:.9;
+      margin:10px 0 0;
+      font-size:13px;
+      line-height:1.45;
+      font-weight:800;
+    }
+
+    #${ROOT_ID} .ckpi-list{
+      margin-top:12px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      color:rgba(15,23,42,.78);
+      font-size:14px;
+      line-height:1.5;
+    }
+
+    #${ROOT_ID} .ckpi-meta-strong{
+      color:#0f172a;
+      font-weight:800;
     }
 
     #${ROOT_ID} .good{
-      color: rgba(46,204,113,.95);
+      color:#166534;
     }
 
     #${ROOT_ID} .bad{
-      color: rgba(239,68,68,.95);
+      color:#b91c1c;
+    }
+
+    #${ROOT_ID} .pending{
+      color:#92400e;
+    }
+
+    @media (max-width: 980px){
+      #${ROOT_ID} .ckpi-grid{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px){
+      #${ROOT_ID} .ckpi-grid{
+        grid-template-columns:1fr;
+      }
     }
   `;
   document.head.appendChild(style);
@@ -134,7 +176,7 @@ function setHeaderContext() {
   const selectedDistrict = ctx.districtId;
   const selectedRegion = ctx.regionId;
 
-  setText("kpiContext", `Org: ${orgId} | Role: ${role} | Commercial KPIs`);
+  setText("kpiContext", `Org: ${orgId} | Role: ${role} | KPIs`);
 
   let scopeText = "Scope: Assigned commercial access";
   if (selectedStore) {
@@ -155,7 +197,6 @@ function setupViewSelector() {
   if (!selector) return;
 
   const ctx = getResolvedContext();
-
   selector.value = "sm";
 
   selector.addEventListener("change", (e) => {
@@ -191,14 +232,12 @@ function setupViewSelector() {
       return;
     }
 
-    if (view === "sm") {
-      const next = new URL("./commercial-kpis.html", window.location.href);
-      if (ctx.orgId) next.searchParams.set("org", ctx.orgId);
-      if (ctx.storeId) next.searchParams.set("store", ctx.storeId);
-      if (ctx.districtId) next.searchParams.set("district", ctx.districtId);
-      if (ctx.regionId) next.searchParams.set("region", ctx.regionId);
-      window.location.href = next.toString();
-    }
+    const next = new URL("./commercial-kpis.html", window.location.href);
+    if (ctx.orgId) next.searchParams.set("org", ctx.orgId);
+    if (ctx.storeId) next.searchParams.set("store", ctx.storeId);
+    if (ctx.districtId) next.searchParams.set("district", ctx.districtId);
+    if (ctx.regionId) next.searchParams.set("region", ctx.regionId);
+    window.location.href = next.toString();
   });
 }
 
@@ -221,7 +260,11 @@ function fmtDeltaMoney0(d) {
   const v = Number(d);
   if (!isFinite(v) || v === 0) return "0";
   const abs = Math.abs(v);
-  const s = abs.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  const s = abs.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0
+  });
   return `${sign(v)}${s.replace("-", "")}`;
 }
 
@@ -229,7 +272,11 @@ function fmtDeltaMoney2(d) {
   const v = Number(d);
   if (!isFinite(v) || v === 0) return "0";
   const abs = Math.abs(v);
-  const s = abs.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  const s = abs.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2
+  });
   return `${sign(v)}${s.replace("-", "")}`;
 }
 
@@ -250,20 +297,20 @@ function fmtDeltaPct(d) {
 
 function metricCard(title, value, deltaText, deltaCls) {
   return `
-    <div class="card">
-      <div class="small">${title}</div>
+    <div class="ckpi-card">
+      <div class="ckpi-label">${title}</div>
       <div class="ckpi-value">${value}</div>
-      <div class="ckpi-delta ${deltaCls || ""}">${deltaText || "—"}</div>
+      <div class="ckpi-delta ${deltaCls || "pending"}">${deltaText || "—"}</div>
     </div>
   `;
 }
 
 function renderLocked(title, line1, line2 = "") {
   setHtml(ROOT_ID, `
-    <div class="card" style="margin-bottom:18px;">
+    <div class="card ckpi-hero">
       <h2>${title}</h2>
       <div class="meta">${line1}</div>
-      ${line2 ? `<div class="meta" style="margin-top:8px;opacity:.85;">${line2}</div>` : ""}
+      ${line2 ? `<div class="meta" style="margin-top:8px;">${line2}</div>` : ""}
     </div>
   `);
 }
@@ -301,13 +348,13 @@ function renderLiveKpis(truth) {
   const latestWeekLabel = truth.latestWeek?.weekStart || "Approved week";
 
   setHtml(ROOT_ID, `
-    <div class="card" style="margin-bottom:18px;">
-      <h2>Commercial KPIs — ${prettyLabel(truth.storeId)}</h2>
+    <div class="card ckpi-hero">
+      <h2>KPIs — ${prettyLabel(truth.storeId)}</h2>
       <div class="meta">
-        Weekly KPI view is built from the latest approved weekly upload for the selected commercial store.
+        Weekly KPI view is built from the latest approved weekly upload for the selected store.
       </div>
-      <div class="meta" style="margin-top:8px;opacity:.85;">
-        Baseline: <b>${baselineLabel}</b> | Latest Week: <b>${latestWeekLabel}</b>
+      <div class="meta" style="margin-top:8px;">
+        Baseline: <span class="ckpi-meta-strong">${baselineLabel}</span> | Latest Week: <span class="ckpi-meta-strong">${latestWeekLabel}</span>
       </div>
     </div>
 
@@ -321,9 +368,10 @@ function renderLiveKpis(truth) {
     <div class="card">
       <h3>Weekly Interpretation</h3>
       <div class="meta" style="margin-top:8px;">
-        This view compares the latest approved commercial week against the previous approved week for the same store.
+        This view compares the latest approved week against the previous approved week for the same store.
       </div>
-      <div style="margin-top:12px;display:flex;flex-direction:column;gap:6px;">
+
+      <div class="ckpi-list">
         <div>• Sales: ${fmtMoney(current.sales)}</div>
         <div>• Transactions: ${fmtNumber(current.transactions)}</div>
         <div>• Labor %: ${fmtPct(current.laborPct)}</div>
@@ -343,25 +391,25 @@ async function loadCommercialKpis() {
 
     if (truth.state === "missing_context") {
       renderLocked(
-        "Commercial KPIs",
+        "KPIs",
         "Missing org or store context.",
-        "This page now supports session fallback, so if this still appears, the session likely does not have a valid org/store assignment."
+        "This page supports session fallback, so if this still appears, the session likely does not have a valid org/store assignment."
       );
       return;
     }
 
     if (truth.state === "pending_baseline") {
       renderLocked(
-        `Commercial KPIs — ${prettyLabel(truth.storeId)}`,
+        `KPIs — ${prettyLabel(truth.storeId)}`,
         "A pending baseline exists, but it is not approved yet.",
-        "Approve the commercial baseline before interpreting weekly KPI movement."
+        "Approve the baseline before interpreting weekly KPI movement."
       );
       return;
     }
 
     if (truth.state === "missing_baseline") {
       renderLocked(
-        `Commercial KPIs — ${prettyLabel(truth.storeId)}`,
+        `KPIs — ${prettyLabel(truth.storeId)}`,
         "No approved baseline found for this store."
       );
       return;
@@ -376,19 +424,19 @@ async function loadCommercialKpis() {
         "Approved baseline";
 
       setHtml(ROOT_ID, `
-        <div class="card" style="margin-bottom:18px;">
-          <h2>Commercial KPIs — ${prettyLabel(truth.storeId)}</h2>
+        <div class="card ckpi-hero">
+          <h2>KPIs — ${prettyLabel(truth.storeId)}</h2>
           <div class="meta">Approved baseline found. No approved weekly upload exists yet.</div>
-          <div class="meta" style="margin-top:8px;opacity:.85;">
-            Baseline Reference: <b>${baselineLabel}</b>
+          <div class="meta" style="margin-top:8px;">
+            Baseline Reference: <span class="ckpi-meta-strong">${baselineLabel}</span>
           </div>
         </div>
 
         <div class="ckpi-grid">
-          ${metricCard("Baseline Weekly Sales", fmtMoney(baseWeekly.sales), "Awaiting weekly upload", "")}
-          ${metricCard("Baseline Weekly Transactions", fmtNumber(baseWeekly.transactions), "Awaiting weekly upload", "")}
-          ${metricCard("Baseline Labor %", fmtPct(baseMonth.laborPct), "Awaiting weekly upload", "")}
-          ${metricCard("Baseline Avg Ticket", fmtMoney2(baseMonth.avgTicket), "Awaiting weekly upload", "")}
+          ${metricCard("Baseline Weekly Sales", fmtMoney(baseWeekly.sales), "Awaiting weekly upload", "pending")}
+          ${metricCard("Baseline Weekly Transactions", fmtNumber(baseWeekly.transactions), "Awaiting weekly upload", "pending")}
+          ${metricCard("Baseline Labor %", fmtPct(baseMonth.laborPct), "Awaiting weekly upload", "pending")}
+          ${metricCard("Baseline Avg Ticket", fmtMoney2(baseMonth.avgTicket), "Awaiting weekly upload", "pending")}
         </div>
       `);
       return;
@@ -397,7 +445,7 @@ async function loadCommercialKpis() {
     renderLiveKpis(truth);
   } catch (e) {
     console.error("[commercial-kpis] load failed:", e);
-    renderLocked("Commercial KPIs", "Unable to load commercial KPI data right now.");
+    renderLocked("KPIs", "Unable to load KPI data right now.");
   }
 }
 
