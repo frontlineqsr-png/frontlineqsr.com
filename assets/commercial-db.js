@@ -5,6 +5,7 @@
 // ✅ Store active/inactive support added
 // ✅ Archive helper added
 // ✅ Active-store list helper added
+// ✅ Weekly duplicate guardrail added (Option A hard lock)
 
 import { db } from "./firebase.js";
 import {
@@ -351,16 +352,28 @@ export async function saveStoreWeek({
   if (!ws) throw new Error("Week start required.");
   if (!safeRows.length) throw new Error("Weekly rows required.");
 
-  await setDoc(doc(db, "orgs", oid, "stores", sid, "weeks", weekId), {
+  const weekRef = doc(db, "orgs", oid, "stores", sid, "weeks", weekId);
+  const existingWeekSnap = await getDoc(weekRef);
+
+  if (existingWeekSnap.exists()) {
+    throw new Error(
+      `This week already exists for this store (${ws}). Admin must remove or unlock it before resubmission.`
+    );
+  }
+
+  await setDoc(weekRef, {
     weekId,
     weekStart: ws,
     rows: safeRows,
     rowCount: safeRows.length,
     approved: true,
     active: true,
+    locked: true,
     note: cleanString(note) || null,
     uploadedByUid: cleanString(uploadedByUid) || null,
     uploadedByEmail: cleanString(uploadedByEmail) || null,
+    createdAt: serverTimestamp(),
+    createdAtIso: nowIso(),
     updatedAt: serverTimestamp(),
     updatedAtIso: nowIso()
   }, { merge: true });
