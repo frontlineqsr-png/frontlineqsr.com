@@ -5,7 +5,8 @@
 // ✅ Store active/inactive support added
 // ✅ Archive helper added
 // ✅ Active-store list helper added
-// ✅ Weekly duplicate guardrail added (Option A hard lock)
+// ✅ Weekly duplicate guardrail added
+// ✅ Super admin reset/delete helpers added
 
 import { db } from "./firebase.js";
 import {
@@ -15,6 +16,7 @@ import {
   getDocs,
   setDoc,
   addDoc,
+  deleteDoc,
   serverTimestamp,
   query,
   orderBy,
@@ -47,6 +49,25 @@ function makeWeekId(weekStart) {
   const ws = cleanString(weekStart);
   if (!ws) throw new Error("Week start is required.");
   return ws;
+}
+
+async function recomputeLatestWeekPointers(orgId, storeId) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+
+  const weeks = await listStoreWeeks(oid, sid);
+  const latest = weeks.length ? weeks[0] : null;
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid), {
+    latestWeekId: latest ? (latest.id || latest.weekId || null) : null,
+    latestWeekStart: latest ? (latest.weekStart || null) : null,
+    latestWeekApproved: latest ? !!latest.approved : false,
+    latestWeekAtIso: latest ? nowIso() : null,
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso()
+  }, { merge: true });
+
+  return latest || null;
 }
 
 /* =========================================================
@@ -179,9 +200,6 @@ export async function archiveStore({
 
 /* =========================================================
    BASELINE GOVERNANCE
-   One approved active baseline per store
-   Baseline may represent a month, but weekly KPI comparison
-   should later use normalized weekly equivalent in KPI layer.
 ========================================================= */
 
 export async function savePendingStoreBaseline({
@@ -326,10 +344,131 @@ export async function approvePendingStoreBaseline({
 }
 
 /* =========================================================
+   RESET / DELETE HELPERS
+========================================================= */
+
+export async function deleteStoreWeek({
+  orgId,
+  storeId,
+  weekId,
+  deletedByUid,
+  deletedByEmail
+}) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+  const wid = cleanString(weekId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+  if (!wid) throw new Error("Week ID required.");
+
+  const weekRef = doc(db, "orgs", oid, "stores", sid, "weeks", wid);
+  const snap = await getDoc(weekRef);
+  if (!snap.exists()) throw new Error("Week not found.");
+
+  await deleteDoc(weekRef);
+  const latest = await recomputeLatestWeekPointers(oid, sid);
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid), {
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso(),
+    updatedByUid: cleanString(deletedByUid) || null,
+    updatedByEmail: cleanString(deletedByEmail) || null,
+    latestWeekId: latest ? (latest.id || latest.weekId || null) : null,
+    latestWeekStart: latest ? (latest.weekStart || null) : null,
+    latestWeekApproved: latest ? !!latest.approved : false
+  }, { merge: true });
+
+  return true;
+}
+
+export async function deleteStoreBaseline({
+  orgId,
+  storeId,
+  deletedByUid,
+  deletedByEmail
+}) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+
+  const status = await getStoreBaselineStatus(oid, sid);
+
+  if (status.activeBaselineId) {
+    await deleteDoc(doc(db, "orgs", oid, "stores", sid, "baselines", status.activeBaselineId));
+  }
+
+  if (status.pendingBaseline?.id) {
+    await deleteDoc(doc(db, "orgs", oid, "stores", sid, "baselines", status.pendingBaseline.id));
+  }
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid), {
+    baselineApproved: false,
+    baselineLocked: false,
+    activeBaselineId: null,
+    activeBaselineLabel: null,
+    baselineApprovedAt: null,
+    baselineApprovedAtIso: null,
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso(),
+    updatedByUid: cleanString(deletedByUid) || null,
+    updatedByEmail: cleanString(deletedByEmail) || null
+  }, { merge: true });
+
+  return true;
+}
+
+export async function resetStoreData({
+  orgId,
+  storeId,
+  resetByUid,
+  resetByEmail
+}) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+
+  const weeks = await listStoreWeeks(oid, sid);
+  for (const w of weeks) {
+    await deleteDoc(doc(db, "orgs", oid, "stores", sid, "weeks", w.id || w.weekId));
+  }
+
+  const baselineStatus = await getStoreBaselineStatus(oid, sid);
+
+  if (baselineStatus.activeBaselineId) {
+    await deleteDoc(doc(db, "orgs", oid, "stores", sid, "baselines", baselineStatus.activeBaselineId));
+  }
+
+  if (baselineStatus.pendingBaseline?.id) {
+    await deleteDoc(doc(db, "orgs", oid, "stores", sid, "baselines", baselineStatus.pendingBaseline.id));
+  }
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid), {
+    baselineApproved: false,
+    baselineLocked: false,
+    activeBaselineId: null,
+    activeBaselineLabel: null,
+    latestWeekId: null,
+    latestWeekStart: null,
+    latestWeekApproved: false,
+    baselineApprovedAt: null,
+    baselineApprovedAtIso: null,
+    latestWeekAtIso: null,
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso(),
+    updatedByUid: cleanString(resetByUid) || null,
+    updatedByEmail: cleanString(resetByEmail) || null
+  }, { merge: true });
+
+  return true;
+}
+
+/* =========================================================
    WEEKLY UPLOADS
-   Stores weekly data separately from baseline.
-   Structure:
-   /orgs/{orgId}/stores/{storeId}/weeks/{weekId}
 ========================================================= */
 
 export async function saveStoreWeek({
@@ -444,9 +583,6 @@ export async function getStoreWeekStatus(orgId, storeId) {
 
 /* =========================================================
    USER ACCESS
-   Writes to:
-   1) /commercial_users/{uid}
-   2) /orgs/{orgId}/users/{uid}
 ========================================================= */
 
 export async function upsertUserAccess({
