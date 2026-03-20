@@ -1,8 +1,9 @@
-// /assets/commercial-progress.js (v6)
-// Progress — trend-first UX
+// /assets/commercial-progress.js (v7)
+// Progress — unified light-card commercial design
 // ✅ Uses shared KPI engine
 // ✅ WoW is primary signal
 // ✅ Baseline comparison is neutral reference
+// ✅ Matches commercial light-card system
 // 🚫 No KPI math changes
 
 import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
@@ -58,11 +59,17 @@ function injectStyles() {
   const style = document.createElement("style");
   style.id = "commercialProgressStyles";
   style.textContent = `
+    #${ROOT_ID}{
+      color:#0f172a;
+    }
+
     #${ROOT_ID} .progCard{
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.04);
-      border-radius:14px;
+      border:1px solid rgba(15,23,42,.08);
+      background:#f8fafc;
+      border-radius:16px;
       padding:16px;
+      color:#0f172a;
+      box-shadow:0 8px 24px rgba(15,23,42,.05);
     }
 
     #${ROOT_ID} .progCard + .progCard{
@@ -77,15 +84,18 @@ function injectStyles() {
     }
 
     #${ROOT_ID} .progMetric{
-      border:1px solid rgba(255,255,255,.08);
-      background:rgba(255,255,255,.03);
+      border:1px solid rgba(15,23,42,.08);
+      background:rgba(255,255,255,.88);
       border-radius:12px;
       padding:14px;
+      color:#0f172a;
     }
 
     #${ROOT_ID} .progMetricLabel{
       font-size:12px;
-      opacity:.76;
+      line-height:1.4;
+      color:rgba(15,23,42,.68);
+      font-weight:700;
       margin-bottom:6px;
     }
 
@@ -94,62 +104,68 @@ function injectStyles() {
       font-weight:900;
       line-height:1.1;
       margin-bottom:8px;
+      color:#0f172a;
     }
 
     #${ROOT_ID} .progMetricTrend{
       font-size:13px;
+      line-height:1.45;
       font-weight:800;
       margin-bottom:6px;
     }
 
     #${ROOT_ID} .progMetricBase{
       font-size:12px;
-      opacity:.78;
-      line-height:1.4;
+      line-height:1.45;
+      color:rgba(15,23,42,.60);
     }
 
     #${ROOT_ID} .trend-good{
-      color:#22c55e;
+      color:#166534;
     }
 
     #${ROOT_ID} .trend-bad{
-      color:#ef4444;
+      color:#b91c1c;
     }
 
     #${ROOT_ID} .trend-neutral{
-      color:#f59e0b;
+      color:#92400e;
     }
 
     #${ROOT_ID} .progTableWrap{
       overflow:auto;
       margin-top:12px;
-      border:1px solid rgba(255,255,255,.08);
+      border:1px solid rgba(15,23,42,.08);
       border-radius:12px;
+      background:#fff;
     }
 
     #${ROOT_ID} table{
       width:100%;
       min-width:760px;
       border-collapse:collapse;
+      color:#0f172a;
     }
 
     #${ROOT_ID} th,
     #${ROOT_ID} td{
       padding:10px 12px;
       text-align:left;
-      border-bottom:1px solid rgba(255,255,255,.06);
+      border-bottom:1px solid rgba(15,23,42,.06);
       font-size:13px;
       vertical-align:top;
+      color:#0f172a;
     }
 
     #${ROOT_ID} th{
       font-weight:900;
-      background:rgba(255,255,255,.04);
+      background:rgba(15,23,42,.04);
     }
 
     #${ROOT_ID} .refText{
-      opacity:.78;
+      color:rgba(15,23,42,.60);
       font-size:12px;
+      line-height:1.4;
     }
 
     @media (max-width: 900px){
@@ -239,7 +255,7 @@ function renderLocked(msg) {
   setHtml(ROOT_ID, `<div class="card"><h2>${msg}</h2></div>`);
 }
 
-function buildSummaryMetrics(latest, baseline) {
+function buildSummaryMetrics(latest) {
   const wowSales = latest.wow ? latest.wow.sales : null;
   const wowTx = latest.wow ? latest.wow.tx : null;
   const wowLabor = latest.wow ? latest.wow.labor : null;
@@ -341,7 +357,7 @@ function renderProgress(truth) {
     <div class="progCard">
       <h2>Progress — ${prettyLabel(truth.storeId)}</h2>
       <div class="refText">Trend view uses week-over-week movement as the primary signal. Baseline remains a reference point.</div>
-      ${buildSummaryMetrics(latest, baseline)}
+      ${buildSummaryMetrics(latest)}
     </div>
 
     <div class="progCard">
