@@ -1,8 +1,9 @@
-// /assets/commercial-dm.js (v6)
+// /assets/commercial-dm.js (v7)
 // District Manager page logic
 // ✅ Uses commercial-rollup-data.js
 // ✅ Aggregates district totals from store-level approved truth
-// ✅ Shows store drill-down table
+// ✅ Shows true store-by-store drill-down table
+// ✅ Keeps district totals at the top and stores only in the bottom table
 // ✅ Preserves scoped navigation
 // ✅ Normalizes district / region / store ids from URL
 // 🚫 No KPI math changes
@@ -189,7 +190,7 @@ function injectStyles() {
 
     #${ROOT_ID} table{
       width:100%;
-      min-width:820px;
+      min-width:900px;
       border-collapse:collapse;
     }
 
@@ -348,10 +349,13 @@ function renderLiveDistrict(truth) {
     const salesVsBase = pctDelta(k.sales, b.sales);
     const txVsBase = pctDelta(k.transactions, b.transactions);
 
+    const hasLive = !!row.latestWeekKpis;
+    const statusText = hasLive ? "Live" : "Baseline only";
+
     return `
       <tr>
         <td><b>${prettyLabel(row.label)}</b></td>
-        <td>${fmtNumber(row.counts?.stores || 0)}</td>
+        <td>${statusText}</td>
         <td>${k ? fmtMoney(k.sales) : "—"}</td>
         <td>${k ? fmtNumber(k.transactions) : "—"}</td>
         <td>${k ? fmtPct(k.laborPct) : "—"}</td>
@@ -428,7 +432,7 @@ function renderLiveDistrict(truth) {
     <div class="card">
       <h3>Store Rollup Table</h3>
       <div class="meta" style="margin-top:8px;">
-        Click a store to drill into the store manager view.
+        Each row below is one store inside this district. The district total stays above.
       </div>
 
       <div class="cdm-table-wrap">
@@ -436,7 +440,7 @@ function renderLiveDistrict(truth) {
           <thead>
             <tr>
               <th>Store</th>
-              <th>Units</th>
+              <th>Status</th>
               <th>Sales</th>
               <th>Transactions</th>
               <th>Labor %</th>
