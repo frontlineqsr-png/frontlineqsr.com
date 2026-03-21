@@ -1,9 +1,10 @@
-// /assets/commercial-dm.js (v5)
+// /assets/commercial-dm.js (v6)
 // District Manager page logic
 // ✅ Uses commercial-rollup-data.js
 // ✅ Aggregates district totals from store-level approved truth
 // ✅ Shows store drill-down table
 // ✅ Preserves scoped navigation
+// ✅ Normalizes district / region / store ids from URL
 // 🚫 No KPI math changes
 
 import { loadCommercialRollupTruth } from "./commercial-rollup-data.js";
@@ -30,13 +31,23 @@ function readSession() {
   }
 }
 
+function normalizeId(v) {
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_");
+}
+
 function getParams() {
   const params = new URLSearchParams(window.location.search);
   return {
     orgId: String(params.get("org") || "").trim(),
-    districtId: String(params.get("district") || "").trim(),
-    regionId: String(params.get("region") || "").trim(),
-    storeId: String(params.get("store") || "").trim()
+    districtId: normalizeId(params.get("district")),
+    regionId: normalizeId(params.get("region")),
+    storeId: normalizeId(params.get("store"))
   };
 }
 
@@ -455,7 +466,10 @@ async function loadDistrictRollup() {
     }
 
     if (truth.state === "no_stores") {
-      renderLocked("District Rollup", "No stores found in this district scope.");
+      renderLocked(
+        "District Rollup",
+        truth.message || "No stores found in this district scope."
+      );
       return;
     }
 
