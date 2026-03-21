@@ -1,9 +1,10 @@
-// /assets/commercial-vp.js (v5)
+// /assets/commercial-vp.js (v6)
 // VP / Owner page logic
 // ✅ Uses commercial-rollup-data.js
 // ✅ Aggregates org totals from store-level approved truth
 // ✅ Shows region drill-down table
 // ✅ Preserves scoped navigation
+// ✅ Normalizes region / district / store ids from URL
 // 🚫 No KPI math changes
 
 import { loadCommercialRollupTruth } from "./commercial-rollup-data.js";
@@ -30,13 +31,23 @@ function readSession() {
   }
 }
 
+function normalizeId(v) {
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_");
+}
+
 function getParams() {
   const params = new URLSearchParams(window.location.search);
   return {
     orgId: String(params.get("org") || "").trim(),
-    regionId: String(params.get("region") || "").trim(),
-    districtId: String(params.get("district") || "").trim(),
-    storeId: String(params.get("store") || "").trim()
+    regionId: normalizeId(params.get("region")),
+    districtId: normalizeId(params.get("district")),
+    storeId: normalizeId(params.get("store"))
   };
 }
 
