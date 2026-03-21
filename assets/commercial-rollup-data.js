@@ -3,6 +3,7 @@
 // ✅ Reuses store-level approved truth
 // ✅ Aggregates baseline weekly equivalent + latest approved week + previous approved week
 // ✅ Supports store / district / region / org rollups
+// ✅ Normalizes scope ids so URL labels like "Demo Dis" still match stored ids like "demo_dis"
 // 🚫 No KPI math changes
 
 import {
@@ -30,6 +31,23 @@ function readSession() {
 
 function cleanString(v) {
   return String(v || "").trim();
+}
+
+function normalizeScopeId(v) {
+  return cleanString(v)
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_");
+}
+
+function prettyLabel(v) {
+  const raw = cleanString(v);
+  if (!raw) return "";
+  return raw
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 function getParams() {
@@ -129,20 +147,20 @@ function getCommercialSessionContext() {
 function storeMatchesScope(store, scope) {
   if (!store) return false;
 
-  const storeId = cleanString(store.id);
-  const districtId = cleanString(store.districtId);
-  const regionId = cleanString(store.regionId);
+  const storeId = normalizeScopeId(store.id);
+  const districtId = normalizeScopeId(store.districtId);
+  const regionId = normalizeScopeId(store.regionId);
 
   if (scope.level === "store") {
-    return storeId === cleanString(scope.storeId);
+    return storeId === normalizeScopeId(scope.storeId);
   }
 
   if (scope.level === "district") {
-    return districtId === cleanString(scope.districtId);
+    return districtId === normalizeScopeId(scope.districtId);
   }
 
   if (scope.level === "region") {
-    return regionId === cleanString(scope.regionId);
+    return regionId === normalizeScopeId(scope.regionId);
   }
 
   return true;
@@ -170,8 +188,8 @@ function childKeyForLevel(level, store) {
 
 function childLabelForLevel(level, store) {
   if (level === "district") return cleanString(store.name) || cleanString(store.id);
-  if (level === "region") return cleanString(store.districtId) || "Unassigned District";
-  if (level === "org") return cleanString(store.regionId) || "Unassigned Region";
+  if (level === "region") return prettyLabel(store.districtId) || "Unassigned District";
+  if (level === "org") return prettyLabel(store.regionId) || "Unassigned Region";
   return cleanString(store.name) || cleanString(store.id);
 }
 
@@ -297,7 +315,12 @@ export async function loadCommercialRollupTruth() {
 
   if (!scopedStores.length) {
     result.state = "no_stores";
-    result.message = "No stores found for this scope.";
+    result.message =
+      scope.level === "district"
+        ? "No stores found for this district scope."
+        : scope.level === "region"
+          ? "No stores found for this region scope."
+          : "No stores found for this scope.";
     return result;
   }
 
