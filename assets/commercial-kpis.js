@@ -1,9 +1,9 @@
-// /assets/commercial-kpis.js (v4)
-// Commercial KPIs — unified light-card commercial design
+// /assets/commercial-kpis.js (v5)
+// Commercial KPIs — shared premium commercial design
 // ✅ Uses commercial-kpi-data.js shared adapter
 // ✅ Uses approved baseline + latest approved week + previous week
 // ✅ Falls back to session org/store when URL context is incomplete
-// ✅ Uses shared commercial styles direction
+// ✅ Uses shared styles.css card/panel system
 // 🚫 No KPI math changes
 
 import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
@@ -70,102 +70,6 @@ function setHtml(id, html) {
   if (el) el.innerHTML = html;
 }
 
-function injectStyles() {
-  if (document.getElementById("commercialKpiStyles")) return;
-
-  const style = document.createElement("style");
-  style.id = "commercialKpiStyles";
-  style.textContent = `
-    #${ROOT_ID}{
-      color:#0f172a;
-    }
-
-    #${ROOT_ID} .ckpi-hero{
-      margin-bottom:18px;
-    }
-
-    #${ROOT_ID} .ckpi-grid{
-      display:grid;
-      grid-template-columns:repeat(4, minmax(0, 1fr));
-      gap:14px;
-      margin-bottom:18px;
-    }
-
-    #${ROOT_ID} .ckpi-card{
-      background:#f8fafc;
-      border:1px solid rgba(15,23,42,.08);
-      border-radius:14px;
-      padding:16px;
-      min-height:118px;
-      color:#0f172a;
-      box-shadow:0 8px 24px rgba(15,23,42,.05);
-    }
-
-    #${ROOT_ID} .ckpi-label{
-      margin:0 0 8px;
-      font-size:13px;
-      line-height:1.4;
-      color:rgba(15,23,42,.68);
-      font-weight:700;
-    }
-
-    #${ROOT_ID} .ckpi-value{
-      margin:0;
-      font-size:28px;
-      line-height:1;
-      font-weight:900;
-      color:#0f172a;
-    }
-
-    #${ROOT_ID} .ckpi-delta{
-      margin:10px 0 0;
-      font-size:13px;
-      line-height:1.45;
-      font-weight:800;
-    }
-
-    #${ROOT_ID} .ckpi-list{
-      margin-top:12px;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      color:rgba(15,23,42,.78);
-      font-size:14px;
-      line-height:1.5;
-    }
-
-    #${ROOT_ID} .ckpi-meta-strong{
-      color:#0f172a;
-      font-weight:800;
-    }
-
-    #${ROOT_ID} .good{
-      color:#166534;
-    }
-
-    #${ROOT_ID} .bad{
-      color:#b91c1c;
-    }
-
-    #${ROOT_ID} .pending{
-      color:#92400e;
-    }
-
-    @media (max-width: 980px){
-      #${ROOT_ID} .ckpi-grid{
-        grid-template-columns:repeat(2, minmax(0, 1fr));
-      }
-    }
-
-    @media (max-width: 640px){
-      #${ROOT_ID} .ckpi-grid{
-        grid-template-columns:1fr;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
 function setHeaderContext() {
   const s = readSession() || {};
   const ctx = getResolvedContext();
@@ -176,7 +80,7 @@ function setHeaderContext() {
   const selectedDistrict = ctx.districtId;
   const selectedRegion = ctx.regionId;
 
-  setText("kpiContext", `Org: ${orgId} | Role: ${role} | KPIs`);
+  setText("kpiContext", `Org: ${orgId} | Role: ${role} | KPI View`);
 
   let scopeText = "Scope: Assigned commercial access";
   if (selectedStore) {
@@ -297,21 +201,60 @@ function fmtDeltaPct(d) {
 
 function metricCard(title, value, deltaText, deltaCls) {
   return `
-    <div class="ckpi-card">
-      <div class="ckpi-label">${title}</div>
-      <div class="ckpi-value">${value}</div>
-      <div class="ckpi-delta ${deltaCls || "pending"}">${deltaText || "—"}</div>
+    <div class="kpi-card">
+      <div class="kpi-label">${title}</div>
+      <div class="kpi-value">${value}</div>
+      <div class="kpi-delta ${deltaCls || "pending"}">${deltaText || "—"}</div>
+    </div>
+  `;
+}
+
+function detailBox(title, body) {
+  return `
+    <div class="info-box">
+      <h3>${title}</h3>
+      <p>${body}</p>
     </div>
   `;
 }
 
 function renderLocked(title, line1, line2 = "") {
   setHtml(ROOT_ID, `
-    <div class="card ckpi-hero">
-      <h2>${title}</h2>
-      <div class="meta">${line1}</div>
-      ${line2 ? `<div class="meta" style="margin-top:8px;">${line2}</div>` : ""}
-    </div>
+    <section class="ckpi-stack">
+      <div class="card">
+        <h2 class="section-title">${title}</h2>
+        <p class="section-sub">${line1}</p>
+        ${line2 ? `<p class="section-sub ckpi-tight">${line2}</p>` : ""}
+      </div>
+    </section>
+  `);
+}
+
+function renderBaselineOnly(truth) {
+  const baseWeekly = truth.baselineWeeklyKpis || {};
+  const baseMonth = truth.baselineMonthKpis || {};
+  const baselineLabel =
+    truth.baselineStatus?.activeBaseline?.label ||
+    truth.baselineStatus?.activeBaseline?.year ||
+    "Approved baseline";
+
+  setHtml(ROOT_ID, `
+    <section class="ckpi-stack">
+      <div class="card">
+        <h2 class="section-title">KPIs — ${prettyLabel(truth.storeId)}</h2>
+        <p class="section-sub">Approved baseline found. No approved weekly upload exists yet.</p>
+        <p class="section-sub ckpi-tight">
+          Baseline Reference: <span class="ckpi-meta-strong">${baselineLabel}</span>
+        </p>
+      </div>
+
+      <div class="kpi-grid ckpi-kpi-grid">
+        ${metricCard("Baseline Weekly Sales", fmtMoney(baseWeekly.sales), "Awaiting weekly upload", "pending")}
+        ${metricCard("Baseline Weekly Transactions", fmtNumber(baseWeekly.transactions), "Awaiting weekly upload", "pending")}
+        ${metricCard("Baseline Labor %", fmtPct(baseMonth.laborPct), "Awaiting weekly upload", "pending")}
+        ${metricCard("Baseline Avg Ticket", fmtMoney2(baseMonth.avgTicket), "Awaiting weekly upload", "pending")}
+      </div>
+    </section>
   `);
 }
 
@@ -346,38 +289,50 @@ function renderLiveKpis(truth) {
     "Approved baseline";
 
   const latestWeekLabel = truth.latestWeek?.weekStart || "Approved week";
+  const prevWeekLabel = truth.previousWeek?.weekStart || "";
 
   setHtml(ROOT_ID, `
-    <div class="card ckpi-hero">
-      <h2>KPIs — ${prettyLabel(truth.storeId)}</h2>
-      <div class="meta">
-        Weekly KPI view is built from the latest approved weekly upload for the selected store.
-      </div>
-      <div class="meta" style="margin-top:8px;">
-        Baseline: <span class="ckpi-meta-strong">${baselineLabel}</span> | Latest Week: <span class="ckpi-meta-strong">${latestWeekLabel}</span>
-      </div>
-    </div>
-
-    <div class="ckpi-grid">
-      ${metricCard("Sales", fmtMoney(current.sales), salesDeltaText, salesCls)}
-      ${metricCard("Transactions", fmtNumber(current.transactions), txDeltaText, txCls)}
-      ${metricCard("Labor %", fmtPct(current.laborPct), laborDeltaText, laborCls)}
-      ${metricCard("Avg Ticket", fmtMoney2(current.avgTicket), avgTicketDeltaText, avgTicketCls)}
-    </div>
-
-    <div class="card">
-      <h3>Weekly Interpretation</h3>
-      <div class="meta" style="margin-top:8px;">
-        This view compares the latest approved week against the previous approved week for the same store.
+    <section class="ckpi-stack">
+      <div class="card">
+        <h2 class="section-title">KPIs — ${prettyLabel(truth.storeId)}</h2>
+        <p class="section-sub">
+          Weekly KPI view is built from the latest approved weekly upload for the selected store.
+        </p>
+        <p class="section-sub ckpi-tight">
+          Baseline: <span class="ckpi-meta-strong">${baselineLabel}</span> |
+          Latest Week: <span class="ckpi-meta-strong">${latestWeekLabel}</span>
+          ${prevWeekLabel ? ` | Previous Week: <span class="ckpi-meta-strong">${prevWeekLabel}</span>` : ""}
+        </p>
       </div>
 
-      <div class="ckpi-list">
-        <div>• Sales: ${fmtMoney(current.sales)}</div>
-        <div>• Transactions: ${fmtNumber(current.transactions)}</div>
-        <div>• Labor %: ${fmtPct(current.laborPct)}</div>
-        <div>• Avg Ticket: ${fmtMoney2(current.avgTicket)}</div>
+      <div class="kpi-grid ckpi-kpi-grid">
+        ${metricCard("Sales", fmtMoney(current.sales), salesDeltaText, salesCls)}
+        ${metricCard("Transactions", fmtNumber(current.transactions), txDeltaText, txCls)}
+        ${metricCard("Labor %", fmtPct(current.laborPct), laborDeltaText, laborCls)}
+        ${metricCard("Avg Ticket", fmtMoney2(current.avgTicket), avgTicketDeltaText, avgTicketCls)}
       </div>
-    </div>
+
+      <div class="meta-grid">
+        ${detailBox(
+          "Weekly Interpretation",
+          "This view compares the latest approved week against the previous approved week for the same store."
+        )}
+        ${detailBox(
+          "Coaching Use",
+          "Use KPI movement here to confirm where execution improved, softened, or needs closer coaching attention."
+        )}
+      </div>
+
+      <div class="card">
+        <h3 class="section-title ckpi-subtitle">Current Approved Week</h3>
+        <div class="ckpi-bullet-stack">
+          <div>• Sales: ${fmtMoney(current.sales)}</div>
+          <div>• Transactions: ${fmtNumber(current.transactions)}</div>
+          <div>• Labor %: ${fmtPct(current.laborPct)}</div>
+          <div>• Avg Ticket: ${fmtMoney2(current.avgTicket)}</div>
+        </div>
+      </div>
+    </section>
   `);
 }
 
@@ -416,29 +371,7 @@ async function loadCommercialKpis() {
     }
 
     if (truth.state === "baseline_only") {
-      const baseWeekly = truth.baselineWeeklyKpis || {};
-      const baseMonth = truth.baselineMonthKpis || {};
-      const baselineLabel =
-        truth.baselineStatus?.activeBaseline?.label ||
-        truth.baselineStatus?.activeBaseline?.year ||
-        "Approved baseline";
-
-      setHtml(ROOT_ID, `
-        <div class="card ckpi-hero">
-          <h2>KPIs — ${prettyLabel(truth.storeId)}</h2>
-          <div class="meta">Approved baseline found. No approved weekly upload exists yet.</div>
-          <div class="meta" style="margin-top:8px;">
-            Baseline Reference: <span class="ckpi-meta-strong">${baselineLabel}</span>
-          </div>
-        </div>
-
-        <div class="ckpi-grid">
-          ${metricCard("Baseline Weekly Sales", fmtMoney(baseWeekly.sales), "Awaiting weekly upload", "pending")}
-          ${metricCard("Baseline Weekly Transactions", fmtNumber(baseWeekly.transactions), "Awaiting weekly upload", "pending")}
-          ${metricCard("Baseline Labor %", fmtPct(baseMonth.laborPct), "Awaiting weekly upload", "pending")}
-          ${metricCard("Baseline Avg Ticket", fmtMoney2(baseMonth.avgTicket), "Awaiting weekly upload", "pending")}
-        </div>
-      `);
+      renderBaselineOnly(truth);
       return;
     }
 
@@ -450,7 +383,6 @@ async function loadCommercialKpis() {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
-  injectStyles();
   setHeaderContext();
   setupViewSelector();
   setupLogout();
