@@ -1,10 +1,11 @@
-// /assets/commercial-vp.js (v7)
+// /assets/commercial-vp.js (v8)
 // VP / Owner page logic
 // ✅ Uses commercial-rollup-data.js
 // ✅ Aggregates org totals from store-level approved truth
 // ✅ Shows region drill-down table
 // ✅ Adds Company Execution Insight
 // ✅ Adds Estimated Labor Impact
+// ✅ Uses outcome-based executive language
 // ✅ Preserves scoped navigation
 // ✅ Normalizes region / district / store ids from URL
 // 🚫 No KPI math changes
@@ -259,43 +260,17 @@ function buildCompanyInsight(truth) {
     return {
       label: row.label,
       key: row.key,
-      pressureScore,
-      wowSales,
-      wowTx,
-      wowLabor,
-      salesBasePct,
-      txBasePct
+      pressureScore
     };
   });
 
   scoredRows.sort((a, b) => b.pressureScore - a.pressureScore);
-
   const topRegion = scoredRows[0] || null;
 
-  let driver = "Company performance is staying relatively stable across active regions.";
-  if (topRegion) {
-    const parts = [];
-    if (isFinite(topRegion.salesBasePct) && topRegion.salesBasePct < -1) {
-      parts.push(`sales ${topRegion.salesBasePct.toFixed(1)}% below baseline`);
-    }
-    if (isFinite(topRegion.txBasePct) && topRegion.txBasePct < -1) {
-      parts.push(`transactions ${topRegion.txBasePct.toFixed(1)}% below baseline`);
-    }
-    if (isFinite(topRegion.wowLabor) && topRegion.wowLabor > 0.25) {
-      parts.push(`labor up ${topRegion.wowLabor.toFixed(2)} pts week-over-week`);
-    }
-
-    if (parts.length) {
-      driver = `${prettyLabel(topRegion.label)} is creating the most enterprise pressure, with ${parts.join(" • ")}.`;
-    } else {
-      driver = `${prettyLabel(topRegion.label)} is currently the main region to watch at the company level.`;
-    }
-  }
-
-  let focus = "Executive attention should stay targeted to the regions showing the most volatility before broad enterprise changes are made.";
-  if (topRegion) {
-    focus = `Executive attention should begin with ${prettyLabel(topRegion.label)} before making broad company-wide adjustments.`;
-  }
+  const priorityRegion = topRegion ? prettyLabel(topRegion.label) : "No single region currently stands out";
+  const driver = topRegion
+    ? `${prettyLabel(topRegion.label)} is currently the main region to watch at the company level.`
+    : "Company performance is staying relatively stable across active regions.";
 
   return {
     direction,
@@ -303,8 +278,8 @@ function buildCompanyInsight(truth) {
     txVsBase,
     laborVsBase,
     estimatedLaborImpact,
-    driver,
-    focus
+    priorityRegion,
+    driver
   };
 }
 
@@ -362,7 +337,6 @@ function renderLiveOrg(truth) {
 
     const salesVsBase = k ? pctDelta(k.sales, b.sales) : NaN;
     const txVsBase = k ? pctDelta(k.transactions, b.transactions) : NaN;
-
     const hasLive = !!k;
 
     return `
@@ -438,7 +412,7 @@ function renderLiveOrg(truth) {
 
         <div class="meta-grid cvp-meta-grid">
           <div class="info-box">
-            <h3>Company Direction</h3>
+            <h3>Company Trend</h3>
             <p>
               Sales vs baseline: ${isFinite(insight.salesVsBase) ? `${insight.salesVsBase.toFixed(1)}%` : "—"} |
               Transactions vs baseline: ${isFinite(insight.txVsBase) ? `${insight.txVsBase.toFixed(1)}%` : "—"} |
@@ -446,14 +420,14 @@ function renderLiveOrg(truth) {
             </p>
           </div>
           <div class="info-box">
-            <h3>Executive Focus</h3>
-            <p>${insight.focus}</p>
+            <h3>Priority Region</h3>
+            <p>${insight.priorityRegion}</p>
           </div>
         </div>
 
         <hr class="hr" />
 
-        <h3 class="section-title cvp-subtitle">What is driving company outcomes</h3>
+        <h3 class="section-title cvp-subtitle">Financial Impact</h3>
         <p class="section-sub">${insight.driver}</p>
         <p class="section-sub cvp-tight">
           Estimated Labor Impact:
