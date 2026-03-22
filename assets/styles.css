@@ -721,6 +721,41 @@ option{
   border-color:rgba(22,101,52,.14);
 }
 
+/* ---------- KPI shared page styles ---------- */
+
+.ckpi-stack{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.ckpi-kpi-grid{
+  margin-bottom:0;
+}
+
+.ckpi-meta-strong{
+  color:var(--text);
+  font-weight:800;
+}
+
+.ckpi-tight{
+  margin-bottom:0;
+}
+
+.ckpi-subtitle{
+  font-size:18px;
+  margin-bottom:8px;
+}
+
+.ckpi-bullet-stack{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+}
+
 /* ---------- utility ---------- */
 
 .good,
