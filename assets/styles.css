@@ -3,7 +3,7 @@
 /* LOCKED commercial design system
    ✅ Dark outer shell
    ✅ Light premium cards everywhere
-   ✅ Consistent across Portal / KPIs / Shift / Action / Progress / Admin / DM
+   ✅ Consistent across Portal / KPIs / Shift / Action / Progress / Admin / DM / RM / VP
 */
 
 :root{
@@ -984,6 +984,122 @@ option{
   font-size:12px;
 }
 
+/* ---------- Regional Manager shared page styles ---------- */
+
+.crm-stack{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.crm-kpi-grid{
+  margin-bottom:0;
+}
+
+.crm-subtitle{
+  font-size:18px;
+  margin-bottom:8px;
+}
+
+.crm-tight{
+  margin-bottom:0;
+}
+
+.crm-text-strong{
+  color:var(--text);
+  font-weight:800;
+}
+
+.crm-status-wrap{
+  margin-top:0;
+  margin-bottom:14px;
+}
+
+.crm-meta-grid{
+  margin-bottom:0;
+}
+
+.crm-bullet-stack{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+}
+
+.crm-table-wrap{
+  margin-top:12px;
+}
+
+.crm-table{
+  min-width:840px;
+}
+
+.crm-drill-btn{
+  min-height:auto;
+  padding:8px 10px;
+  font-size:12px;
+}
+
+/* ---------- Executive / VP shared page styles ---------- */
+
+.cvp-stack{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.cvp-kpi-grid{
+  margin-bottom:0;
+}
+
+.cvp-subtitle{
+  font-size:18px;
+  margin-bottom:8px;
+}
+
+.cvp-tight{
+  margin-bottom:0;
+}
+
+.cvp-text-strong{
+  color:var(--text);
+  font-weight:800;
+}
+
+.cvp-status-wrap{
+  margin-top:0;
+  margin-bottom:14px;
+}
+
+.cvp-meta-grid{
+  margin-bottom:0;
+}
+
+.cvp-bullet-stack{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+}
+
+.cvp-table-wrap{
+  margin-top:12px;
+}
+
+.cvp-table{
+  min-width:840px;
+}
+
+.cvp-drill-btn{
+  min-height:auto;
+  padding:8px 10px;
+  font-size:12px;
+}
+
 /* ---------- utility ---------- */
 
 .good,
@@ -1080,6 +1196,14 @@ pre{
   .cdm-kpi-grid{
     grid-template-columns:repeat(2, minmax(0, 1fr));
   }
+
+  .crm-kpi-grid{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  .cvp-kpi-grid{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px){
@@ -1130,7 +1254,9 @@ pre{
   .csi-mini-metrics,
   .cap-kpi-grid,
   .cprog-kpi-grid,
-  .cdm-kpi-grid{
+  .cdm-kpi-grid,
+  .crm-kpi-grid,
+  .cvp-kpi-grid{
     grid-template-columns:1fr;
   }
 }
