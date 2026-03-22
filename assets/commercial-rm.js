@@ -1,10 +1,11 @@
-// /assets/commercial-rm.js (v7)
+// /assets/commercial-rm.js (v8)
 // Regional Manager page logic
 // ✅ Uses commercial-rollup-data.js
 // ✅ Aggregates region totals from store-level approved truth
 // ✅ Shows district drill-down table
 // ✅ Adds Region Insight communication layer
 // ✅ Adds Estimated Labor Impact
+// ✅ Uses cleaner leadership language
 // ✅ Preserves scoped navigation
 // ✅ Normalizes region / district / store ids from URL
 // 🚫 No KPI math changes
@@ -260,43 +261,20 @@ function buildRegionInsight(truth) {
     return {
       label: row.label,
       key: row.key,
-      pressureScore,
-      wowSales,
-      wowTx,
-      wowLabor,
-      salesBasePct,
-      txBasePct
+      pressureScore
     };
   });
 
   scoredRows.sort((a, b) => b.pressureScore - a.pressureScore);
-
   const topDistrict = scoredRows[0] || null;
 
-  let driver = "Regional performance is staying relatively stable across active districts.";
-  if (topDistrict) {
-    const parts = [];
-    if (isFinite(topDistrict.salesBasePct) && topDistrict.salesBasePct < -1) {
-      parts.push(`sales ${topDistrict.salesBasePct.toFixed(1)}% below baseline`);
-    }
-    if (isFinite(topDistrict.txBasePct) && topDistrict.txBasePct < -1) {
-      parts.push(`transactions ${topDistrict.txBasePct.toFixed(1)}% below baseline`);
-    }
-    if (isFinite(topDistrict.wowLabor) && topDistrict.wowLabor > 0.25) {
-      parts.push(`labor up ${topDistrict.wowLabor.toFixed(2)} pts week-over-week`);
-    }
+  const priorityDistrict = topDistrict
+    ? prettyLabel(topDistrict.label)
+    : "No single district currently stands out";
 
-    if (parts.length) {
-      driver = `${prettyLabel(topDistrict.label)} is the main district to watch, with ${parts.join(" • ")}.`;
-    } else {
-      driver = `${prettyLabel(topDistrict.label)} is currently the main district to watch in the region.`;
-    }
-  }
-
-  let focus = "Regional support should stay targeted to the districts showing the most drift before broad changes are made across the region.";
-  if (topDistrict) {
-    focus = `Regional attention should begin with ${prettyLabel(topDistrict.label)} before making broad region-wide adjustments.`;
-  }
+  const driver = topDistrict
+    ? `${prettyLabel(topDistrict.label)} is currently the main district to watch in the region.`
+    : "Regional performance is staying relatively stable across active districts.";
 
   return {
     direction,
@@ -304,8 +282,8 @@ function buildRegionInsight(truth) {
     txVsBase,
     laborVsBase,
     estimatedLaborImpact,
-    driver,
-    focus
+    priorityDistrict,
+    driver
   };
 }
 
@@ -363,7 +341,6 @@ function renderLiveRegion(truth) {
 
     const salesVsBase = k ? pctDelta(k.sales, b.sales) : NaN;
     const txVsBase = k ? pctDelta(k.transactions, b.transactions) : NaN;
-
     const hasLive = !!k;
 
     return `
@@ -439,7 +416,7 @@ function renderLiveRegion(truth) {
 
         <div class="meta-grid crm-meta-grid">
           <div class="info-box">
-            <h3>Regional Direction</h3>
+            <h3>Regional Trend</h3>
             <p>
               Sales vs baseline: ${isFinite(insight.salesVsBase) ? `${insight.salesVsBase.toFixed(1)}%` : "—"} |
               Transactions vs baseline: ${isFinite(insight.txVsBase) ? `${insight.txVsBase.toFixed(1)}%` : "—"} |
@@ -447,14 +424,14 @@ function renderLiveRegion(truth) {
             </p>
           </div>
           <div class="info-box">
-            <h3>Primary Focus</h3>
-            <p>${insight.focus}</p>
+            <h3>Priority District</h3>
+            <p>${insight.priorityDistrict}</p>
           </div>
         </div>
 
         <hr class="hr" />
 
-        <h3 class="section-title crm-subtitle">What is driving the region</h3>
+        <h3 class="section-title crm-subtitle">Financial Impact</h3>
         <p class="section-sub">${insight.driver}</p>
         <p class="section-sub crm-tight">
           Estimated Labor Impact:
