@@ -3,7 +3,7 @@
 /* LOCKED commercial design system
    ✅ Dark outer shell
    ✅ Light premium cards everywhere
-   ✅ Consistent across Portal / KPIs / Shift / Action / Progress / Admin
+   ✅ Consistent across Portal / KPIs / Shift / Action / Progress / Admin / DM
 */
 
 :root{
@@ -926,6 +926,64 @@ option{
   background:rgba(15,23,42,.04);
 }
 
+/* ---------- District Manager shared page styles ---------- */
+
+.cdm-stack{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.cdm-kpi-grid{
+  margin-bottom:0;
+}
+
+.cdm-subtitle{
+  font-size:18px;
+  margin-bottom:8px;
+}
+
+.cdm-tight{
+  margin-bottom:0;
+}
+
+.cdm-text-strong{
+  color:var(--text);
+  font-weight:800;
+}
+
+.cdm-status-wrap{
+  margin-top:0;
+  margin-bottom:14px;
+}
+
+.cdm-meta-grid{
+  margin-bottom:0;
+}
+
+.cdm-bullet-stack{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.5;
+}
+
+.cdm-table-wrap{
+  margin-top:12px;
+}
+
+.cdm-table{
+  min-width:900px;
+}
+
+.cdm-drill-btn{
+  min-height:auto;
+  padding:8px 10px;
+  font-size:12px;
+}
+
 /* ---------- utility ---------- */
 
 .good,
@@ -1018,6 +1076,10 @@ pre{
   .cprog-kpi-grid{
     grid-template-columns:repeat(2, minmax(0, 1fr));
   }
+
+  .cdm-kpi-grid{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px){
@@ -1067,7 +1129,8 @@ pre{
   .csi-kpi-grid,
   .csi-mini-metrics,
   .cap-kpi-grid,
-  .cprog-kpi-grid{
+  .cprog-kpi-grid,
+  .cdm-kpi-grid{
     grid-template-columns:1fr;
   }
 }
