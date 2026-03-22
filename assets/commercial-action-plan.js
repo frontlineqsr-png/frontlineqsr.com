@@ -1,10 +1,10 @@
-// /assets/commercial-action-plan.js (v5)
-// Commercial Action Plan — unified light-card commercial design
+// /assets/commercial-action-plan.js (v6)
+// Commercial Action Plan — shared premium commercial design
 // ✅ Uses commercial-kpi-data.js shared adapter
 // ✅ Resolves active store from URL, session, localStorage, or assigned stores
 // ✅ Uses approved baseline + latest approved week
 // ✅ Includes labor points + labor dollar impact
-// ✅ Matches commercial light-card system
+// ✅ Uses shared styles.css card/panel system
 // 🚫 No KPI math changes
 
 import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
@@ -107,105 +107,6 @@ function setHtml(id, html) {
   if (el) el.innerHTML = html;
 }
 
-function injectStyles() {
-  if (document.getElementById("commercialActionPlanStyles")) return;
-
-  const style = document.createElement("style");
-  style.id = "commercialActionPlanStyles";
-  style.textContent = `
-    #${ROOT_ID}{
-      color:#0f172a;
-    }
-
-    #${ROOT_ID} .cap-badge{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:6px 10px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:800;
-      border:1px solid rgba(15,23,42,.10);
-      background:rgba(15,23,42,.05);
-      color:#0f172a;
-    }
-
-    #${ROOT_ID} .cap-grid-3{
-      display:grid;
-      grid-template-columns:repeat(3, minmax(0, 1fr));
-      gap:12px;
-    }
-
-    #${ROOT_ID} .cap-grid-2{
-      display:grid;
-      grid-template-columns:repeat(2, minmax(0, 1fr));
-      gap:12px;
-    }
-
-    #${ROOT_ID} .cap-metric{
-      padding:14px;
-      border-radius:12px;
-      background:#f8fafc;
-      border:1px solid rgba(15,23,42,.08);
-      box-shadow:0 8px 24px rgba(15,23,42,.05);
-      color:#0f172a;
-    }
-
-    #${ROOT_ID} .cap-metric-value{
-      font-weight:900;
-      font-size:22px;
-      line-height:1.3;
-      color:#0f172a;
-    }
-
-    #${ROOT_ID} .cap-action-box{
-      padding:14px;
-      border-radius:12px;
-      background:#f8fafc;
-      border:1px solid rgba(15,23,42,.08);
-      box-shadow:0 8px 24px rgba(15,23,42,.05);
-      color:#0f172a;
-    }
-
-    #${ROOT_ID} .cap-action-text{
-      font-weight:700;
-      line-height:1.5;
-      color:#0f172a;
-    }
-
-    #${ROOT_ID} .small{
-      font-size:12px;
-      line-height:1.4;
-      color:rgba(15,23,42,.62);
-      margin-bottom:6px;
-      font-weight:700;
-    }
-
-    #${ROOT_ID} .meta{
-      font-size:14px;
-      line-height:1.5;
-      color:rgba(15,23,42,.74);
-    }
-
-    #${ROOT_ID} .cap-bullet-list{
-      display:flex;
-      flex-direction:column;
-      gap:7px;
-      margin-top:10px;
-      color:rgba(15,23,42,.82);
-      line-height:1.5;
-    }
-
-    @media (max-width: 720px){
-      #${ROOT_ID} .cap-grid-3,
-      #${ROOT_ID} .cap-grid-2{
-        grid-template-columns:1fr;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
 function setHeaderContext() {
   const s = readSession();
   if (!s) return;
@@ -298,7 +199,11 @@ function setupLogout() {
 
 function money0(x) {
   const n = Number(x || 0);
-  return n.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  return n.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0
+  });
 }
 
 function pct1(x) {
@@ -416,13 +321,33 @@ function buildNarrative({ base, cur }) {
   };
 }
 
+function metricCard(label, value) {
+  return `
+    <div class="kpi-card">
+      <div class="kpi-label">${label}</div>
+      <div class="cap-metric-value">${value}</div>
+    </div>
+  `;
+}
+
+function infoBox(title, body) {
+  return `
+    <div class="info-box">
+      <h3>${title}</h3>
+      <p>${body}</p>
+    </div>
+  `;
+}
+
 function renderLocked(title, line1, line2 = "") {
   setHtml(ROOT_ID, `
-    <div class="card" style="margin-bottom:18px;">
-      <h2>${title}</h2>
-      <div class="meta">${line1}</div>
-      ${line2 ? `<div class="meta" style="margin-top:8px;">${line2}</div>` : ""}
-    </div>
+    <section class="cap-stack">
+      <div class="card">
+        <h2 class="section-title">${title}</h2>
+        <p class="section-sub">${line1}</p>
+        ${line2 ? `<p class="section-sub cap-tight">${line2}</p>` : ""}
+      </div>
+    </section>
   `);
 }
 
@@ -443,69 +368,55 @@ function renderLiveActionPlan(truth) {
   const secondaryAction = narrative.priorities[1] || "Support the correction with tighter ownership and cadence.";
 
   setHtml(ROOT_ID, `
-    <div class="card" style="margin-bottom:18px;">
-      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:start;">
-        <div>
-          <div class="small">Primary correction this week</div>
-          <h2 style="margin:4px 0 8px 0;">${narrative.headline}</h2>
-          <div class="meta">Scope: <b>${prettyLabel(truth.storeId)}</b></div>
-          <div class="meta" style="margin-top:6px;">Reference: <b>${baselineLabel}</b> → <b>${weekLabel}</b></div>
+    <section class="cap-stack">
+      <div class="card">
+        <div class="cap-card-head">
+          <div>
+            <div class="small">Primary correction this week</div>
+            <h2 class="section-title cap-primary-title">${narrative.headline}</h2>
+            <p class="section-sub cap-tight">Scope: <span class="cap-text-strong">${prettyLabel(truth.storeId)}</span></p>
+            <p class="section-sub cap-tight">Reference: <span class="cap-text-strong">${baselineLabel}</span> → <span class="cap-text-strong">${weekLabel}</span></p>
+          </div>
+          <div>
+            <span class="status-pill cap-pill">Execution Plan</span>
+          </div>
         </div>
-        <div class="cap-badge">Execution Plan</div>
+
+        <div class="kpi-grid cap-kpi-grid">
+          ${metricCard("Sales", narrative.metrics.salesLine)}
+          ${metricCard("Transactions", narrative.metrics.txLine)}
+          ${metricCard("Labor Guardrail", narrative.metrics.laborLine)}
+        </div>
+
+        <hr class="hr" />
+
+        <h3 class="section-title cap-subtitle">Why this needs attention</h3>
+        <p class="section-sub">${narrative.driverNote}</p>
+        <p class="section-sub cap-tight">${narrative.interpretation}</p>
       </div>
 
-      <div class="cap-grid-3" style="margin-top:14px;">
-        <div class="cap-metric">
-          <div class="small">Sales</div>
-          <div class="cap-metric-value">${narrative.metrics.salesLine}</div>
-        </div>
-        <div class="cap-metric">
-          <div class="small">Transactions</div>
-          <div class="cap-metric-value">${narrative.metrics.txLine}</div>
-        </div>
-        <div class="cap-metric">
-          <div class="small">Labor Guardrail</div>
-          <div class="cap-metric-value">${narrative.metrics.laborLine}</div>
+      <div class="meta-grid">
+        ${infoBox("Primary correction", primaryAction)}
+        ${infoBox("Secondary correction", secondaryAction)}
+      </div>
+
+      <div class="card">
+        <h3 class="section-title cap-subtitle">Operational Discipline This Week</h3>
+        <div class="cap-bullet-stack">
+          ${narrative.discipline.map(x => `<div>• ${x}</div>`).join("")}
         </div>
       </div>
 
-      <div class="hr"></div>
-
-      <div style="font-weight:800;margin-bottom:6px;color:#0f172a;">Why this needs attention</div>
-      <div class="meta" style="margin-bottom:10px;">${narrative.driverNote}</div>
-      <div class="meta">${narrative.interpretation}</div>
-    </div>
-
-    <div class="card" style="margin-bottom:18px;">
-      <h3 style="margin:0 0 8px 0;">Top Corrections to Hold</h3>
-      <div class="cap-grid-2" style="margin-top:12px;">
-        <div class="cap-action-box">
-          <div class="small">Primary correction</div>
-          <div class="cap-action-text">${primaryAction}</div>
-        </div>
-        <div class="cap-action-box">
-          <div class="small">Secondary correction</div>
-          <div class="cap-action-text">${secondaryAction}</div>
+      <div class="card">
+        <h3 class="section-title cap-subtitle">Supporting Context</h3>
+        <p class="section-sub">
+          Additional correction ideas remain visible, but execution should begin with the primary and secondary holds above.
+        </p>
+        <div class="cap-bullet-stack">
+          ${narrative.priorities.map(x => `<div>• ${x}</div>`).join("")}
         </div>
       </div>
-    </div>
-
-    <div class="card" style="margin-bottom:18px;">
-      <h3 style="margin:0 0 8px 0;">Operational Discipline This Week</h3>
-      <div class="cap-bullet-list">
-        ${narrative.discipline.map(x => `<div>• ${x}</div>`).join("")}
-      </div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 8px 0;">Supporting Context</h3>
-      <div class="meta" style="margin-bottom:10px;">
-        Additional correction ideas remain visible, but execution should begin with the primary and secondary holds above.
-      </div>
-      <div class="cap-bullet-list">
-        ${narrative.priorities.map(x => `<div>• ${x}</div>`).join("")}
-      </div>
-    </div>
+    </section>
   `);
 }
 
@@ -559,7 +470,6 @@ async function loadCommercialActionPlan() {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
-  injectStyles();
   setHeaderContext();
   setupViewSelector();
   setupLogout();
