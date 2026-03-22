@@ -1,10 +1,10 @@
-// /assets/commercial-shift-insight.js (v4)
-// Commercial Shift Insight — unified light-card commercial design
+// /assets/commercial-shift-insight.js (v5)
+// Commercial Shift Insight — shared premium commercial design
 // ✅ Uses commercial-kpi-data.js shared adapter
 // ✅ Resolves active store from URL, session, localStorage, or assigned stores
 // ✅ Uses approved baseline + latest approved week + previous week
 // ✅ Honest fallback if shift/daypart data is not present
-// ✅ Matches commercial light-card system
+// ✅ Uses shared styles.css card/panel system
 // 🚫 No KPI math changes
 
 import { loadCommercialStoreTruth } from "./commercial-kpi-data.js";
@@ -205,134 +205,13 @@ function setupLogout() {
   });
 }
 
-function injectShiftInsightStyles() {
-  if (document.getElementById("commercialShiftInsightStyles")) return;
-
-  const style = document.createElement("style");
-  style.id = "commercialShiftInsightStyles";
-  style.textContent = `
-    #shiftInsightRoot{
-      color:#0f172a;
-    }
-
-    #shiftInsightRoot .small{
-      font-size:12px;
-      line-height:1.4;
-      color:rgba(15,23,42,.62);
-      margin-bottom:6px;
-      font-weight:700;
-    }
-
-    #shiftInsightRoot .meta{
-      font-size:14px;
-      line-height:1.5;
-      color:rgba(15,23,42,.74);
-    }
-
-    #shiftInsightRoot .csi-badge{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:6px 10px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:800;
-      border:1px solid rgba(15,23,42,.10);
-      background:rgba(15,23,42,.05);
-      color:#0f172a;
-    }
-
-    #shiftInsightRoot .csi-high{
-      background:rgba(185,28,28,.08);
-      color:#991b1b;
-      border-color:rgba(185,28,28,.14);
-    }
-
-    #shiftInsightRoot .csi-watch{
-      background:rgba(180,83,9,.08);
-      color:#92400e;
-      border-color:rgba(180,83,9,.16);
-    }
-
-    #shiftInsightRoot .csi-stable{
-      background:rgba(22,101,52,.08);
-      color:#166534;
-      border-color:rgba(22,101,52,.14);
-    }
-
-    #shiftInsightRoot .csi-metric-grid{
-      display:grid;
-      grid-template-columns:repeat(3, minmax(0, 1fr));
-      gap:12px;
-      margin:14px 0;
-    }
-
-    #shiftInsightRoot .csi-metric{
-      padding:14px;
-      border-radius:12px;
-      background:#f8fafc;
-      border:1px solid rgba(15,23,42,.08);
-      box-shadow:0 8px 24px rgba(15,23,42,.05);
-    }
-
-    #shiftInsightRoot .csi-metric-value{
-      font-weight:900;
-      font-size:22px;
-      line-height:1.1;
-      color:#0f172a;
-    }
-
-    #shiftInsightRoot .csi-coach-grid{
-      display:grid;
-      grid-template-columns:repeat(2, minmax(0, 1fr));
-      gap:12px;
-      margin-top:12px;
-    }
-
-    #shiftInsightRoot .csi-coach-box{
-      padding:14px;
-      border-radius:12px;
-      background:#f8fafc;
-      border:1px solid rgba(15,23,42,.08);
-      box-shadow:0 8px 24px rgba(15,23,42,.05);
-    }
-
-    #shiftInsightRoot .csi-secondary-grid{
-      display:flex;
-      gap:12px;
-      flex-wrap:wrap;
-      margin-top:12px;
-    }
-
-    #shiftInsightRoot .csi-secondary-card{
-      flex:1;
-      min-width:220px;
-      padding:14px;
-      border-radius:12px;
-      background:#f8fafc;
-      border:1px solid rgba(15,23,42,.08);
-      box-shadow:0 8px 24px rgba(15,23,42,.05);
-    }
-
-    #shiftInsightRoot .csi-note{
-      font-size:13px;
-      line-height:1.5;
-      color:rgba(15,23,42,.76);
-    }
-
-    @media (max-width: 720px){
-      #shiftInsightRoot .csi-metric-grid,
-      #shiftInsightRoot .csi-coach-grid{
-        grid-template-columns:1fr;
-      }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
 function fmtMoney(n) {
   const x = Number(n || 0);
-  return x.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  return x.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0
+  });
 }
 
 function fmtPct(n) {
@@ -496,18 +375,18 @@ const FOCUS_POINTS = {
   ],
   Midday: [
     "Rush coverage: assign clear positions (line/expo/cash)",
-    "Throughput control: speed with accuracy (no re-makes)",
+    "Throughput control: speed with accuracy, not re-makes",
     "Break discipline: stagger breaks to protect the rush"
   ],
   PM: [
-    "Dinner pacing: keep the line moving, avoid late ticket times",
-    "Handoff quality: mid → PM transition must be clean",
-    "Coverage during peak: don’t leave one position unsupported"
+    "Dinner pacing: keep the line moving and prevent late ticket times",
+    "Handoff quality: mid-to-PM transition must be clean",
+    "Coverage during peak: do not leave one position unsupported"
   ],
   Close: [
     "Close overlap: protect late throughput while cleaning",
     "Position lock: avoid early shutdown of stations",
-    "Last-hour standards: speed + quality under thin staffing"
+    "Last-hour standards: speed and quality under thin staffing"
   ]
 };
 
@@ -520,7 +399,7 @@ function buildPriority(score) {
 function buildShortDriverText(ctx) {
   if (!ctx) return "No dominant coaching opportunity detected.";
   if (!ctx.prev) {
-    return "Latest approved week loaded — previous approved week not available yet for direct shift comparison.";
+    return "Latest approved week loaded. Previous approved week is not available yet for direct shift comparison.";
   }
 
   const salesPct = pctDelta(ctx.cur.sales, ctx.prev.sales);
@@ -534,7 +413,7 @@ function buildShortDriverText(ctx) {
 
   return parts.length
     ? parts.join(" • ")
-    : "No major breakdown detected — focus on tightening execution discipline.";
+    : "No major breakdown detected. Focus on tightening execution discipline.";
 }
 
 function buildContextBullets(ctx, latestWeekLabel, prevWeekLabel) {
@@ -542,7 +421,7 @@ function buildContextBullets(ctx, latestWeekLabel, prevWeekLabel) {
 
   const weekPart = `Week: ${latestWeekLabel}${prevWeekLabel ? ` vs ${prevWeekLabel}` : " (no previous-week comparison yet)"}`;
   const driverPart = `Driver: ${buildShortDriverText(ctx)}`;
-  const rulePart = "Rule: isolate the shift — do not over-correct the whole day.";
+  const rulePart = "Rule: isolate the shift first. Do not over-correct the whole day.";
 
   return [weekPart, driverPart, rulePart];
 }
@@ -551,7 +430,10 @@ function analyzeCommercialShift(latestRows, previousRows) {
   const currentAgg = computeShiftKpis(latestRows || []);
   const previousAgg = previousRows && previousRows.length ? computeShiftKpis(previousRows) : null;
 
-  const hasShiftData = ["AM", "Midday", "PM", "Close"].some((k) => Number(currentAgg?.[k]?.rowCount || 0) > 0);
+  const hasShiftData = ["AM", "Midday", "PM", "Close"].some(
+    (k) => Number(currentAgg?.[k]?.rowCount || 0) > 0
+  );
+
   if (!hasShiftData) {
     return { ok: false, reason: "missing_shift_data" };
   }
@@ -588,7 +470,11 @@ function analyzeCommercialShift(latestRows, previousRows) {
 
 function priorityBadge(priority) {
   const p = priority || { label: "Stable", tone: "stable" };
-  return `<span class="csi-badge csi-${p.tone}">${p.label}</span>`;
+  return `<span class="status-pill csi-pill csi-${p.tone}">${p.label}</span>`;
+}
+
+function liveBadge() {
+  return `<span class="status-pill csi-pill">Live</span>`;
 }
 
 function primaryAction(shiftKey) {
@@ -599,6 +485,76 @@ function primaryAction(shiftKey) {
 function secondaryAction(shiftKey) {
   const points = FOCUS_POINTS[shiftKey] || [];
   return points[1] || "Support the shift with tighter role ownership.";
+}
+
+function metricCard(label, value, sub = "") {
+  return `
+    <div class="kpi-card">
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-value">${value}</div>
+      ${sub ? `<div class="kpi-sub">${sub}</div>` : `<div class="kpi-sub">&nbsp;</div>`}
+    </div>
+  `;
+}
+
+function insightCallout(title, body) {
+  return `
+    <div class="info-box">
+      <h3>${title}</h3>
+      <p>${body}</p>
+    </div>
+  `;
+}
+
+function shiftSupportCard(shiftKey, cur, prev, isPrimary, score) {
+  const header = SHIFT_LABELS[shiftKey] || shiftKey;
+
+  let badgeHtml = "";
+  if (isPrimary) {
+    const tone = Number(score || 0) >= 9 ? "high" : "watch";
+    badgeHtml = priorityBadge({ label: "Primary", tone });
+  } else {
+    badgeHtml = priorityBadge(buildPriority(score || 0));
+  }
+
+  let status = "Latest approved week";
+  if (prev) {
+    const s = pctDelta(cur.sales, prev.sales);
+    const t = pctDelta(cur.transactions, prev.transactions);
+    const lp = delta(cur.laborPct, prev.laborPct);
+    const bits = [];
+    if (Math.abs(s) >= 1) bits.push(`Sales ${s >= 0 ? "+" : ""}${s.toFixed(1)}%`);
+    if (Math.abs(t) >= 1) bits.push(`Tx ${t >= 0 ? "+" : ""}${t.toFixed(1)}%`);
+    if (Math.abs(lp) >= 0.25) bits.push(`Labor ${lp >= 0 ? "+" : ""}${lp.toFixed(2)} pts`);
+    status = bits.length ? bits.join(" • ") : "Stable vs comparison";
+  }
+
+  return `
+    <div class="card">
+      <div class="csi-card-head">
+        <div>
+          <h3 class="csi-card-title">${header}</h3>
+          <p class="section-sub csi-tight">${status}</p>
+        </div>
+        <div>${badgeHtml}</div>
+      </div>
+
+      <div class="csi-mini-metrics">
+        <div>
+          <div class="small">Sales</div>
+          <div class="csi-mini-value">${fmtMoney(cur.sales)}</div>
+        </div>
+        <div>
+          <div class="small">Tx</div>
+          <div class="csi-mini-value">${fmtNum(cur.transactions)}</div>
+        </div>
+        <div>
+          <div class="small">Labor %</div>
+          <div class="csi-mini-value">${fmtPct(cur.laborPct)}</div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderFallbackFromTruth(truth) {
@@ -613,84 +569,71 @@ function renderFallbackFromTruth(truth) {
     : "No approved baseline on file yet.";
 
   setHtml("shiftInsightRoot", `
-    <div class="card" style="margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:start;">
-        <div>
-          <div class="small">Primary shift opportunity</div>
-          <h3 style="margin:4px 0 4px 0;">Awaiting Shift Data</h3>
-          <div class="meta">${prettyStore}</div>
+    <section class="csi-stack">
+      <div class="card">
+        <div class="csi-card-head">
+          <div>
+            <div class="small">Primary shift opportunity</div>
+            <h2 class="section-title csi-primary-title">Awaiting Shift Data</h2>
+            <p class="section-sub csi-tight">${prettyStore}</p>
+          </div>
+          <div>${liveBadge()}</div>
         </div>
-        <div class="csi-badge">Live</div>
+
+        <div class="kpi-grid csi-kpi-grid">
+          ${metricCard("Sales", "—")}
+          ${metricCard("Transactions", "—")}
+          ${metricCard("Labor %", "—")}
+        </div>
+
+        <hr class="hr" />
+
+        <h3 class="section-title csi-subtitle">Why this is pending</h3>
+        <p class="section-sub">
+          The selected weekly data does not include enough shift or daypart detail yet to isolate one primary coaching shift.
+        </p>
+
+        <div class="meta-grid">
+          ${insightCallout("Current baseline status", baselineText)}
+          ${insightCallout("Next wiring step", "Use weekly uploads that include Shift, Daypart, or time-based rows so the system can surface one primary shift first, then supporting shifts below.")}
+        </div>
       </div>
 
-      <div class="csi-metric-grid">
-        <div class="csi-metric">
-          <div class="small">Sales</div>
-          <div class="csi-metric-value">—</div>
-        </div>
-        <div class="csi-metric">
-          <div class="small">Transactions</div>
-          <div class="csi-metric-value">—</div>
-        </div>
-        <div class="csi-metric">
-          <div class="small">Labor %</div>
-          <div class="csi-metric-value">—</div>
+      <div class="card">
+        <h3 class="section-title csi-subtitle">Coaching Context</h3>
+        <div class="csi-bullet-stack">
+          <div>• Week lens: latest approved week is loaded when available</div>
+          <div>• Driver: weekly rows do not contain enough shift or daypart detail, or no store scope resolved</div>
+          <div>• Rule: once shift detail is present, isolate one shift first — do not coach the whole day</div>
         </div>
       </div>
 
-      <div class="hr"></div>
+      <div class="card">
+        <h3 class="section-title csi-subtitle">Full Day View</h3>
+        <p class="section-sub">
+          Supporting shifts stay available here once weekly rows contain usable shift or daypart detail.
+        </p>
 
-      <div style="font-weight:800;margin-bottom:6px;color:#0f172a;">Why this is pending</div>
-      <div class="csi-note">
-        The selected weekly data does not include enough shift or daypart detail yet to isolate one primary coaching shift.
-      </div>
-
-      <div class="csi-coach-grid">
-        <div class="csi-coach-box">
-          <div class="small">Current baseline status</div>
-          <div class="csi-note">${baselineText}</div>
-        </div>
-        <div class="csi-coach-box">
-          <div class="small">Next wiring step</div>
-          <div class="csi-note">Use weekly uploads that include Shift, Daypart, or time-based rows so the system can surface one primary shift first, then supporting shifts below.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:14px;">
-      <h3 style="margin:0 0 8px 0;">Coaching Context</h3>
-      <div style="display:flex;flex-direction:column;gap:7px;color:rgba(15,23,42,.78);">
-        <div>• Week lens: latest approved week is loaded when available</div>
-        <div>• Driver: weekly rows do not contain enough shift or daypart detail, or no store scope resolved</div>
-        <div>• Rule: once shift detail is present, isolate one shift first — do not coach the whole day</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 8px 0;">Full Day View</h3>
-      <div class="meta" style="margin-bottom:12px;">
-        Supporting shifts stay available here once weekly rows contain usable shift or daypart detail.
-      </div>
-
-      <div class="csi-secondary-grid">
-        <div class="csi-secondary-card">
-          <div style="font-weight:900;color:#0f172a;">AM</div>
-          <div class="meta" style="margin-top:6px;">Awaiting usable data</div>
-        </div>
-        <div class="csi-secondary-card">
-          <div style="font-weight:900;color:#0f172a;">Midday</div>
-          <div class="meta" style="margin-top:6px;">Awaiting usable data</div>
-        </div>
-        <div class="csi-secondary-card">
-          <div style="font-weight:900;color:#0f172a;">PM</div>
-          <div class="meta" style="margin-top:6px;">Awaiting usable data</div>
-        </div>
-        <div class="csi-secondary-card">
-          <div style="font-weight:900;color:#0f172a;">Close</div>
-          <div class="meta" style="margin-top:6px;">Awaiting usable data</div>
+        <div class="csi-support-grid">
+          <div class="card">
+            <h3 class="csi-card-title">AM</h3>
+            <p class="section-sub csi-tight">Awaiting usable data</p>
+          </div>
+          <div class="card">
+            <h3 class="csi-card-title">Midday</h3>
+            <p class="section-sub csi-tight">Awaiting usable data</p>
+          </div>
+          <div class="card">
+            <h3 class="csi-card-title">PM</h3>
+            <p class="section-sub csi-tight">Awaiting usable data</p>
+          </div>
+          <div class="card">
+            <h3 class="csi-card-title">Close</h3>
+            <p class="section-sub csi-tight">Awaiting usable data</p>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   `);
 }
 
@@ -709,118 +652,65 @@ function renderLiveShiftInsight(truth, analysis) {
     if (!cur || !cur.rowCount) return "";
 
     const prev = analysis.previousAgg?.[shiftKey] || null;
-    const header = SHIFT_LABELS[shiftKey] || shiftKey;
-
-    let badgeHtml = "";
-    if (shiftKey === best.sh) {
-      const tone = (scoreMap?.[shiftKey] || 0) >= 9 ? "high" : "watch";
-      badgeHtml = priorityBadge({ label: "Primary", tone });
-    } else {
-      badgeHtml = priorityBadge(buildPriority(scoreMap?.[shiftKey] || 0));
-    }
-
-    let status = "Latest approved week";
-    if (prev) {
-      const s = pctDelta(cur.sales, prev.sales);
-      const t = pctDelta(cur.transactions, prev.transactions);
-      const lp = delta(cur.laborPct, prev.laborPct);
-      const bits = [];
-      if (Math.abs(s) >= 1) bits.push(`Sales ${s >= 0 ? "+" : ""}${s.toFixed(1)}%`);
-      if (Math.abs(t) >= 1) bits.push(`Tx ${t >= 0 ? "+" : ""}${t.toFixed(1)}%`);
-      if (Math.abs(lp) >= 0.25) bits.push(`Labor ${lp >= 0 ? "+" : ""}${lp.toFixed(2)} pts`);
-      status = bits.length ? bits.join(" • ") : "Stable vs comparison";
-    }
-
-    return `
-      <div class="csi-secondary-card" style="opacity:${shiftKey === best.sh ? "1" : ".98"};">
-        <div style="display:flex;justify-content:space-between;gap:8px;align-items:start;">
-          <div style="font-weight:900;color:#0f172a;">${header}</div>
-          ${badgeHtml}
-        </div>
-
-        <div class="meta" style="margin:6px 0 10px 0;">${status}</div>
-
-        <div style="display:flex;gap:14px;flex-wrap:wrap;color:#0f172a;">
-          <div>
-            <div class="small">Sales</div>
-            <div style="font-weight:800;">${fmtMoney(cur.sales)}</div>
-          </div>
-          <div>
-            <div class="small">Tx</div>
-            <div style="font-weight:800;">${fmtNum(cur.transactions)}</div>
-          </div>
-          <div>
-            <div class="small">Labor %</div>
-            <div style="font-weight:800;">${fmtPct(cur.laborPct)}</div>
-          </div>
-        </div>
-      </div>
-    `;
+    return shiftSupportCard(
+      shiftKey,
+      cur,
+      prev,
+      shiftKey === best.sh,
+      scoreMap?.[shiftKey] || 0
+    );
   }).filter(Boolean).join("");
 
   setHtml("shiftInsightRoot", `
-    <div class="card" style="margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:start;">
-        <div>
-          <div class="small">Primary shift opportunity</div>
-          <h3 style="margin:4px 0 4px 0;">${SHIFT_LABELS[best.sh] || best.sh}</h3>
-          <div class="meta">${prettyLabel(truth.storeId)} • ${latestWeekLabel}</div>
+    <section class="csi-stack">
+      <div class="card">
+        <div class="csi-card-head">
+          <div>
+            <div class="small">Primary shift opportunity</div>
+            <h2 class="section-title csi-primary-title">${SHIFT_LABELS[best.sh] || best.sh}</h2>
+            <p class="section-sub csi-tight">${prettyLabel(truth.storeId)} • ${latestWeekLabel}</p>
+          </div>
+          <div class="csi-badge-row">
+            ${priorityBadge(priority)}
+            ${liveBadge()}
+          </div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-          ${priorityBadge(priority)}
-          <span class="csi-badge">Live</span>
+
+        <div class="kpi-grid csi-kpi-grid">
+          ${metricCard("Sales", fmtMoney(best.cur.sales))}
+          ${metricCard("Transactions", fmtNum(best.cur.transactions))}
+          ${metricCard("Labor %", fmtPct(best.cur.laborPct))}
+        </div>
+
+        <hr class="hr" />
+
+        <h3 class="section-title csi-subtitle">Why this shift was surfaced</h3>
+        <p class="section-sub">${buildShortDriverText(best)}</p>
+
+        <div class="meta-grid">
+          ${insightCallout("Primary action", primaryAction(best.sh))}
+          ${insightCallout("Secondary action", secondaryAction(best.sh))}
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="section-title csi-subtitle">Coaching Context</h3>
+        <div class="csi-bullet-stack">
+          ${bullets.map(x => `<div>• ${x}</div>`).join("")}
         </div>
       </div>
 
-      <div class="csi-metric-grid">
-        <div class="csi-metric">
-          <div class="small">Sales</div>
-          <div class="csi-metric-value">${fmtMoney(best.cur.sales)}</div>
-        </div>
-        <div class="csi-metric">
-          <div class="small">Transactions</div>
-          <div class="csi-metric-value">${fmtNum(best.cur.transactions)}</div>
-        </div>
-        <div class="csi-metric">
-          <div class="small">Labor %</div>
-          <div class="csi-metric-value">${fmtPct(best.cur.laborPct)}</div>
+      <div class="card">
+        <h3 class="section-title csi-subtitle">Full Day View</h3>
+        <p class="section-sub">
+          Supporting shifts stay visible, but coaching should begin with the primary shift opportunity above.
+        </p>
+
+        <div class="csi-support-grid">
+          ${secondaryCards}
         </div>
       </div>
-
-      <div class="hr"></div>
-
-      <div style="font-weight:800;margin-bottom:6px;color:#0f172a;">Why this shift was surfaced</div>
-      <div class="csi-note">${buildShortDriverText(best)}</div>
-
-      <div class="csi-coach-grid">
-        <div class="csi-coach-box">
-          <div class="small">Primary action</div>
-          <div class="csi-note">${primaryAction(best.sh)}</div>
-        </div>
-        <div class="csi-coach-box">
-          <div class="small">Secondary action</div>
-          <div class="csi-note">${secondaryAction(best.sh)}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:14px;">
-      <h3 style="margin:0 0 8px 0;">Coaching Context</h3>
-      <div style="display:flex;flex-direction:column;gap:7px;color:rgba(15,23,42,.78);">
-        ${bullets.map(x => `<div>• ${x}</div>`).join("")}
-      </div>
-    </div>
-
-    <div class="card">
-      <h3 style="margin:0 0 8px 0;">Full Day View</h3>
-      <div class="meta" style="margin-bottom:12px;">
-        Supporting shifts stay visible, but coaching should begin with the primary shift opportunity above.
-      </div>
-
-      <div class="csi-secondary-grid">
-        ${secondaryCards}
-      </div>
-    </div>
+    </section>
   `);
 }
 
@@ -855,7 +745,10 @@ async function loadCommercialShiftInsight() {
       return;
     }
 
-    const analysis = analyzeCommercialShift(truth.latestWeekRows || [], truth.previousWeekRows || []);
+    const analysis = analyzeCommercialShift(
+      truth.latestWeekRows || [],
+      truth.previousWeekRows || []
+    );
 
     if (!analysis.ok) {
       renderFallbackFromTruth(truth);
@@ -870,7 +763,6 @@ async function loadCommercialShiftInsight() {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
-  injectShiftInsightStyles();
   setSMHeaderContext();
   setupViewSelector();
   setupLogout();
