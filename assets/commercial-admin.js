@@ -1,10 +1,12 @@
-// /assets/commercial-admin.js (v12)
+// /assets/commercial-admin.js (v13)
 // Commercial admin workspace logic
 // ✅ Full admin restored
 // ✅ Refresh lists works
 // ✅ Save user stores assigned store IDs correctly
 // ✅ Baseline CSV + weekly CSV parsed into row objects
 // ✅ Baseline governance works
+// ✅ Weekly uploads now save as pending
+// ✅ Weekly approval / rejection wired
 // ✅ Reset tools wired
 // ✅ Launch links preserve org / region / district / store context
 // 🚫 No KPI math changes
@@ -19,6 +21,8 @@ import {
   getStoreBaselineStatus,
   approvePendingStoreBaseline,
   saveStoreWeek,
+  approveStoreWeek,
+  rejectStoreWeek,
   getStoreWeekStatus,
   deleteStoreWeek,
   deleteStoreBaseline,
@@ -447,9 +451,12 @@ async function onSaveWeeklyUpload() {
 
     const status = await getStoreWeekStatus(orgId, storeId);
 
-    let summary = `✅ Weekly upload saved.\nWeek ID: ${weekId}\nRows: ${rows.length}`;
-    if (status?.latestWeek?.weekStart) {
-      summary += `\nLatest Week: ${status.latestWeek.weekStart}`;
+    let summary = `✅ Weekly upload saved as pending approval.\nWeek ID: ${weekId}\nRows: ${rows.length}`;
+    if (status?.pendingWeek?.weekStart) {
+      summary += `\nPending Week: ${status.pendingWeek.weekStart}`;
+    }
+    if (status?.latestApprovedWeek?.weekStart) {
+      summary += `\nLatest Approved Week: ${status.latestApprovedWeek.weekStart}`;
     }
 
     msg("weeklyIntakeMsg", summary);
@@ -458,9 +465,81 @@ async function onSaveWeeklyUpload() {
     syncStoreIdEverywhere(storeId);
     setValue("resetWeekId", weekId);
 
+    await onLoadBaselineStatus();
     await refreshLists();
   } catch (e) {
     msg("weeklyIntakeMsg", "❌ " + e.message, true);
+  }
+}
+
+/* =========================================================
+   WEEKLY GOVERNANCE
+========================================================= */
+
+async function onApproveWeek() {
+  try {
+    const session = currentSession();
+    const orgId = String($("resetOrgId")?.value || "").trim();
+    const storeId = String($("resetStoreId")?.value || "").trim();
+    const weekId = String($("resetWeekId")?.value || "").trim();
+
+    if (!orgId || !storeId || !weekId) {
+      throw new Error("Org, Store, and Week ID required.");
+    }
+
+    msg("resetMsg", "Approving week…");
+
+    await approveStoreWeek({
+      orgId,
+      storeId,
+      weekId,
+      approvedByUid: session.uid,
+      approvedByEmail: session.email
+    });
+
+    msg("resetMsg", `✅ Week approved: ${weekId}`);
+
+    setValue("baselineOrgId", orgId);
+    setValue("baselineStoreId", storeId);
+
+    await onLoadBaselineStatus();
+    await refreshLists();
+  } catch (e) {
+    msg("resetMsg", "❌ " + e.message, true);
+  }
+}
+
+async function onRejectWeek() {
+  try {
+    const session = currentSession();
+    const orgId = String($("resetOrgId")?.value || "").trim();
+    const storeId = String($("resetStoreId")?.value || "").trim();
+    const weekId = String($("resetWeekId")?.value || "").trim();
+
+    if (!orgId || !storeId || !weekId) {
+      throw new Error("Org, Store, and Week ID required.");
+    }
+
+    msg("resetMsg", "Rejecting week…");
+
+    await rejectStoreWeek({
+      orgId,
+      storeId,
+      weekId,
+      rejectedByUid: session.uid,
+      rejectedByEmail: session.email,
+      reason: "Admin rejected upload"
+    });
+
+    msg("resetMsg", `⚠️ Week rejected: ${weekId}`);
+
+    setValue("baselineOrgId", orgId);
+    setValue("baselineStoreId", storeId);
+
+    await onLoadBaselineStatus();
+    await refreshLists();
+  } catch (e) {
+    msg("resetMsg", "❌ " + e.message, true);
   }
 }
 
@@ -507,14 +586,34 @@ async function onLoadBaselineStatus() {
       output += "No baseline found.\n\n";
     }
 
-    if (weekStatus?.latestWeek) {
-      output += `LATEST WEEK:\n`;
+    output += `WEEK STATUS:\n`;
+
+    if (weekStatus?.latestApprovedWeek) {
+      output += `LATEST APPROVED WEEK:\n`;
+      output += `ID: ${weekStatus.latestApprovedWeek.id || weekStatus.latestApprovedWeek.weekId || "N/A"}\n`;
+      output += `WEEK START: ${weekStatus.latestApprovedWeek.weekStart || "N/A"}\n`;
+      output += `ROWS: ${weekStatus.latestApprovedWeek.rowCount || 0}\n`;
+      output += `STATUS: ${weekStatus.latestApprovedWeek.status || "approved"}\n\n`;
+    } else {
+      output += `LATEST APPROVED WEEK:\nNone\n\n`;
+    }
+
+    if (weekStatus?.pendingWeek) {
+      output += `PENDING WEEK:\n`;
+      output += `ID: ${weekStatus.pendingWeek.id || weekStatus.pendingWeek.weekId || "N/A"}\n`;
+      output += `WEEK START: ${weekStatus.pendingWeek.weekStart || "N/A"}\n`;
+      output += `ROWS: ${weekStatus.pendingWeek.rowCount || 0}\n`;
+      output += `STATUS: ${weekStatus.pendingWeek.status || "pending"}\n\n`;
+    } else {
+      output += `PENDING WEEK:\nNone\n\n`;
+    }
+
+    if (weekStatus?.latestWeek && !weekStatus?.latestApprovedWeek && !weekStatus?.pendingWeek) {
+      output += `LATEST SUBMISSION:\n`;
       output += `ID: ${weekStatus.latestWeek.id || weekStatus.latestWeek.weekId || "N/A"}\n`;
       output += `WEEK START: ${weekStatus.latestWeek.weekStart || "N/A"}\n`;
       output += `ROWS: ${weekStatus.latestWeek.rowCount || 0}\n`;
-      output += `APPROVED: ${weekStatus.latestWeek.approved ? "YES" : "NO"}\n`;
-    } else {
-      output += `LATEST WEEK:\nNo weekly upload found.\n`;
+      output += `STATUS: ${weekStatus.latestWeek.status || (weekStatus.latestWeek.approved ? "approved" : "unknown")}\n`;
     }
 
     if ($("baselineStatus")) $("baselineStatus").textContent = output;
@@ -677,9 +776,26 @@ async function refreshLists() {
 
       if ($("storeList")) {
         $("storeList").textContent =
-          activeStores.map(s =>
-            `${s.id} | ${s.name} | active=${s.active !== false} | approved=${!!s.baselineApproved} | locked=${!!s.baselineLocked} | activeBaseline=${s.activeBaselineLabel || "none"} | latestWeek=${s.latestWeekStart || "none"}`
-          ).join("\n") || "(none)";
+          activeStores.map(s => {
+            const readiness =
+              s.pendingWeekStatus === "pending"
+                ? "PENDING_APPROVAL"
+                : s.latestWeekApproved
+                  ? "APPROVED"
+                  : "ACTION_NEEDED";
+
+            return [
+              s.id,
+              s.name,
+              `active=${s.active !== false}`,
+              `baselineApproved=${!!s.baselineApproved}`,
+              `baselineLocked=${!!s.baselineLocked}`,
+              `activeBaseline=${s.activeBaselineLabel || "none"}`,
+              `latestApprovedWeek=${s.latestWeekStart || "none"}`,
+              `pendingWeek=${s.pendingWeekStart || "none"}`,
+              `status=${readiness}`
+            ].join(" | ");
+          }).join("\n") || "(none)";
       }
     } else {
       if ($("storeList")) $("storeList").textContent = "(enter orgId to list stores)";
@@ -715,6 +831,9 @@ window.addEventListener("DOMContentLoaded", () => {
   $("saveWeeklyBtn")?.addEventListener("click", onSaveWeeklyUpload);
   $("loadBaselineBtn")?.addEventListener("click", onLoadBaselineStatus);
   $("approveBaselineBtn")?.addEventListener("click", onApproveBaseline);
+
+  $("approveWeekBtn")?.addEventListener("click", onApproveWeek);
+  $("rejectWeekBtn")?.addEventListener("click", onRejectWeek);
 
   $("deleteWeekBtn")?.addEventListener("click", onDeleteWeek);
   $("deleteBaselineBtn")?.addEventListener("click", onDeleteBaseline);
