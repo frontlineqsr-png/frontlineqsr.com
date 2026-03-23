@@ -1,16 +1,20 @@
-// /assets/commercial-rm.js (v8)
+// /assets/commercial-rm.js (v9)
 // Regional Manager page logic
-// ✅ Uses commercial-rollup-data.js
+// ✅ Uses commercial-rollup-data.js for approved rollup truth
+// ✅ Uses commercial-db.js for district readiness summary
 // ✅ Aggregates region totals from store-level approved truth
 // ✅ Shows district drill-down table
 // ✅ Adds Region Insight communication layer
 // ✅ Adds Estimated Labor Impact
-// ✅ Uses cleaner leadership language
+// ✅ Adds district readiness rollup
 // ✅ Preserves scoped navigation
-// ✅ Normalizes region / district / store ids from URL
 // 🚫 No KPI math changes
 
 import { loadCommercialRollupTruth } from "./commercial-rollup-data.js";
+import {
+  listStores,
+  getStoreWeekStatus
+} from "./commercial-db.js";
 import {
   fmtMoney,
   fmtMoney2,
@@ -137,6 +141,16 @@ function metricCard(title, value, deltaText, deltaCls) {
 function safeNum(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
+}
+
+function statusTone(status) {
+  if (status === "APPROVED") return "good";
+  if (status === "PENDING_APPROVAL") return "pending";
+  return "bad";
+}
+
+function statusBadge(status) {
+  return `<span class="status-pill ${statusTone(status)}">${String(status || "ACTION_NEEDED").replace(/_/g, " ")}</span>`;
 }
 
 /* =========================================================
@@ -288,6 +302,69 @@ function buildRegionInsight(truth) {
 }
 
 /* =========================================================
+   Governance helpers
+========================================================= */
+
+async function loadRegionDistrictReadiness(orgId, regionId) {
+  if (!orgId || !regionId) return {};
+
+  const stores = await listStores(orgId);
+  const activeStores = (stores || []).filter(
+    (s) => s.active !== false && normalizeId(s.regionId) === normalizeId(regionId)
+  );
+
+  const districtMap = {};
+
+  for (const store of activeStores) {
+    const districtKey = normalizeId(store.districtId) || "unassigned";
+    if (!districtMap[districtKey]) {
+      districtMap[districtKey] = {
+        districtId: districtKey,
+        approved: 0,
+        pending: 0,
+        actionNeeded: 0
+      };
+    }
+
+    const ws = await getStoreWeekStatus(orgId, store.id);
+
+    if (ws?.pendingWeek) {
+      districtMap[districtKey].pending += 1;
+    } else if (ws?.latestApprovedWeek) {
+      districtMap[districtKey].approved += 1;
+    } else {
+      districtMap[districtKey].actionNeeded += 1;
+    }
+  }
+
+  return districtMap;
+}
+
+function summarizeRegionReadiness(districtReadinessMap) {
+  const entries = Object.values(districtReadinessMap || {});
+  return entries.reduce(
+    (acc, x) => {
+      acc.approved += Number(x.approved || 0);
+      acc.pending += Number(x.pending || 0);
+      acc.actionNeeded += Number(x.actionNeeded || 0);
+      return acc;
+    },
+    { approved: 0, pending: 0, actionNeeded: 0 }
+  );
+}
+
+function districtOverallStatus(readiness) {
+  const pending = Number(readiness?.pending || 0);
+  const actionNeeded = Number(readiness?.actionNeeded || 0);
+  const approved = Number(readiness?.approved || 0);
+
+  if (actionNeeded > 0) return "ACTION_NEEDED";
+  if (pending > 0) return "PENDING_APPROVAL";
+  if (approved > 0) return "APPROVED";
+  return "ACTION_NEEDED";
+}
+
+/* =========================================================
    Rendering
 ========================================================= */
 
@@ -303,11 +380,12 @@ function renderLocked(title, line1, line2 = "") {
   `);
 }
 
-function renderLiveRegion(truth) {
+function renderLiveRegion(truth, districtReadinessMap) {
   const current = truth.latestWeekKpis || {};
   const prev = truth.previousWeekKpis || null;
   const base = truth.baselineWeeklyKpis || {};
   const insight = buildRegionInsight(truth);
+  const readinessSummary = summarizeRegionReadiness(districtReadinessMap);
 
   const salesDelta = prev ? (current.sales - prev.sales) : NaN;
   const txDelta = prev ? (current.transactions - prev.transactions) : NaN;
@@ -331,6 +409,11 @@ function renderLiveRegion(truth) {
     const k = row.latestWeekKpis || null;
     const b = row.baselineWeeklyKpis || {};
     const p = row.previousWeekKpis || null;
+    const readiness = districtReadinessMap?.[normalizeId(row.key)] || districtReadinessMap?.[normalizeId(row.label)] || {
+      approved: 0,
+      pending: 0,
+      actionNeeded: 0
+    };
 
     const wowSales = p && k ? (k.sales - p.sales) : NaN;
     const wowTx = p && k ? (k.transactions - p.transactions) : NaN;
@@ -342,11 +425,16 @@ function renderLiveRegion(truth) {
     const salesVsBase = k ? pctDelta(k.sales, b.sales) : NaN;
     const txVsBase = k ? pctDelta(k.transactions, b.transactions) : NaN;
     const hasLive = !!k;
+    const overallStatus = districtOverallStatus(readiness);
 
     return `
       <tr>
         <td><span class="crm-text-strong">${prettyLabel(row.label)}</span></td>
+        <td>${statusBadge(overallStatus)}</td>
         <td>${fmtNumber(row.counts?.stores || 0)}</td>
+        <td>${fmtNumber(readiness.approved || 0)}</td>
+        <td>${fmtNumber(readiness.pending || 0)}</td>
+        <td>${fmtNumber(readiness.actionNeeded || 0)}</td>
         <td>${hasLive ? fmtMoney(k.sales) : "—"}</td>
         <td>${hasLive ? fmtNumber(k.transactions) : "—"}</td>
         <td>${hasLive ? fmtPct(k.laborPct) : "—"}</td>
@@ -442,6 +530,24 @@ function renderLiveRegion(truth) {
       </div>
 
       <div class="card">
+        <h3 class="section-title crm-subtitle">Regional Readiness</h3>
+        <div class="meta-grid crm-meta-grid">
+          <div class="info-box">
+            <h3>Approved</h3>
+            <p>${fmtNumber(readinessSummary.approved)} stores</p>
+          </div>
+          <div class="info-box">
+            <h3>Pending Approval</h3>
+            <p>${fmtNumber(readinessSummary.pending)} stores</p>
+          </div>
+        </div>
+        <div class="info-box" style="margin-top:12px;">
+          <h3>Action Needed</h3>
+          <p>${fmtNumber(readinessSummary.actionNeeded)} stores</p>
+        </div>
+      </div>
+
+      <div class="card">
         <h3 class="section-title crm-subtitle">Regional Baseline Reference</h3>
         <div class="crm-bullet-stack">
           <div>• Baseline Weekly Sales: ${fmtMoney(base.sales)}</div>
@@ -462,7 +568,11 @@ function renderLiveRegion(truth) {
             <thead>
               <tr>
                 <th>District</th>
+                <th>Status</th>
                 <th>Stores</th>
+                <th>Approved</th>
+                <th>Pending</th>
+                <th>Action Needed</th>
                 <th>Sales</th>
                 <th>Transactions</th>
                 <th>Labor %</th>
@@ -475,7 +585,7 @@ function renderLiveRegion(truth) {
                 <th>Drill</th>
               </tr>
             </thead>
-            <tbody>${rowsHtml || `<tr><td colspan="12">No district rows found.</td></tr>`}</tbody>
+            <tbody>${rowsHtml || `<tr><td colspan="16">No district rows found.</td></tr>`}</tbody>
           </table>
         </div>
       </div>
@@ -486,6 +596,11 @@ function renderLiveRegion(truth) {
 async function loadRegionRollup() {
   try {
     const truth = await loadCommercialRollupTruth();
+    const p = getParams();
+    const districtReadinessMap = await loadRegionDistrictReadiness(
+      p.orgId || truth.orgId || "",
+      p.regionId || truth.scopeRegionId || ""
+    );
 
     if (truth.state === "missing_context") {
       renderLocked("Region Rollup", "Missing org context.");
@@ -516,7 +631,7 @@ async function loadRegionRollup() {
       return;
     }
 
-    renderLiveRegion(truth);
+    renderLiveRegion(truth, districtReadinessMap);
     setupRMDistrictActions();
   } catch (e) {
     console.error("[commercial-rm] load failed:", e);
