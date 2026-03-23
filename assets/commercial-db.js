@@ -11,6 +11,7 @@
 // ✅ Sequential week lock added
 // ✅ DM-and-above approval function added
 // ✅ Store approved/pending pointers separated
+// ✅ Rejected week can be resubmitted for the same required week
 // 🚫 No KPI math changes
 
 import { db } from "./firebase.js";
@@ -597,9 +598,27 @@ export async function saveStoreWeek({
   const existingWeekSnap = await getDoc(weekRef);
 
   if (existingWeekSnap.exists()) {
-    throw new Error(
-      `This week already exists for this store (${ws}). Admin must remove or unlock it before resubmission.`
-    );
+    const existingWeek = existingWeekSnap.data() || {};
+
+    if (existingWeek.status === "approved" || existingWeek.approved === true) {
+      throw new Error(
+        `This week is already approved for this store (${ws}). Approved weeks cannot be overwritten.`
+      );
+    }
+
+    if (existingWeek.status === "pending") {
+      throw new Error(
+        `This week is already pending approval for this store (${ws}). Wait for approval before submitting again.`
+      );
+    }
+
+    if (existingWeek.status === "rejected") {
+      await deleteDoc(weekRef);
+    } else {
+      throw new Error(
+        `This week already exists for this store (${ws}). Admin must remove or unlock it before resubmission.`
+      );
+    }
   }
 
   await setDoc(weekRef, {
