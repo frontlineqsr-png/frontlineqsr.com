@@ -1,12 +1,13 @@
-// /assets/commercial-portal.js (v10)
+// /assets/commercial-portal.js (v11)
 // Store Manager portal logic
 // Shared auth/session/logout is handled by commercial-page-boot.js
 // Reads live commercial baseline + approved weekly truth from Firestore
 // Uses shared KPI engine and keeps KPI math unchanged
-// ✅ Fix: tabs now route to the real live commercial pages
+// ✅ Tabs route to the real live commercial pages
 // ✅ KPI remains on portal page
 // ✅ Uses approved weekly truth only
 // ✅ Shows pending approval messaging when weekly upload exists but is not approved
+// ✅ Adds Weekly Upload tab route
 // 🚫 No KPI math changes
 
 import {
@@ -165,6 +166,11 @@ function setupTabs() {
 
       if (tab === "kpis" || tab === "kpi") {
         window.location.href = buildScopedUrl("./commercial-portal.html");
+        return;
+      }
+
+      if (tab === "weekly" || tab === "weekly-upload" || tab === "weeklyupload") {
+        window.location.href = buildScopedUrl("./commercial-weekly-upload.html");
         return;
       }
 
