@@ -1,15 +1,17 @@
-// assets/commercial-portal.js (v9)
+// /assets/commercial-portal.js (v10)
 // Store Manager portal logic
 // Shared auth/session/logout is handled by commercial-page-boot.js
-// Reads live commercial baseline + latest week from Firestore
+// Reads live commercial baseline + approved weekly truth from Firestore
 // Uses shared KPI engine and keeps KPI math unchanged
 // ✅ Fix: tabs now route to the real live commercial pages
 // ✅ KPI remains on portal page
+// ✅ Uses approved weekly truth only
+// ✅ Shows pending approval messaging when weekly upload exists but is not approved
 // 🚫 No KPI math changes
 
 import {
   getStoreBaselineStatus,
-  getLatestStoreWeek
+  getStoreWeekStatus
 } from "./commercial-db.js";
 
 import {
@@ -260,12 +262,12 @@ async function loadCommercialKpiStatus() {
   }
 
   try {
-    const status = await getStoreBaselineStatus(orgId, selectedStore);
+    const baselineStatus = await getStoreBaselineStatus(orgId, selectedStore);
 
-    if (!status?.activeBaseline) {
-      if (status?.pendingBaseline) {
-        const label = status.pendingBaseline.label || status.pendingBaseline.year || "Pending baseline";
-        const rows = Number(status.pendingBaseline.rowCount || 0);
+    if (!baselineStatus?.activeBaseline) {
+      if (baselineStatus?.pendingBaseline) {
+        const label = baselineStatus.pendingBaseline.label || baselineStatus.pendingBaseline.year || "Pending baseline";
+        const rows = Number(baselineStatus.pendingBaseline.rowCount || 0);
 
         setText(
           "baselineStatusText",
@@ -280,12 +282,10 @@ async function loadCommercialKpiStatus() {
       return;
     }
 
-    const activeBaseline = status.activeBaseline;
+    const activeBaseline = baselineStatus.activeBaseline;
     const baselineRows = Array.isArray(activeBaseline.rows) ? activeBaseline.rows : [];
     const baselineKpis = computeKpisFromRows(baselineRows);
     const baselineWeekly = normalizeBaselineMonthToWeeklyAvg(baselineKpis);
-
-    const latestWeek = await getLatestStoreWeek(orgId, selectedStore);
 
     const baselineLabel = activeBaseline.label || activeBaseline.year || "Approved baseline";
     const baselineRowCount = Number(activeBaseline.rowCount || 0);
@@ -295,10 +295,27 @@ async function loadCommercialKpiStatus() {
       `Approved baseline loaded: ${baselineLabel}. Row count: ${baselineRowCount}. Baseline weekly equivalent is being used as the KPI truth source.`
     );
 
-    if (!latestWeek) {
+    const weekStatus = await getStoreWeekStatus(orgId, selectedStore);
+    const latestApprovedWeek = weekStatus?.latestApprovedWeek || null;
+    const pendingWeek = weekStatus?.pendingWeek || null;
+
+    if (!latestApprovedWeek && pendingWeek) {
       setText(
         "weeklyStatusText",
-        `No approved weekly upload loaded for ${storeName} yet. Upload a weekly CSV to populate live KPI comparison.`
+        `Weekly upload is pending approval: ${pendingWeek.weekStart || pendingWeek.id}. Row count: ${Number(pendingWeek.rowCount || 0)}. KPI cards will update only after district approval.`
+      );
+
+      setDelta("kpiSalesDelta", "Pending weekly approval", "pending");
+      setDelta("kpiTransactionsDelta", "Pending weekly approval", "pending");
+      setDelta("kpiLaborPctDelta", "Pending weekly approval", "pending");
+      setDelta("kpiAvgTicketDelta", "Pending weekly approval", "pending");
+      return;
+    }
+
+    if (!latestApprovedWeek) {
+      setText(
+        "weeklyStatusText",
+        `No approved weekly upload loaded for ${storeName} yet. Upload the next required weekly CSV to begin live KPI comparison.`
       );
 
       setDelta("kpiSalesDelta", "Approved baseline on file", "good");
@@ -308,7 +325,7 @@ async function loadCommercialKpiStatus() {
       return;
     }
 
-    const latestWeekRows = Array.isArray(latestWeek.rows) ? latestWeek.rows : [];
+    const latestWeekRows = Array.isArray(latestApprovedWeek.rows) ? latestApprovedWeek.rows : [];
     const latestWeekKpis = computeKpisFromRows(latestWeekRows);
 
     applyKpiValues({
@@ -316,9 +333,17 @@ async function loadCommercialKpiStatus() {
       latestWeekKpis
     });
 
+    if (pendingWeek) {
+      setText(
+        "weeklyStatusText",
+        `Latest approved week loaded: ${latestApprovedWeek.weekStart || latestApprovedWeek.id}. A newer weekly upload is currently pending approval: ${pendingWeek.weekStart || pendingWeek.id}. KPI cards remain locked to approved truth until approval is completed.`
+      );
+      return;
+    }
+
     setText(
       "weeklyStatusText",
-      `Latest approved week loaded: ${latestWeek.weekStart || latestWeek.id}. Row count: ${Number(latestWeek.rowCount || 0)}. KPI cards now compare this week against the approved baseline weekly equivalent.`
+      `Latest approved week loaded: ${latestApprovedWeek.weekStart || latestApprovedWeek.id}. Row count: ${Number(latestApprovedWeek.rowCount || 0)}. KPI cards now compare this week against the approved baseline weekly equivalent.`
     );
   } catch (e) {
     console.error("[commercial-portal] loadCommercialKpiStatus failed:", e);
