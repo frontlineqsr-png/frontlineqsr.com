@@ -7,6 +7,11 @@
 // ✅ Active-store list helper added
 // ✅ Weekly duplicate guardrail added
 // ✅ Super admin reset/delete helpers added
+// ✅ Weekly uploads now save as PENDING
+// ✅ Sequential week lock added
+// ✅ DM-and-above approval function added
+// ✅ Store approved/pending pointers separated
+// 🚫 No KPI math changes
 
 import { db } from "./firebase.js";
 import {
@@ -51,23 +56,90 @@ function makeWeekId(weekStart) {
   return ws;
 }
 
-async function recomputeLatestWeekPointers(orgId, storeId) {
+function addDaysIso(dateStr, days) {
+  const raw = cleanString(dateStr);
+  if (!raw) return "";
+  const d = new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  d.setDate(d.getDate() + Number(days || 0));
+  return d.toISOString().slice(0, 10);
+}
+
+function isValidIsoDateOnly(v) {
+  const s = cleanString(v);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+function getLatestByFilter(weeks, predicate) {
+  const arr = Array.isArray(weeks) ? weeks.filter(predicate) : [];
+  return arr.length ? arr[0] : null;
+}
+
+async function recomputeWeekPointers(orgId, storeId) {
   const oid = cleanString(orgId);
   const sid = cleanString(storeId);
 
   const weeks = await listStoreWeeks(oid, sid);
-  const latest = weeks.length ? weeks[0] : null;
+  const latestAny = weeks.length ? weeks[0] : null;
+  const latestApproved = getLatestByFilter(weeks, (w) => w.approved === true || w.status === "approved");
+  const latestPending = getLatestByFilter(weeks, (w) => w.status === "pending");
 
   await setDoc(doc(db, "orgs", oid, "stores", sid), {
-    latestWeekId: latest ? (latest.id || latest.weekId || null) : null,
-    latestWeekStart: latest ? (latest.weekStart || null) : null,
-    latestWeekApproved: latest ? !!latest.approved : false,
-    latestWeekAtIso: latest ? nowIso() : null,
+    latestWeekId: latestApproved ? (latestApproved.id || latestApproved.weekId || null) : null,
+    latestWeekStart: latestApproved ? (latestApproved.weekStart || null) : null,
+    latestWeekApproved: latestApproved ? !!latestApproved.approved : false,
+    latestWeekAtIso: latestApproved ? nowIso() : null,
+
+    pendingWeekId: latestPending ? (latestPending.id || latestPending.weekId || null) : null,
+    pendingWeekStart: latestPending ? (latestPending.weekStart || null) : null,
+    pendingWeekStatus: latestPending ? (latestPending.status || "pending") : null,
+    pendingWeekAtIso: latestPending ? nowIso() : null,
+
+    latestSubmissionWeekId: latestAny ? (latestAny.id || latestAny.weekId || null) : null,
+    latestSubmissionWeekStart: latestAny ? (latestAny.weekStart || null) : null,
+    latestSubmissionStatus: latestAny ? (latestAny.status || (latestAny.approved ? "approved" : "pending")) : null,
+
     updatedAt: serverTimestamp(),
     updatedAtIso: nowIso()
   }, { merge: true });
 
-  return latest || null;
+  return {
+    latestAny: latestAny || null,
+    latestApproved: latestApproved || null,
+    latestPending: latestPending || null
+  };
+}
+
+async function assertSequentialWeekAllowed(orgId, storeId, incomingWeekStart) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+  const incoming = cleanString(incomingWeekStart);
+
+  if (!isValidIsoDateOnly(incoming)) {
+    throw new Error("Week start must be in YYYY-MM-DD format.");
+  }
+
+  const status = await getStoreWeekStatus(oid, sid);
+
+  if (status.pendingWeek) {
+    throw new Error(
+      `Previous week is still pending approval (${status.pendingWeek.weekStart}). Approve it before uploading another week.`
+    );
+  }
+
+  const latestApproved = status.latestApprovedWeek;
+  if (!latestApproved?.weekStart) return true;
+
+  const expectedNext = addDaysIso(latestApproved.weekStart, 7);
+  if (!expectedNext) return true;
+
+  if (incoming !== expectedNext) {
+    throw new Error(
+      `Next required week is ${expectedNext}. This store cannot skip weeks or upload out of sequence.`
+    );
+  }
+
+  return true;
 }
 
 /* =========================================================
@@ -117,9 +189,21 @@ export async function createStore({ orgId, name, regionId, districtId, active = 
     baselineLocked: false,
     activeBaselineId: null,
     activeBaselineLabel: null,
+
     latestWeekId: null,
     latestWeekStart: null,
     latestWeekApproved: false,
+    latestWeekAtIso: null,
+
+    pendingWeekId: null,
+    pendingWeekStart: null,
+    pendingWeekStatus: null,
+    pendingWeekAtIso: null,
+
+    latestSubmissionWeekId: null,
+    latestSubmissionWeekStart: null,
+    latestSubmissionStatus: null,
+
     active: !!active,
     archived: false,
     archivedAt: null,
@@ -367,16 +451,21 @@ export async function deleteStoreWeek({
   if (!snap.exists()) throw new Error("Week not found.");
 
   await deleteDoc(weekRef);
-  const latest = await recomputeLatestWeekPointers(oid, sid);
+  const pointers = await recomputeWeekPointers(oid, sid);
 
   await setDoc(doc(db, "orgs", oid, "stores", sid), {
     updatedAt: serverTimestamp(),
     updatedAtIso: nowIso(),
     updatedByUid: cleanString(deletedByUid) || null,
     updatedByEmail: cleanString(deletedByEmail) || null,
-    latestWeekId: latest ? (latest.id || latest.weekId || null) : null,
-    latestWeekStart: latest ? (latest.weekStart || null) : null,
-    latestWeekApproved: latest ? !!latest.approved : false
+
+    latestWeekId: pointers.latestApproved ? (pointers.latestApproved.id || pointers.latestApproved.weekId || null) : null,
+    latestWeekStart: pointers.latestApproved ? (pointers.latestApproved.weekStart || null) : null,
+    latestWeekApproved: pointers.latestApproved ? !!pointers.latestApproved.approved : false,
+
+    pendingWeekId: pointers.latestPending ? (pointers.latestPending.id || pointers.latestPending.weekId || null) : null,
+    pendingWeekStart: pointers.latestPending ? (pointers.latestPending.weekStart || null) : null,
+    pendingWeekStatus: pointers.latestPending ? (pointers.latestPending.status || "pending") : null
   }, { merge: true });
 
   return true;
@@ -452,12 +541,23 @@ export async function resetStoreData({
     baselineLocked: false,
     activeBaselineId: null,
     activeBaselineLabel: null,
+
     latestWeekId: null,
     latestWeekStart: null,
     latestWeekApproved: false,
+    latestWeekAtIso: null,
+
+    pendingWeekId: null,
+    pendingWeekStart: null,
+    pendingWeekStatus: null,
+    pendingWeekAtIso: null,
+
+    latestSubmissionWeekId: null,
+    latestSubmissionWeekStart: null,
+    latestSubmissionStatus: null,
+
     baselineApprovedAt: null,
     baselineApprovedAtIso: null,
-    latestWeekAtIso: null,
     updatedAt: serverTimestamp(),
     updatedAtIso: nowIso(),
     updatedByUid: cleanString(resetByUid) || null,
@@ -491,6 +591,8 @@ export async function saveStoreWeek({
   if (!ws) throw new Error("Week start required.");
   if (!safeRows.length) throw new Error("Weekly rows required.");
 
+  await assertSequentialWeekAllowed(oid, sid, ws);
+
   const weekRef = doc(db, "orgs", oid, "stores", sid, "weeks", weekId);
   const existingWeekSnap = await getDoc(weekRef);
 
@@ -505,12 +607,29 @@ export async function saveStoreWeek({
     weekStart: ws,
     rows: safeRows,
     rowCount: safeRows.length,
-    approved: true,
+
+    approved: false,
+    pendingApproval: true,
+    status: "pending",
+
     active: true,
     locked: true,
     note: cleanString(note) || null,
+
     uploadedByUid: cleanString(uploadedByUid) || null,
     uploadedByEmail: cleanString(uploadedByEmail) || null,
+
+    approvedByUid: null,
+    approvedByEmail: null,
+    approvedAt: null,
+    approvedAtIso: null,
+
+    rejectedByUid: null,
+    rejectedByEmail: null,
+    rejectedAt: null,
+    rejectedAtIso: null,
+    rejectedReason: null,
+
     createdAt: serverTimestamp(),
     createdAtIso: nowIso(),
     updatedAt: serverTimestamp(),
@@ -518,13 +637,137 @@ export async function saveStoreWeek({
   }, { merge: true });
 
   await setDoc(doc(db, "orgs", oid, "stores", sid), {
-    latestWeekId: weekId,
-    latestWeekStart: ws,
-    latestWeekApproved: true,
-    latestWeekAtIso: nowIso()
+    pendingWeekId: weekId,
+    pendingWeekStart: ws,
+    pendingWeekStatus: "pending",
+    pendingWeekAtIso: nowIso(),
+
+    latestSubmissionWeekId: weekId,
+    latestSubmissionWeekStart: ws,
+    latestSubmissionStatus: "pending",
+
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso()
   }, { merge: true });
 
   return weekId;
+}
+
+export async function approveStoreWeek({
+  orgId,
+  storeId,
+  weekId,
+  approvedByUid,
+  approvedByEmail
+}) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+  const wid = cleanString(weekId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+  if (!wid) throw new Error("Week ID required.");
+
+  const weekRef = doc(db, "orgs", oid, "stores", sid, "weeks", wid);
+  const weekSnap = await getDoc(weekRef);
+
+  if (!weekSnap.exists()) {
+    throw new Error("Week not found.");
+  }
+
+  const week = weekSnap.data() || {};
+  if (week.status === "approved" || week.approved === true) {
+    return wid;
+  }
+
+  await setDoc(weekRef, {
+    approved: true,
+    pendingApproval: false,
+    status: "approved",
+    approvedByUid: cleanString(approvedByUid) || null,
+    approvedByEmail: cleanString(approvedByEmail) || null,
+    approvedAt: serverTimestamp(),
+    approvedAtIso: nowIso(),
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso()
+  }, { merge: true });
+
+  const pointers = await recomputeWeekPointers(oid, sid);
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid), {
+    latestWeekId: pointers.latestApproved ? (pointers.latestApproved.id || pointers.latestApproved.weekId || null) : null,
+    latestWeekStart: pointers.latestApproved ? (pointers.latestApproved.weekStart || null) : null,
+    latestWeekApproved: pointers.latestApproved ? !!pointers.latestApproved.approved : false,
+    latestWeekAtIso: pointers.latestApproved ? nowIso() : null,
+
+    pendingWeekId: pointers.latestPending ? (pointers.latestPending.id || pointers.latestPending.weekId || null) : null,
+    pendingWeekStart: pointers.latestPending ? (pointers.latestPending.weekStart || null) : null,
+    pendingWeekStatus: pointers.latestPending ? (pointers.latestPending.status || "pending") : null,
+    pendingWeekAtIso: pointers.latestPending ? nowIso() : null,
+
+    latestSubmissionWeekId: pointers.latestAny ? (pointers.latestAny.id || pointers.latestAny.weekId || null) : null,
+    latestSubmissionWeekStart: pointers.latestAny ? (pointers.latestAny.weekStart || null) : null,
+    latestSubmissionStatus: pointers.latestAny ? (pointers.latestAny.status || (pointers.latestAny.approved ? "approved" : "pending")) : null,
+
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso()
+  }, { merge: true });
+
+  return wid;
+}
+
+export async function rejectStoreWeek({
+  orgId,
+  storeId,
+  weekId,
+  rejectedByUid,
+  rejectedByEmail,
+  reason
+}) {
+  const oid = cleanString(orgId);
+  const sid = cleanString(storeId);
+  const wid = cleanString(weekId);
+
+  if (!oid) throw new Error("Org ID required.");
+  if (!sid) throw new Error("Store ID required.");
+  if (!wid) throw new Error("Week ID required.");
+
+  const weekRef = doc(db, "orgs", oid, "stores", sid, "weeks", wid);
+  const weekSnap = await getDoc(weekRef);
+
+  if (!weekSnap.exists()) {
+    throw new Error("Week not found.");
+  }
+
+  await setDoc(weekRef, {
+    approved: false,
+    pendingApproval: false,
+    status: "rejected",
+    rejectedByUid: cleanString(rejectedByUid) || null,
+    rejectedByEmail: cleanString(rejectedByEmail) || null,
+    rejectedReason: cleanString(reason) || null,
+    rejectedAt: serverTimestamp(),
+    rejectedAtIso: nowIso(),
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso()
+  }, { merge: true });
+
+  const pointers = await recomputeWeekPointers(oid, sid);
+
+  await setDoc(doc(db, "orgs", oid, "stores", sid), {
+    pendingWeekId: pointers.latestPending ? (pointers.latestPending.id || pointers.latestPending.weekId || null) : null,
+    pendingWeekStart: pointers.latestPending ? (pointers.latestPending.weekStart || null) : null,
+    pendingWeekStatus: pointers.latestPending ? (pointers.latestPending.status || "pending") : null,
+
+    latestSubmissionWeekId: pointers.latestAny ? (pointers.latestAny.id || pointers.latestAny.weekId || null) : null,
+    latestSubmissionWeekStart: pointers.latestAny ? (pointers.latestAny.weekStart || null) : null,
+    latestSubmissionStatus: pointers.latestAny ? (pointers.latestAny.status || (pointers.latestAny.approved ? "approved" : "pending")) : null,
+
+    updatedAt: serverTimestamp(),
+    updatedAtIso: nowIso()
+  }, { merge: true });
+
+  return wid;
 }
 
 export async function getStoreWeek(orgId, storeId, weekId) {
@@ -565,6 +808,16 @@ export async function getLatestStoreWeek(orgId, storeId) {
   return weeks.length ? weeks[0] : null;
 }
 
+export async function getLatestApprovedStoreWeek(orgId, storeId) {
+  const weeks = await listStoreWeeks(orgId, storeId);
+  return getLatestByFilter(weeks, (w) => w.approved === true || w.status === "approved");
+}
+
+export async function getLatestPendingStoreWeek(orgId, storeId) {
+  const weeks = await listStoreWeeks(orgId, storeId);
+  return getLatestByFilter(weeks, (w) => w.status === "pending");
+}
+
 export async function getStoreWeekStatus(orgId, storeId) {
   const oid = cleanString(orgId);
   const sid = cleanString(storeId);
@@ -572,12 +825,19 @@ export async function getStoreWeekStatus(orgId, storeId) {
   if (!oid) throw new Error("Org ID required.");
   if (!sid) throw new Error("Store ID required.");
 
-  const latestWeek = await getLatestStoreWeek(oid, sid);
+  const weeks = await listStoreWeeks(oid, sid);
+  const latestWeek = weeks.length ? weeks[0] : null;
+  const latestApprovedWeek = getLatestByFilter(weeks, (w) => w.approved === true || w.status === "approved");
+  const pendingWeek = getLatestByFilter(weeks, (w) => w.status === "pending");
 
   return {
     storeId: sid,
     latestWeek: latestWeek || null,
-    hasWeeks: !!latestWeek
+    latestApprovedWeek: latestApprovedWeek || null,
+    pendingWeek: pendingWeek || null,
+    hasWeeks: weeks.length > 0,
+    hasApprovedWeeks: !!latestApprovedWeek,
+    hasPendingWeek: !!pendingWeek
   };
 }
 
