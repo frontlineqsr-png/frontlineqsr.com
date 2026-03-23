@@ -1,1 +1,130 @@
-we
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FrontlineQSR | Weekly Upload</title>
+  <link rel="stylesheet" href="./assets/styles.css" />
+  <meta name="robots" content="noindex" />
+
+  <script type="module">
+    import { bootCommercialPage } from "./assets/commercial-page-boot.js";
+
+    bootCommercialPage({
+      allowRoles: ["sm","dm","rm","vp","owner","admin","super_admin"],
+      requireOrg: false
+    });
+  </script>
+</head>
+
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">FrontlineQSR</div>
+
+      <nav class="nav">
+        <a class="nav-link" data-nav="./commercial-portal.html">Portal</a>
+        <a class="nav-link active" data-nav="./commercial-weekly-upload.html">Weekly Upload</a>
+        <a class="nav-link" data-nav="./commercial-shift-insight.html">Shift Insight</a>
+        <a class="nav-link" data-nav="./commercial-action-plan.html">Action Plan</a>
+        <a class="nav-link" data-nav="./commercial-progress.html">Progress</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-title">
+          <h1>Weekly Upload</h1>
+          <p>Upload daily store data for one required week. Weekly truth updates only after approval.</p>
+          <p id="uploadContext" style="margin-top:6px;"></p>
+          <p id="uploadScope" style="margin-top:4px;"></p>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;min-width:220px;">
+          <select id="viewSelector" class="input" style="min-width:180px;">
+            <option value="sm" selected>Store View</option>
+            <option value="dm">District View</option>
+            <option value="rm">Region View</option>
+            <option value="vp">Executive View</option>
+          </select>
+          <button class="btn" id="logoutBtn" type="button">Logout</button>
+        </div>
+      </header>
+
+      <section class="panel">
+        <div class="card" style="margin-bottom:14px;">
+          <h3 style="margin:0 0 8px 0;">Upload Daily Rows for One Week</h3>
+          <div class="meta" style="margin-bottom:14px;">
+            Use one CSV containing the daily rows for a single required week. The system saves the submission as pending until approval.
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px;">
+            <div>
+              <label for="weekStartInput" class="small" style="display:block;margin-bottom:6px;">Week Start</label>
+              <input id="weekStartInput" type="date" class="input" />
+            </div>
+
+            <div>
+              <label for="dailyCsvFile" class="small" style="display:block;margin-bottom:6px;">Daily CSV File</label>
+              <input id="dailyCsvFile" type="file" class="input" accept=".csv,text/csv" />
+            </div>
+          </div>
+
+          <div class="meta" id="csvInfo" style="margin-bottom:14px;">No CSV selected.</div>
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button id="saveWeeklyUploadBtn" class="btn" type="button">Save Weekly Upload</button>
+            <button id="refreshWeeklyStatusBtn" class="btn secondary" type="button">Refresh Status</button>
+          </div>
+
+          <div id="uploadMsg" class="meta" style="margin-top:14px;"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
+          <h3 style="margin:0 0 8px 0;">Required Week Status</h3>
+          <div id="requiredWeekText" class="meta">Loading week requirement…</div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin:0 0 8px 0;">Store Upload Status</h3>
+          <pre id="weeklyStatusText" class="meta" style="margin:0;"></pre>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="./assets/commercial-weekly-upload.js?v=1"></script>
+
+  <script>
+    function getScopedParams() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        org: String(params.get("org") || "").trim(),
+        store: String(params.get("store") || "").trim(),
+        district: String(params.get("district") || "").trim(),
+        region: String(params.get("region") || "").trim()
+      };
+    }
+
+    function buildScopedLink(path) {
+      const p = getScopedParams();
+      const url = new URL(path, window.location.href);
+
+      if (p.org) url.searchParams.set("org", p.org);
+      if (p.store) url.searchParams.set("store", p.store);
+      if (p.district) url.searchParams.set("district", p.district);
+      if (p.region) url.searchParams.set("region", p.region);
+
+      return url.toString();
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll("[data-nav]").forEach((link) => {
+        const path = link.getAttribute("data-nav");
+        if (!path) return;
+        link.setAttribute("href", buildScopedLink(path));
+      });
+    });
+  </script>
+</body>
+</html>
