@@ -1,9 +1,13 @@
-// /assets/commercial-dm.js (v9)
+// /assets/commercial-dm.js (v10)
 // District Manager page logic
-// ✅ District totals
-// ✅ District insight
-// ✅ Estimated labor impact
-// ✅ Store breakdown
+// ✅ Uses commercial-rollup-data.js
+// ✅ Aggregates district totals from store-level approved truth
+// ✅ Shows store drill-down table
+// ✅ Adds District Insight communication layer
+// ✅ Adds Estimated Labor Impact
+// ✅ Uses cleaner leadership language
+// ✅ Preserves scoped navigation
+// ✅ Normalizes district / region / store ids from URL
 // 🚫 No KPI math changes
 
 import { loadCommercialRollupTruth } from "./commercial-rollup-data.js";
@@ -19,7 +23,7 @@ const ROOT_ID = "commercialDmRoot";
 const $ = (id) => document.getElementById(id);
 
 /* =========================================================
-Helpers
+   Helpers
 ========================================================= */
 
 function readSession() {
@@ -86,6 +90,18 @@ function fmtDeltaMoney0(d) {
   return `${sign(v)}${s.replace("-", "")}`;
 }
 
+function fmtDeltaMoney2(d) {
+  const v = Number(d);
+  if (!isFinite(v) || v === 0) return "0";
+  const abs = Math.abs(v);
+  const s = abs.toLocaleString(undefined, {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2
+  });
+  return `${sign(v)}${s.replace("-", "")}`;
+}
+
 function fmtDeltaNumber0(d) {
   const v = Number(d);
   if (!isFinite(v) || v === 0) return "0";
@@ -118,51 +134,184 @@ function metricCard(title, value, deltaText, deltaCls) {
   `;
 }
 
+function safeNum(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
 /* =========================================================
-District Insight Builder
+   Header / nav
+========================================================= */
+
+function setDMHeaderContext() {
+  const s = readSession() || {};
+  const p = getParams();
+
+  const role = String(s.role || "dm").toUpperCase();
+  const orgId = p.orgId || s.orgId || "N/A";
+  const selectedDistrict = p.districtId;
+  const selectedRegion = p.regionId;
+
+  setText(
+    "dmContext",
+    `Org: ${orgId} | Role: ${role} | District Scope: ${
+      selectedDistrict ? prettyLabel(selectedDistrict) : "Assigned district access"
+    }`
+  );
+
+  setText(
+    "activeDistrict",
+    selectedDistrict
+      ? `Selected District: ${prettyLabel(selectedDistrict)}${
+          selectedRegion ? ` | Region: ${prettyLabel(selectedRegion)}` : ""
+        }`
+      : `Selected District: All assigned districts${
+          selectedRegion ? ` | Region: ${prettyLabel(selectedRegion)}` : ""
+        }`
+  );
+}
+
+function setupViewSelector() {
+  const selector = $("viewSelector");
+  if (!selector) return;
+
+  const p = getParams();
+  selector.value = "dm";
+
+  selector.addEventListener("change", (e) => {
+    const view = String(e.target.value || "").trim();
+    const nextMap = {
+      vp: "./commercial-vp.html",
+      rm: "./commercial-rm.html",
+      dm: "./commercial-dm.html",
+      sm: "./commercial-portal.html"
+    };
+
+    const path = nextMap[view];
+    if (!path) return;
+
+    const next = new URL(path, window.location.href);
+    if (p.orgId) next.searchParams.set("org", p.orgId);
+    if (p.regionId) next.searchParams.set("region", p.regionId);
+    if (p.districtId) next.searchParams.set("district", p.districtId);
+    if (p.storeId && view === "sm") next.searchParams.set("store", p.storeId);
+
+    window.location.href = next.toString();
+  });
+}
+
+/* =========================================================
+   District Insight
 ========================================================= */
 
 function buildDistrictInsight(truth) {
   const current = truth.latestWeekKpis || {};
-  const base = truth.baselineWeeklyKpis || {};
   const prev = truth.previousWeekKpis || null;
+  const base = truth.baselineWeeklyKpis || {};
+  const rows = Array.isArray(truth.childRows) ? truth.childRows : [];
 
   const salesVsBase = pctDelta(current.sales, base.sales);
   const txVsBase = pctDelta(current.transactions, base.transactions);
-
   const laborVsBase =
     isFinite(current.laborPct) && isFinite(base.laborPct)
       ? current.laborPct - base.laborPct
       : NaN;
 
-  /* ===========================
-     Estimated Labor Impact
-     =========================== */
+  const salesWoW = prev ? safeNum(current.sales) - safeNum(prev.sales) : NaN;
+  const txWoW = prev ? safeNum(current.transactions) - safeNum(prev.transactions) : NaN;
+  const laborWoW =
+    prev && isFinite(prev.laborPct) && isFinite(current.laborPct)
+      ? current.laborPct - prev.laborPct
+      : NaN;
 
-  let laborImpact = NaN;
-
-  if (isFinite(laborVsBase) && isFinite(current.sales)) {
-    // invert sign so higher labor = negative impact
-    laborImpact = -(laborVsBase / 100) * current.sales;
+  let direction = "Stable";
+  if ((isFinite(salesWoW) && salesWoW > 0) || (isFinite(txWoW) && txWoW > 0)) {
+    direction = "Improving";
+  }
+  if ((isFinite(salesWoW) && salesWoW < 0) || (isFinite(txWoW) && txWoW < 0)) {
+    direction = "Under Pressure";
+  }
+  if (isFinite(laborWoW) && laborWoW > 0.35 && direction !== "Improving") {
+    direction = "Guardrail Drift";
   }
 
+  let estimatedLaborImpact = NaN;
+  if (isFinite(laborVsBase) && isFinite(current.sales)) {
+    estimatedLaborImpact = -(laborVsBase / 100) * current.sales;
+  }
+
+  const liveRows = rows.filter((row) => !!row.latestWeekKpis);
+  const scoredRows = liveRows.map((row) => {
+    const k = row.latestWeekKpis || {};
+    const b = row.baselineWeeklyKpis || {};
+    const p = row.previousWeekKpis || null;
+
+    const wowSales = p ? safeNum(k.sales) - safeNum(p.sales) : 0;
+    const wowTx = p ? safeNum(k.transactions) - safeNum(p.transactions) : 0;
+    const wowLabor =
+      p && isFinite(p.laborPct) && isFinite(k.laborPct)
+        ? k.laborPct - p.laborPct
+        : 0;
+
+    const salesBasePct = pctDelta(k.sales, b.sales);
+    const txBasePct = pctDelta(k.transactions, b.transactions);
+
+    const pressureScore =
+      (isFinite(salesBasePct) && salesBasePct < 0 ? Math.abs(salesBasePct) : 0) * 1.0 +
+      (isFinite(txBasePct) && txBasePct < 0 ? Math.abs(txBasePct) : 0) * 0.9 +
+      (wowSales < 0 ? Math.abs(wowSales) / 100 : 0) * 0.2 +
+      (wowTx < 0 ? Math.abs(wowTx) : 0) * 0.02 +
+      (wowLabor > 0 ? wowLabor : 0) * 4.0;
+
+    return {
+      label: row.label,
+      key: row.key,
+      pressureScore
+    };
+  });
+
+  scoredRows.sort((a, b) => b.pressureScore - a.pressureScore);
+  const topStore = scoredRows[0] || null;
+
+  const priorityStore = topStore
+    ? prettyLabel(topStore.label)
+    : "No single store currently stands out";
+
+  const driver = topStore
+    ? `${prettyLabel(topStore.label)} is currently the main store to watch in the district.`
+    : "District performance is staying relatively stable across active stores.";
+
   return {
+    direction,
     salesVsBase,
     txVsBase,
     laborVsBase,
-    laborImpact
+    estimatedLaborImpact,
+    priorityStore,
+    driver
   };
 }
 
 /* =========================================================
-Render
+   Rendering
 ========================================================= */
+
+function renderLocked(title, line1, line2 = "") {
+  setHtml(ROOT_ID, `
+    <section class="cdm-stack">
+      <div class="card">
+        <h2 class="section-title">${title}</h2>
+        <p class="section-sub">${line1}</p>
+        ${line2 ? `<p class="section-sub cdm-tight">${line2}</p>` : ""}
+      </div>
+    </section>
+  `);
+}
 
 function renderLiveDistrict(truth) {
   const current = truth.latestWeekKpis || {};
   const prev = truth.previousWeekKpis || null;
   const base = truth.baselineWeeklyKpis || {};
-
   const insight = buildDistrictInsight(truth);
 
   const salesDelta = prev ? current.sales - prev.sales : NaN;
@@ -181,131 +330,204 @@ function renderLiveDistrict(truth) {
   const laborCls = deltaClass(laborPctDelta, "down");
   const avgTicketCls = deltaClass(avgTicketDelta, "up");
 
+  const latestWeekLabel = truth.latestWeekLabel || "Latest approved week";
+
   const rowsHtml = (truth.childRows || []).map((row) => {
-    const k = row.latestWeekKpis || {};
+    const k = row.latestWeekKpis || null;
+    const b = row.baselineWeeklyKpis || {};
+    const p = row.previousWeekKpis || null;
+
+    const wowSales = p && k ? (k.sales - p.sales) : NaN;
+    const wowTx = p && k ? (k.transactions - p.transactions) : NaN;
+    const wowLabor =
+      p && k && isFinite(p.laborPct) && isFinite(k.laborPct)
+        ? (k.laborPct - p.laborPct)
+        : NaN;
+
+    const salesVsBase = k ? pctDelta(k.sales, b.sales) : NaN;
+    const txVsBase = k ? pctDelta(k.transactions, b.transactions) : NaN;
+    const hasLive = !!k;
+
     return `
       <tr>
-        <td>${prettyLabel(row.label)}</td>
-        <td>${k ? fmtMoney(k.sales) : "—"}</td>
-        <td>${k ? fmtNumber(k.transactions) : "—"}</td>
-        <td>${k ? fmtPct(k.laborPct) : "—"}</td>
-        <td>${k ? fmtMoney2(k.avgTicket) : "—"}</td>
+        <td><span class="cdm-text-strong">${prettyLabel(row.label)}</span></td>
+        <td>${hasLive ? fmtMoney(k.sales) : "—"}</td>
+        <td>${hasLive ? fmtNumber(k.transactions) : "—"}</td>
+        <td>${hasLive ? fmtPct(k.laborPct) : "—"}</td>
+        <td>${hasLive ? fmtMoney2(k.avgTicket) : "—"}</td>
+        <td class="${hasLive && p ? deltaClass(wowSales, "up") : "pending"}">${hasLive && p ? fmtDeltaMoney0(wowSales) : "—"}</td>
+        <td class="${hasLive && p ? deltaClass(wowTx, "up") : "pending"}">${hasLive && p ? fmtDeltaNumber0(wowTx) : "—"}</td>
+        <td class="${hasLive && p ? deltaClass(wowLabor, "down") : "pending"}">${hasLive && p ? fmtDeltaPct(wowLabor) : "—"}</td>
+        <td class="${isFinite(salesVsBase) ? (salesVsBase >= 0 ? "good" : "bad") : "pending"}">
+          ${isFinite(salesVsBase) ? salesVsBase.toFixed(1) + "%" : "—"}
+        </td>
+        <td class="${isFinite(txVsBase) ? (txVsBase >= 0 ? "good" : "bad") : "pending"}">
+          ${isFinite(txVsBase) ? txVsBase.toFixed(1) + "%" : "—"}
+        </td>
       </tr>
     `;
   }).join("");
 
-  setHtml(
-    ROOT_ID,
-    `
-<div class="cdm-stack">
+  setHtml(ROOT_ID, `
+    <section class="cdm-stack">
+      <div class="card">
+        <h2 class="section-title">District Rollup — ${prettyLabel(truth.scopeDistrictId || "Selected District")}</h2>
+        <p class="section-sub">
+          Latest approved district performance is aggregated across active stores in scope.
+        </p>
+        <p class="section-sub cdm-tight">
+          Live Stores: <span class="cdm-text-strong">${fmtNumber(truth.counts?.storesLive || 0)}</span> |
+          Baseline Stores: <span class="cdm-text-strong">${fmtNumber(truth.counts?.storesWithBaseline || 0)}</span> |
+          Latest Week: <span class="cdm-text-strong">${latestWeekLabel}</span>
+        </p>
+      </div>
 
-<div class="card">
-<h2>District Rollup — ${prettyLabel(truth.scopeDistrictId)}</h2>
-<div class="meta">
-District performance aggregated across active stores.
-</div>
-</div>
+      <div class="kpi-grid cdm-kpi-grid">
+        ${metricCard(
+          "District Sales",
+          fmtMoney(current.sales),
+          prev ? `${fmtDeltaMoney0(salesDelta)} vs previous week` : "No previous-week comparison yet",
+          salesCls
+        )}
+        ${metricCard(
+          "District Transactions",
+          fmtNumber(current.transactions),
+          prev ? `${fmtDeltaNumber0(txDelta)} vs previous week` : "No previous-week comparison yet",
+          txCls
+        )}
+        ${metricCard(
+          "District Labor %",
+          fmtPct(current.laborPct),
+          prev ? `${fmtDeltaPct(laborPctDelta)} vs previous week` : "No previous-week comparison yet",
+          laborCls
+        )}
+        ${metricCard(
+          "District Avg Ticket",
+          fmtMoney2(current.avgTicket),
+          prev ? `${fmtDeltaMoney2(avgTicketDelta)} vs previous week` : "No previous-week comparison yet",
+          avgTicketCls
+        )}
+      </div>
 
-<div class="kpi-grid cdm-kpi-grid">
-${metricCard(
-  "District Sales",
-  fmtMoney(current.sales),
-  prev ? fmtDeltaMoney0(salesDelta) + " vs last week" : "—",
-  salesCls
-)}
-${metricCard(
-  "District Transactions",
-  fmtNumber(current.transactions),
-  prev ? fmtDeltaNumber0(txDelta) + " vs last week" : "—",
-  txCls
-)}
-${metricCard(
-  "District Labor %",
-  fmtPct(current.laborPct),
-  prev ? fmtDeltaPct(laborPctDelta) + " vs last week" : "—",
-  laborCls
-)}
-${metricCard(
-  "District Avg Ticket",
-  fmtMoney2(current.avgTicket),
-  prev ? fmtDeltaMoney0(avgTicketDelta) + " vs last week" : "—",
-  avgTicketCls
-)}
-</div>
+      <div class="card">
+        <h3 class="section-title cdm-subtitle">District Insight</h3>
+        <div class="status-wrap cdm-status-wrap">
+          <span class="status-pill">${insight.direction}</span>
+        </div>
 
-<div class="card">
-<h3 class="cdm-subtitle">District Insight</h3>
+        <div class="meta-grid cdm-meta-grid">
+          <div class="info-box">
+            <h3>District Trend</h3>
+            <p>
+              Sales vs baseline: ${isFinite(insight.salesVsBase) ? `${insight.salesVsBase.toFixed(1)}%` : "—"} |
+              Transactions vs baseline: ${isFinite(insight.txVsBase) ? `${insight.txVsBase.toFixed(1)}%` : "—"} |
+              Labor vs baseline: ${isFinite(insight.laborVsBase) ? `${insight.laborVsBase >= 0 ? "+" : ""}${insight.laborVsBase.toFixed(2)} pts` : "—"}
+            </p>
+          </div>
+          <div class="info-box">
+            <h3>Priority Store</h3>
+            <p>${insight.priorityStore}</p>
+          </div>
+        </div>
 
-<div class="cdm-bullet-stack">
+        <hr class="hr" />
 
-<div>
-Sales vs baseline:
-<strong>${isFinite(insight.salesVsBase) ? insight.salesVsBase.toFixed(1) + "%" : "—"}</strong>
-</div>
+        <h3 class="section-title cdm-subtitle">Financial Impact</h3>
+        <p class="section-sub">${insight.driver}</p>
+        <p class="section-sub cdm-tight">
+          Estimated Labor Impact:
+          <span class="${insight.estimatedLaborImpact > 0 ? "good" : insight.estimatedLaborImpact < 0 ? "bad" : "pending"} cdm-text-strong">
+            ${isFinite(insight.estimatedLaborImpact) ? fmtMoney(insight.estimatedLaborImpact) : "—"}
+          </span>
+        </p>
+      </div>
 
-<div>
-Transactions vs baseline:
-<strong>${isFinite(insight.txVsBase) ? insight.txVsBase.toFixed(1) + "%" : "—"}</strong>
-</div>
+      <div class="card">
+        <h3 class="section-title cdm-subtitle">District Baseline Reference</h3>
+        <div class="cdm-bullet-stack">
+          <div>• Baseline Weekly Sales: ${fmtMoney(base.sales)}</div>
+          <div>• Baseline Weekly Transactions: ${fmtNumber(base.transactions)}</div>
+          <div>• Baseline Labor %: ${fmtPct(base.laborPct)}</div>
+          <div>• Baseline Avg Ticket: ${fmtMoney2(base.avgTicket)}</div>
+        </div>
+      </div>
 
-<div>
-Labor vs baseline:
-<strong>${
-  isFinite(insight.laborVsBase)
-    ? (insight.laborVsBase >= 0 ? "+" : "") +
-      insight.laborVsBase.toFixed(2) +
-      " pts"
-    : "—"
-}</strong>
-</div>
+      <div class="card">
+        <h3 class="section-title cdm-subtitle">Store Breakdown</h3>
+        <p class="section-sub">
+          Each row below is one store inside this district.
+        </p>
 
-<div>
-Estimated Labor Impact:
-<strong class="${
-  insight.laborImpact > 0 ? "good" : insight.laborImpact < 0 ? "bad" : ""
-}">
-${
-  isFinite(insight.laborImpact)
-    ? fmtMoney(insight.laborImpact)
-    : "—"
-}
-</strong>
-</div>
-
-</div>
-
-</div>
-
-<div class="card">
-<h3>Store Breakdown</h3>
-
-<div class="table-wrap">
-<table class="table">
-<thead>
-<tr>
-<th>Store</th>
-<th>Sales</th>
-<th>Transactions</th>
-<th>Labor %</th>
-<th>Avg Ticket</th>
-</tr>
-</thead>
-<tbody>
-${rowsHtml}
-</tbody>
-</table>
-</div>
-
-</div>
-
-</div>
-`
-  );
+        <div class="table-wrap cdm-table-wrap">
+          <table class="table cdm-table">
+            <thead>
+              <tr>
+                <th>Store</th>
+                <th>Sales</th>
+                <th>Transactions</th>
+                <th>Labor %</th>
+                <th>Avg Ticket</th>
+                <th>WoW Sales</th>
+                <th>WoW Tx</th>
+                <th>WoW Labor</th>
+                <th>Sales vs Base</th>
+                <th>Tx vs Base</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml || `<tr><td colspan="10">No store rows found.</td></tr>`}</tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  `);
 }
 
 async function loadDistrictRollup() {
-  const truth = await loadCommercialRollupTruth();
-  renderLiveDistrict(truth);
+  try {
+    const truth = await loadCommercialRollupTruth();
+
+    if (truth.state === "missing_context") {
+      renderLocked("District Rollup", "Missing org context.");
+      return;
+    }
+
+    if (truth.state === "no_stores") {
+      renderLocked(
+        "District Rollup",
+        truth.message || "No stores found in this district scope."
+      );
+      return;
+    }
+
+    if (truth.state === "missing_baseline") {
+      renderLocked(
+        `District Rollup — ${prettyLabel(truth.scopeDistrictId || "Selected District")}`,
+        "No approved baseline found in this district scope."
+      );
+      return;
+    }
+
+    if (truth.state === "baseline_only") {
+      renderLocked(
+        `District Rollup — ${prettyLabel(truth.scopeDistrictId || "Selected District")}`,
+        "Approved baselines found, but no approved weekly uploads exist yet in this district scope."
+      );
+      return;
+    }
+
+    renderLiveDistrict(truth);
+  } catch (e) {
+    console.error("[commercial-dm] load failed:", e);
+    renderLocked("District Rollup", "Unable to load district rollup right now.");
+  }
 }
 
-window.addEventListener("DOMContentLoaded", loadDistrictRollup);
+/* =========================================================
+   Init
+========================================================= */
+
+window.addEventListener("DOMContentLoaded", async () => {
+  setDMHeaderContext();
+  setupViewSelector();
+  await loadDistrictRollup();
+});
