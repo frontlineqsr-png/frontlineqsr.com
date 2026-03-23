@@ -1,16 +1,23 @@
-// /assets/commercial-dm.js (v10)
+// /assets/commercial-dm.js (v11)
 // District Manager page logic
-// ✅ Uses commercial-rollup-data.js
+// ✅ Uses commercial-rollup-data.js for approved rollup truth
+// ✅ Uses commercial-db.js for store readiness + pending approvals
 // ✅ Aggregates district totals from store-level approved truth
-// ✅ Shows store drill-down table
-// ✅ Adds District Insight communication layer
+// ✅ Shows District Insight
 // ✅ Adds Estimated Labor Impact
-// ✅ Uses cleaner leadership language
+// ✅ Adds store readiness status
+// ✅ Adds pending approval queue on same page
+// ✅ DM can approve / reject pending weeks
 // ✅ Preserves scoped navigation
-// ✅ Normalizes district / region / store ids from URL
 // 🚫 No KPI math changes
 
 import { loadCommercialRollupTruth } from "./commercial-rollup-data.js";
+import {
+  listStores,
+  getStoreWeekStatus,
+  approveStoreWeek,
+  rejectStoreWeek
+} from "./commercial-db.js";
 import {
   fmtMoney,
   fmtMoney2,
@@ -57,9 +64,7 @@ function getParams() {
 function prettyLabel(value) {
   const raw = String(value || "").trim();
   if (!raw) return "";
-  return raw
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (m) => m.toUpperCase());
+  return raw.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
 function setText(id, text) {
@@ -137,6 +142,32 @@ function metricCard(title, value, deltaText, deltaCls) {
 function safeNum(v) {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
+}
+
+function statusTone(status) {
+  if (status === "APPROVED") return "good";
+  if (status === "PENDING_APPROVAL") return "pending";
+  return "bad";
+}
+
+function statusBadge(status) {
+  const tone = statusTone(status);
+  return `<span class="status-pill ${tone}">${status.replace(/_/g, " ")}</span>`;
+}
+
+function buildStoreMetaMap(storeStatuses) {
+  const out = {};
+  (storeStatuses || []).forEach((x) => {
+    out[x.storeId] = x;
+  });
+  return out;
+}
+
+function msgInline(text, isErr = false) {
+  const root = $("dmInlineMsg");
+  if (!root) return;
+  root.textContent = text || "";
+  root.style.color = isErr ? "#b91c1c" : "#065f46";
 }
 
 /* =========================================================
@@ -293,6 +324,48 @@ function buildDistrictInsight(truth) {
 }
 
 /* =========================================================
+   Governance helpers
+========================================================= */
+
+async function loadDistrictStoreStatuses(orgId, districtId) {
+  if (!orgId || !districtId) return [];
+
+  const stores = await listStores(orgId);
+  const inScopeStores = (stores || []).filter((s) =>
+    s.active !== false &&
+    normalizeId(s.districtId) === normalizeId(districtId)
+  );
+
+  const results = await Promise.all(
+    inScopeStores.map(async (store) => {
+      const ws = await getStoreWeekStatus(orgId, store.id);
+
+      let readiness = "ACTION_NEEDED";
+      if (ws?.pendingWeek) readiness = "PENDING_APPROVAL";
+      else if (ws?.latestApprovedWeek) readiness = "APPROVED";
+
+      return {
+        storeId: store.id,
+        storeName: store.name || store.id,
+        pendingWeek: ws?.pendingWeek || null,
+        latestApprovedWeek: ws?.latestApprovedWeek || null,
+        readiness
+      };
+    })
+  );
+
+  return results;
+}
+
+function governanceSummary(storeStatuses) {
+  const approved = (storeStatuses || []).filter((s) => s.readiness === "APPROVED").length;
+  const pending = (storeStatuses || []).filter((s) => s.readiness === "PENDING_APPROVAL").length;
+  const actionNeeded = (storeStatuses || []).filter((s) => s.readiness === "ACTION_NEEDED").length;
+
+  return { approved, pending, actionNeeded };
+}
+
+/* =========================================================
    Rendering
 ========================================================= */
 
@@ -308,11 +381,13 @@ function renderLocked(title, line1, line2 = "") {
   `);
 }
 
-function renderLiveDistrict(truth) {
+function renderLiveDistrict(truth, storeStatuses) {
   const current = truth.latestWeekKpis || {};
   const prev = truth.previousWeekKpis || null;
   const base = truth.baselineWeeklyKpis || {};
   const insight = buildDistrictInsight(truth);
+  const summary = governanceSummary(storeStatuses);
+  const storeMeta = buildStoreMetaMap(storeStatuses);
 
   const salesDelta = prev ? current.sales - prev.sales : NaN;
   const txDelta = prev ? current.transactions - prev.transactions : NaN;
@@ -332,6 +407,27 @@ function renderLiveDistrict(truth) {
 
   const latestWeekLabel = truth.latestWeekLabel || "Latest approved week";
 
+  const pendingQueueRows = (storeStatuses || [])
+    .filter((row) => row.pendingWeek)
+    .map((row) => `
+      <tr>
+        <td><span class="cdm-text-strong">${prettyLabel(row.storeId)}</span></td>
+        <td>${prettyLabel(row.storeName || row.storeId)}</td>
+        <td>${row.pendingWeek?.weekStart || "—"}</td>
+        <td>${row.pendingWeek?.rowCount || 0}</td>
+        <td>${statusBadge("PENDING_APPROVAL")}</td>
+        <td style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn" type="button" data-approve-week="${row.pendingWeek?.id || row.pendingWeek?.weekId || ""}" data-store-id="${row.storeId}">
+            Approve
+          </button>
+          <button class="btn secondary" type="button" data-reject-week="${row.pendingWeek?.id || row.pendingWeek?.weekId || ""}" data-store-id="${row.storeId}">
+            Reject
+          </button>
+        </td>
+      </tr>
+    `)
+    .join("");
+
   const rowsHtml = (truth.childRows || []).map((row) => {
     const k = row.latestWeekKpis || null;
     const b = row.baselineWeeklyKpis || {};
@@ -347,10 +443,13 @@ function renderLiveDistrict(truth) {
     const salesVsBase = k ? pctDelta(k.sales, b.sales) : NaN;
     const txVsBase = k ? pctDelta(k.transactions, b.transactions) : NaN;
     const hasLive = !!k;
+    const meta = storeMeta[row.key] || null;
+    const readiness = meta?.readiness || (hasLive ? "APPROVED" : "ACTION_NEEDED");
 
     return `
       <tr>
         <td><span class="cdm-text-strong">${prettyLabel(row.label)}</span></td>
+        <td>${statusBadge(readiness)}</td>
         <td>${hasLive ? fmtMoney(k.sales) : "—"}</td>
         <td>${hasLive ? fmtNumber(k.transactions) : "—"}</td>
         <td>${hasLive ? fmtPct(k.laborPct) : "—"}</td>
@@ -443,6 +542,52 @@ function renderLiveDistrict(truth) {
       </div>
 
       <div class="card">
+        <h3 class="section-title cdm-subtitle">District Readiness</h3>
+        <div class="meta-grid cdm-meta-grid">
+          <div class="info-box">
+            <h3>Approved</h3>
+            <p>${fmtNumber(summary.approved)} stores</p>
+          </div>
+          <div class="info-box">
+            <h3>Pending Approval</h3>
+            <p>${fmtNumber(summary.pending)} stores</p>
+          </div>
+        </div>
+        <div class="info-box" style="margin-top:12px;">
+          <h3>Action Needed</h3>
+          <p>${fmtNumber(summary.actionNeeded)} stores</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+          <div>
+            <h3 class="section-title cdm-subtitle">Pending Approval Queue</h3>
+            <p class="section-sub">Approve or reject store weekly submissions before they enter district approved truth.</p>
+          </div>
+          <div id="dmInlineMsg" class="meta"></div>
+        </div>
+
+        <div class="table-wrap cdm-table-wrap">
+          <table class="table cdm-table">
+            <thead>
+              <tr>
+                <th>Store ID</th>
+                <th>Store</th>
+                <th>Week</th>
+                <th>Rows</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pendingQueueRows || `<tr><td colspan="6">No pending weekly uploads in this district.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
         <h3 class="section-title cdm-subtitle">District Baseline Reference</h3>
         <div class="cdm-bullet-stack">
           <div>• Baseline Weekly Sales: ${fmtMoney(base.sales)}</div>
@@ -455,7 +600,7 @@ function renderLiveDistrict(truth) {
       <div class="card">
         <h3 class="section-title cdm-subtitle">Store Breakdown</h3>
         <p class="section-sub">
-          Each row below is one store inside this district.
+          Each row below is one store inside this district. Approved truth remains separate from pending approval status.
         </p>
 
         <div class="table-wrap cdm-table-wrap">
@@ -463,6 +608,7 @@ function renderLiveDistrict(truth) {
             <thead>
               <tr>
                 <th>Store</th>
+                <th>Status</th>
                 <th>Sales</th>
                 <th>Transactions</th>
                 <th>Labor %</th>
@@ -474,7 +620,7 @@ function renderLiveDistrict(truth) {
                 <th>Tx vs Base</th>
               </tr>
             </thead>
-            <tbody>${rowsHtml || `<tr><td colspan="10">No store rows found.</td></tr>`}</tbody>
+            <tbody>${rowsHtml || `<tr><td colspan="11">No store rows found.</td></tr>`}</tbody>
           </table>
         </div>
       </div>
@@ -482,9 +628,89 @@ function renderLiveDistrict(truth) {
   `);
 }
 
+/* =========================================================
+   Actions
+========================================================= */
+
+async function handleApproveWeek(storeId, weekId) {
+  try {
+    const session = readSession() || {};
+    const p = getParams();
+
+    msgInline("Approving week…");
+
+    await approveStoreWeek({
+      orgId: p.orgId,
+      storeId,
+      weekId,
+      approvedByUid: session.uid || null,
+      approvedByEmail: session.email || null
+    });
+
+    msgInline(`✅ Approved ${weekId}`);
+    await loadDistrictRollup();
+  } catch (e) {
+    msgInline(`❌ ${e?.message || "Failed to approve week"}`, true);
+  }
+}
+
+async function handleRejectWeek(storeId, weekId) {
+  try {
+    const session = readSession() || {};
+    const p = getParams();
+
+    msgInline("Rejecting week…");
+
+    await rejectStoreWeek({
+      orgId: p.orgId,
+      storeId,
+      weekId,
+      rejectedByUid: session.uid || null,
+      rejectedByEmail: session.email || null,
+      reason: "District review rejected upload"
+    });
+
+    msgInline(`⚠️ Rejected ${weekId}`);
+    await loadDistrictRollup();
+  } catch (e) {
+    msgInline(`❌ ${e?.message || "Failed to reject week"}`, true);
+  }
+}
+
+function setupGovernanceActions() {
+  const root = $(ROOT_ID);
+  if (!root) return;
+
+  root.addEventListener("click", async (e) => {
+    const approveBtn = e.target.closest("[data-approve-week]");
+    if (approveBtn) {
+      const weekId = String(approveBtn.getAttribute("data-approve-week") || "").trim();
+      const storeId = String(approveBtn.getAttribute("data-store-id") || "").trim();
+      if (!weekId || !storeId) return;
+      await handleApproveWeek(storeId, weekId);
+      return;
+    }
+
+    const rejectBtn = e.target.closest("[data-reject-week]");
+    if (rejectBtn) {
+      const weekId = String(rejectBtn.getAttribute("data-reject-week") || "").trim();
+      const storeId = String(rejectBtn.getAttribute("data-store-id") || "").trim();
+      if (!weekId || !storeId) return;
+      await handleRejectWeek(storeId, weekId);
+    }
+  });
+}
+
+/* =========================================================
+   Load
+========================================================= */
+
 async function loadDistrictRollup() {
   try {
+    const p = getParams();
+
     const truth = await loadCommercialRollupTruth();
+    const storeStatuses = await loadDistrictStoreStatuses(p.orgId || truth.orgId || "", p.districtId || truth.scopeDistrictId || "");
 
     if (truth.state === "missing_context") {
       renderLocked("District Rollup", "Missing org context.");
@@ -515,7 +741,7 @@ async function loadDistrictRollup() {
       return;
     }
 
-    renderLiveDistrict(truth);
+    renderLiveDistrict(truth, storeStatuses);
   } catch (e) {
     console.error("[commercial-dm] load failed:", e);
     renderLocked("District Rollup", "Unable to load district rollup right now.");
@@ -529,5 +755,6 @@ async function loadDistrictRollup() {
 window.addEventListener("DOMContentLoaded", async () => {
   setDMHeaderContext();
   setupViewSelector();
+  setupGovernanceActions();
   await loadDistrictRollup();
 });
