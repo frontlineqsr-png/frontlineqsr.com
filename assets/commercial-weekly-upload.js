@@ -1,6 +1,9 @@
-// /assets/commercial-weekly-upload.js (v1)
+// /assets/commercial-weekly-upload.js (v2)
 // Commercial weekly upload page
 // ✅ Store uploads DAILY rows for one required week
+// ✅ DM and above can switch scope and upload on behalf of selected store
+// ✅ Region / District / Store selectors added
+// ✅ District upload coverage panel added
 // ✅ Uses commercial-db.js weekly save flow
 // ✅ Uses pending approval governance
 // ✅ Uses sequential week lock from commercial-db.js
@@ -9,10 +12,15 @@
 
 import {
   getStoreWeekStatus,
-  saveStoreWeek
+  saveStoreWeek,
+  listStores
 } from "./commercial-db.js";
 
 const $ = (id) => document.getElementById(id);
+
+/* =========================================================
+   Helpers
+========================================================= */
 
 function readSession() {
   try {
@@ -52,6 +60,59 @@ function msg(text, isErr = false) {
   el.style.color = isErr ? "#b91c1c" : "#065f46";
 }
 
+function scopeMsg(text, isErr = false) {
+  const el = $("scopeMsg");
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.color = isErr ? "#b91c1c" : "#065f46";
+}
+
+function currentScope() {
+  return {
+    orgId: String($("regionSelector")?.dataset.orgId || "").trim() ||
+      String(getParams().orgId || "").trim() ||
+      String(readSession()?.orgId || "").trim(),
+    regionId: String($("regionSelector")?.value || "").trim(),
+    districtId: String($("districtSelector")?.value || "").trim(),
+    storeId: String($("storeSelector")?.value || "").trim()
+  };
+}
+
+function updateUrlFromScope() {
+  const scope = currentScope();
+  const next = new URL(window.location.href);
+
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  else next.searchParams.delete("org");
+
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  else next.searchParams.delete("region");
+
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  else next.searchParams.delete("district");
+
+  if (scope.storeId) next.searchParams.set("store", scope.storeId);
+  else next.searchParams.delete("store");
+
+  window.history.replaceState({}, "", next.toString());
+}
+
+function buildScopedUrl(path) {
+  const scope = currentScope();
+  const next = new URL(path, window.location.href);
+
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  if (scope.storeId) next.searchParams.set("store", scope.storeId);
+
+  return next.toString();
+}
+
+/* =========================================================
+   Header / nav
+========================================================= */
+
 function setUploadHeaderContext() {
   const s = readSession() || {};
   const p = getParams();
@@ -59,17 +120,22 @@ function setUploadHeaderContext() {
   const role = String(s.role || "sm").toUpperCase();
   const orgId = p.orgId || s.orgId || "N/A";
   const storeId = p.storeId || s.storeId || "";
+  const districtId = p.districtId || "";
+  const regionId = p.regionId || "";
 
   setText(
     "uploadContext",
     `Org: ${orgId} | Role: ${role} | Upload Workspace`
   );
 
+  const scopeBits = [];
+  if (storeId) scopeBits.push(`Store: ${prettyLabel(storeId)}`);
+  if (districtId) scopeBits.push(`District: ${prettyLabel(districtId)}`);
+  if (regionId) scopeBits.push(`Region: ${prettyLabel(regionId)}`);
+
   setText(
     "uploadScope",
-    storeId
-      ? `Store Scope: ${prettyLabel(storeId)}`
-      : "Store Scope: No store selected"
+    scopeBits.length ? scopeBits.join(" | ") : "Store Scope: No store selected"
   );
 }
 
@@ -77,48 +143,27 @@ function setupViewSelector() {
   const selector = $("viewSelector");
   if (!selector) return;
 
-  const p = getParams();
   selector.value = "sm";
 
   selector.addEventListener("change", (e) => {
     const view = String(e.target.value || "").trim();
 
     if (view === "vp") {
-      const next = new URL("./commercial-vp.html", window.location.href);
-      if (p.orgId) next.searchParams.set("org", p.orgId);
-      if (p.regionId) next.searchParams.set("region", p.regionId);
-      if (p.districtId) next.searchParams.set("district", p.districtId);
-      if (p.storeId) next.searchParams.set("store", p.storeId);
-      window.location.href = next.toString();
+      window.location.href = buildScopedUrl("./commercial-vp.html");
       return;
     }
 
     if (view === "rm") {
-      const next = new URL("./commercial-rm.html", window.location.href);
-      if (p.orgId) next.searchParams.set("org", p.orgId);
-      if (p.regionId) next.searchParams.set("region", p.regionId);
-      if (p.districtId) next.searchParams.set("district", p.districtId);
-      if (p.storeId) next.searchParams.set("store", p.storeId);
-      window.location.href = next.toString();
+      window.location.href = buildScopedUrl("./commercial-rm.html");
       return;
     }
 
     if (view === "dm") {
-      const next = new URL("./commercial-dm.html", window.location.href);
-      if (p.orgId) next.searchParams.set("org", p.orgId);
-      if (p.districtId) next.searchParams.set("district", p.districtId);
-      if (p.regionId) next.searchParams.set("region", p.regionId);
-      if (p.storeId) next.searchParams.set("store", p.storeId);
-      window.location.href = next.toString();
+      window.location.href = buildScopedUrl("./commercial-dm.html");
       return;
     }
 
-    const next = new URL("./commercial-weekly-upload.html", window.location.href);
-    if (p.orgId) next.searchParams.set("org", p.orgId);
-    if (p.storeId) next.searchParams.set("store", p.storeId);
-    if (p.districtId) next.searchParams.set("district", p.districtId);
-    if (p.regionId) next.searchParams.set("region", p.regionId);
-    window.location.href = next.toString();
+    window.location.href = buildScopedUrl("./commercial-weekly-upload.html");
   });
 }
 
@@ -141,6 +186,10 @@ function setupCsvInfo() {
     info.textContent = file ? `Selected CSV: ${file.name}` : "No CSV selected.";
   });
 }
+
+/* =========================================================
+   CSV parsing
+========================================================= */
 
 function readFileAsText(file) {
   return new Promise((resolve, reject) => {
@@ -219,6 +268,10 @@ function parseCsvTextToRows(text, kind = "CSV") {
   return rows;
 }
 
+/* =========================================================
+   Date / status helpers
+========================================================= */
+
 function addDaysIso(dateStr, days) {
   const d = new Date(`${String(dateStr || "").trim()}T00:00:00`);
   if (Number.isNaN(d.getTime())) return "";
@@ -251,16 +304,216 @@ function inferNextRequiredWeek(status) {
   };
 }
 
+/* =========================================================
+   Scope selectors
+========================================================= */
+
+let ALL_STORES = [];
+
+function uniqueValues(items) {
+  return Array.from(new Set((items || []).filter(Boolean)));
+}
+
+function fillSelect(selectId, values, selected = "", placeholder = "Select") {
+  const el = $(selectId);
+  if (!el) return;
+
+  const safeValues = uniqueValues(values).sort((a, b) => a.localeCompare(b));
+  el.innerHTML = "";
+
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = placeholder;
+  el.appendChild(blank);
+
+  safeValues.forEach((value) => {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = prettyLabel(value);
+    if (value === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+function getRoleScopeDefaults(stores, params, session) {
+  const role = String(session?.role || "sm").toLowerCase();
+
+  const assignedStoreIds = Array.isArray(session?.assigned_store_ids) ? session.assigned_store_ids : [];
+  const assignedDistrictIds = Array.isArray(session?.assigned_district_ids) ? session.assigned_district_ids : [];
+  const assignedRegionIds = Array.isArray(session?.assigned_region_ids) ? session.assigned_region_ids : [];
+
+  let allowed = Array.isArray(stores) ? [...stores] : [];
+
+  if (role === "sm" && assignedStoreIds.length) {
+    allowed = allowed.filter((s) => assignedStoreIds.includes(s.id));
+  }
+
+  if (role === "dm" && assignedStoreIds.length) {
+    allowed = allowed.filter((s) => assignedStoreIds.includes(s.id));
+  }
+
+  if (role === "dm" && !assignedStoreIds.length && assignedDistrictIds.length) {
+    allowed = allowed.filter((s) => assignedDistrictIds.includes(String(s.districtId || "").trim()));
+  }
+
+  if (role === "rm" && assignedRegionIds.length) {
+    allowed = allowed.filter((s) => assignedRegionIds.includes(String(s.regionId || "").trim()));
+  }
+
+  const defaultRegion =
+    params.regionId ||
+    (role === "rm" && assignedRegionIds[0]) ||
+    (role === "dm" ? String(allowed[0]?.regionId || "") : "") ||
+    String(allowed[0]?.regionId || "");
+
+  const regionFiltered = defaultRegion
+    ? allowed.filter((s) => String(s.regionId || "").trim() === defaultRegion)
+    : allowed;
+
+  const defaultDistrict =
+    params.districtId ||
+    (role === "dm" && assignedDistrictIds[0]) ||
+    String(regionFiltered[0]?.districtId || "");
+
+  const districtFiltered = defaultDistrict
+    ? regionFiltered.filter((s) => String(s.districtId || "").trim() === defaultDistrict)
+    : regionFiltered;
+
+  const defaultStore =
+    params.storeId ||
+    (role === "sm" && assignedStoreIds[0]) ||
+    String(districtFiltered[0]?.id || "");
+
+  return {
+    allowed,
+    defaultRegion,
+    defaultDistrict,
+    defaultStore
+  };
+}
+
+function refreshDistrictSelector() {
+  const regionId = String($("regionSelector")?.value || "").trim();
+  const districtValues = ALL_STORES
+    .filter((s) => !regionId || String(s.regionId || "").trim() === regionId)
+    .map((s) => String(s.districtId || "").trim())
+    .filter(Boolean);
+
+  const currentDistrict = String($("districtSelector")?.value || "").trim();
+  fillSelect("districtSelector", districtValues, districtValues.includes(currentDistrict) ? currentDistrict : "", "Select district");
+}
+
+function refreshStoreSelector() {
+  const regionId = String($("regionSelector")?.value || "").trim();
+  const districtId = String($("districtSelector")?.value || "").trim();
+
+  const storeValues = ALL_STORES
+    .filter((s) => (!regionId || String(s.regionId || "").trim() === regionId))
+    .filter((s) => (!districtId || String(s.districtId || "").trim() === districtId))
+    .map((s) => ({ id: s.id, name: s.name }));
+
+  const el = $("storeSelector");
+  if (!el) return;
+
+  const currentStore = String(el.value || "").trim();
+  el.innerHTML = "";
+
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select store";
+  el.appendChild(blank);
+
+  storeValues
+    .sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id)))
+    .forEach((store) => {
+      const opt = document.createElement("option");
+      opt.value = store.id;
+      opt.textContent = prettyLabel(store.name || store.id);
+      if (store.id === currentStore) opt.selected = true;
+      el.appendChild(opt);
+    });
+}
+
+async function setupScopeSelectors() {
+  const session = readSession() || {};
+  const params = getParams();
+  const orgId = String(params.orgId || session.orgId || "").trim();
+
+  if (!orgId) {
+    scopeMsg("Missing org context.", true);
+    return;
+  }
+
+  $("regionSelector").dataset.orgId = orgId;
+
+  const stores = await listStores(orgId);
+  const activeStores = (stores || []).filter((s) => s.active !== false && s.archived !== true);
+
+  const { allowed, defaultRegion, defaultDistrict, defaultStore } = getRoleScopeDefaults(activeStores, params, session);
+  ALL_STORES = allowed;
+
+  const regions = ALL_STORES.map((s) => String(s.regionId || "").trim()).filter(Boolean);
+  fillSelect("regionSelector", regions, defaultRegion, "Select region");
+
+  refreshDistrictSelector();
+
+  if ($("districtSelector") && defaultDistrict) {
+    $("districtSelector").value = defaultDistrict;
+  }
+
+  refreshStoreSelector();
+
+  if ($("storeSelector") && defaultStore) {
+    $("storeSelector").value = defaultStore;
+  }
+
+  $("regionSelector")?.addEventListener("change", async () => {
+    refreshDistrictSelector();
+    refreshStoreSelector();
+    updateUrlFromScope();
+    setUploadHeaderContext();
+    await refreshWeeklyStatus();
+    await refreshDistrictCoverage();
+  });
+
+  $("districtSelector")?.addEventListener("change", async () => {
+    refreshStoreSelector();
+    updateUrlFromScope();
+    setUploadHeaderContext();
+    await refreshWeeklyStatus();
+    await refreshDistrictCoverage();
+  });
+
+  $("storeSelector")?.addEventListener("change", async () => {
+    updateUrlFromScope();
+    setUploadHeaderContext();
+    await refreshWeeklyStatus();
+  });
+
+  if (ALL_STORES.length) {
+    scopeMsg(`✅ Scope loaded. ${ALL_STORES.length} active store(s) available.`);
+  } else {
+    scopeMsg("No active stores available in current scope.", true);
+  }
+
+  updateUrlFromScope();
+}
+
+/* =========================================================
+   Weekly status / coverage
+========================================================= */
+
 async function refreshWeeklyStatus() {
-  const p = getParams();
-  if (!p.orgId || !p.storeId) {
-    setText("requiredWeekText", "Missing org or store context.");
-    setText("weeklyStatusText", "Unable to load weekly status.");
+  const scope = currentScope();
+
+  if (!scope.orgId || !scope.storeId) {
+    setText("requiredWeekText", "Select a store to view required week status.");
+    setText("weeklyStatusText", "Select a store to view weekly upload status.");
     return;
   }
 
   try {
-    const status = await getStoreWeekStatus(p.orgId, p.storeId);
+    const status = await getStoreWeekStatus(scope.orgId, scope.storeId);
     const requirement = inferNextRequiredWeek(status);
 
     setText("requiredWeekText", requirement.reason);
@@ -268,13 +521,18 @@ async function refreshWeeklyStatus() {
     if (!status?.latestApprovedWeek && !status?.pendingWeek && !status?.latestWeek) {
       setText(
         "weeklyStatusText",
-        "No weekly uploads found yet.\n\nStatus: ACTION_NEEDED\nRequired: First commercial week upload"
+        `STORE: ${scope.storeId}\n\nNo weekly uploads found yet.\n\nStatus: ACTION_NEEDED\nRequired: First commercial week upload`
       );
+      if (!requirement.blocked && $("weekStartInput") && !$("weekStartInput").value && requirement.weekStart) {
+        $("weekStartInput").value = requirement.weekStart;
+      }
       return;
     }
 
     let output = "";
-    output += `STORE: ${p.storeId}\n\n`;
+    output += `STORE: ${scope.storeId}\n`;
+    output += `DISTRICT: ${scope.districtId || "N/A"}\n`;
+    output += `REGION: ${scope.regionId || "N/A"}\n\n`;
 
     if (status?.latestApprovedWeek) {
       output += `LATEST APPROVED WEEK:\n`;
@@ -310,18 +568,68 @@ async function refreshWeeklyStatus() {
   }
 }
 
+async function refreshDistrictCoverage() {
+  const scope = currentScope();
+
+  if (!scope.orgId || !scope.districtId) {
+    setText("districtCoverageText", "Select a district to view upload coverage.");
+    return;
+  }
+
+  try {
+    const districtStores = ALL_STORES
+      .filter((s) => String(s.districtId || "").trim() === scope.districtId)
+      .filter((s) => !scope.regionId || String(s.regionId || "").trim() === scope.regionId);
+
+    if (!districtStores.length) {
+      setText("districtCoverageText", "No active stores found in selected district.");
+      return;
+    }
+
+    const lines = [];
+    lines.push(`DISTRICT: ${scope.districtId}`);
+    lines.push(`REGION: ${scope.regionId || "N/A"}`);
+    lines.push("");
+
+    for (const store of districtStores) {
+      const status = await getStoreWeekStatus(scope.orgId, store.id);
+      const requirement = inferNextRequiredWeek(status);
+
+      let readiness = "ACTION_NEEDED";
+      if (status?.pendingWeek) readiness = "PENDING_APPROVAL";
+      else if (status?.latestApprovedWeek) readiness = "APPROVED";
+
+      lines.push(`${store.id} | ${prettyLabel(store.name || store.id)}`);
+      lines.push(`status=${readiness}`);
+      lines.push(`latestApproved=${status?.latestApprovedWeek?.weekStart || "none"}`);
+      lines.push(`pendingWeek=${status?.pendingWeek?.weekStart || "none"}`);
+      lines.push(`nextRequired=${requirement.weekStart || "first_week"}`);
+      lines.push("");
+    }
+
+    setText("districtCoverageText", lines.join("\n"));
+  } catch (e) {
+    console.error("[commercial-weekly-upload] refreshDistrictCoverage failed:", e);
+    setText("districtCoverageText", "District upload coverage unavailable right now.");
+  }
+}
+
+/* =========================================================
+   Save upload
+========================================================= */
+
 async function onSaveWeeklyUpload() {
   try {
     const session = readSession();
-    const p = getParams();
+    const scope = currentScope();
 
-    const orgId = String(p.orgId || session?.orgId || "").trim();
-    const storeId = String(p.storeId || session?.storeId || "").trim();
+    const orgId = String(scope.orgId || session?.orgId || "").trim();
+    const storeId = String(scope.storeId || session?.storeId || "").trim();
     const weekStart = String($("weekStartInput")?.value || "").trim();
     const file = $("dailyCsvFile")?.files?.[0];
 
     if (!orgId) throw new Error("Org Id required.");
-    if (!storeId) throw new Error("Store Id required.");
+    if (!storeId) throw new Error("Store Id required. Select a store first.");
     if (!weekStart) throw new Error("Week Start required.");
     if (!file) throw new Error("Daily CSV file is required.");
 
@@ -332,6 +640,7 @@ async function onSaveWeeklyUpload() {
 
     msg("Saving weekly upload…");
 
+    const noteRole = String(session?.role || "sm").toUpperCase();
     const weekId = await saveStoreWeek({
       orgId,
       storeId,
@@ -339,24 +648,35 @@ async function onSaveWeeklyUpload() {
       rows,
       uploadedByUid: session?.uid || null,
       uploadedByEmail: session?.email || null,
-      note: "Store daily row upload"
+      note: `${noteRole} daily row upload`
     });
 
-    msg(`✅ Weekly upload saved as pending approval.\nWeek ID: ${weekId}\nRows: ${rows.length}`);
+    msg(`✅ Weekly upload saved as pending approval.\nStore: ${storeId}\nWeek ID: ${weekId}\nRows: ${rows.length}`);
+
     await refreshWeeklyStatus();
+    await refreshDistrictCoverage();
   } catch (e) {
     msg("❌ " + (e?.message || "Failed to save weekly upload"), true);
   }
 }
+
+/* =========================================================
+   Init
+========================================================= */
 
 window.addEventListener("DOMContentLoaded", async () => {
   setUploadHeaderContext();
   setupViewSelector();
   setupLogout();
   setupCsvInfo();
+  await setupScopeSelectors();
 
   $("saveWeeklyUploadBtn")?.addEventListener("click", onSaveWeeklyUpload);
-  $("refreshWeeklyStatusBtn")?.addEventListener("click", refreshWeeklyStatus);
+  $("refreshWeeklyStatusBtn")?.addEventListener("click", async () => {
+    await refreshWeeklyStatus();
+    await refreshDistrictCoverage();
+  });
 
   await refreshWeeklyStatus();
+  await refreshDistrictCoverage();
 });
