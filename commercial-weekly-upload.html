@@ -53,6 +53,38 @@
 
       <section class="panel">
         <div class="card" style="margin-bottom:14px;">
+          <h3 style="margin:0 0 8px 0;">Scope Selection</h3>
+          <div class="meta" style="margin-bottom:14px;">
+            DM and above can switch scope and upload on behalf of a selected store when coverage is needed.
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;">
+            <div>
+              <label for="regionSelector" class="small" style="display:block;margin-bottom:6px;">Region</label>
+              <select id="regionSelector" class="input">
+                <option value="">Select region</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="districtSelector" class="small" style="display:block;margin-bottom:6px;">District</label>
+              <select id="districtSelector" class="input">
+                <option value="">Select district</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="storeSelector" class="small" style="display:block;margin-bottom:6px;">Store</label>
+              <select id="storeSelector" class="input">
+                <option value="">Select store</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="scopeMsg" class="meta" style="margin-top:12px;"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:14px;">
           <h3 style="margin:0 0 8px 0;">Upload Daily Rows for One Week</h3>
           <div class="meta" style="margin-bottom:14px;">
             Use one CSV containing the daily rows for a single required week. The system saves the submission as pending until approval.
@@ -85,6 +117,11 @@
           <div id="requiredWeekText" class="meta">Loading week requirement…</div>
         </div>
 
+        <div class="card" style="margin-bottom:14px;">
+          <h3 style="margin:0 0 8px 0;">District Upload Coverage</h3>
+          <pre id="districtCoverageText" class="meta" style="margin:0;">Loading district coverage…</pre>
+        </div>
+
         <div class="card">
           <h3 style="margin:0 0 8px 0;">Store Upload Status</h3>
           <pre id="weeklyStatusText" class="meta" style="margin:0;"></pre>
@@ -93,7 +130,7 @@
     </main>
   </div>
 
-  <script type="module" src="./assets/commercial-weekly-upload.js?v=1"></script>
+  <script type="module" src="./assets/commercial-weekly-upload.js?v=2"></script>
 
   <script>
     function getScopedParams() {
