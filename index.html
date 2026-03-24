@@ -9,51 +9,629 @@
   <meta name="robots" content="noindex" />
 
   <style>
-    /* Safety layer to prevent click overlay issues */
-    .hero { position: relative; z-index: 1; }
-    .button-group { position: relative; z-index: 2; }
-    .btn { text-decoration: none; display: inline-block; }
+    :root{
+      --bg-1:#08101d;
+      --bg-2:#0b1424;
+      --bg-3:#0e1a2d;
+      --panel:rgba(255,255,255,.08);
+      --panel-border:rgba(255,255,255,.10);
+      --card-bg:rgba(255,255,255,.05);
+      --card-border:rgba(255,255,255,.10);
+      --white:#ffffff;
+      --white-muted:rgba(255,255,255,.80);
+      --white-soft:rgba(255,255,255,.62);
+      --line:rgba(255,255,255,.14);
+      --btn-dark:#111827;
+      --btn-dark-hover:#0f172a;
+      --btn-light:#ffffff;
+      --btn-light-text:#111827;
+      --radius:18px;
+      --shadow:0 18px 50px rgba(0,0,0,.30);
+      --max:1180px;
+    }
+
+    *{
+      box-sizing:border-box;
+    }
+
+    body{
+      margin:0;
+      color:var(--white);
+      background:
+        radial-gradient(900px 500px at 15% 15%, rgba(82,155,255,.16), rgba(0,0,0,0) 60%),
+        radial-gradient(1000px 600px at 85% 85%, rgba(120,90,255,.10), rgba(0,0,0,0) 60%),
+        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 52%, var(--bg-3) 100%);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .page{
+      min-height:100vh;
+      padding:22px 16px 28px;
+    }
+
+    .shell{
+      max-width:var(--max);
+      margin:0 auto;
+    }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:14px 18px;
+      border:1px solid var(--panel-border);
+      border-radius:16px;
+      background:rgba(255,255,255,.05);
+      backdrop-filter:blur(10px);
+      box-shadow:0 12px 30px rgba(0,0,0,.18);
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:0;
+    }
+
+    .brand img{
+      width:44px;
+      height:44px;
+      object-fit:contain;
+      flex:0 0 auto;
+    }
+
+    .brand-copy{
+      min-width:0;
+    }
+
+    .brand-title{
+      margin:0;
+      font-size:18px;
+      line-height:1.1;
+      font-weight:800;
+      letter-spacing:.2px;
+      color:#fff;
+    }
+
+    .brand-sub{
+      margin:3px 0 0;
+      font-size:12px;
+      line-height:1.35;
+      color:var(--white-soft);
+      letter-spacing:.2px;
+    }
+
+    .top-actions{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .top-link,
+    .btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      text-decoration:none;
+      font-weight:700;
+      border-radius:12px;
+      transition:.15s ease;
+      white-space:nowrap;
+    }
+
+    .top-link{
+      padding:11px 16px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      color:#fff;
+      font-size:13px;
+    }
+
+    .hero{
+      margin-top:22px;
+      display:grid;
+      grid-template-columns:1.05fr .95fr;
+      gap:22px;
+      align-items:stretch;
+    }
+
+    .hero-copy,
+    .hero-visual{
+      border:1px solid var(--panel-border);
+      border-radius:24px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.04)),
+        rgba(255,255,255,.04);
+      box-shadow:var(--shadow);
+    }
+
+    .hero-copy{
+      padding:34px 32px;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .hero-copy::after{
+      content:"";
+      position:absolute;
+      right:-80px;
+      bottom:-120px;
+      width:340px;
+      height:340px;
+      border-radius:999px;
+      background:radial-gradient(circle, rgba(82,155,255,.20), rgba(0,0,0,0) 70%);
+      pointer-events:none;
+    }
+
+    .eyebrow{
+      display:inline-block;
+      margin:0 0 18px;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.35px;
+      color:var(--white-muted);
+    }
+
+    .headline{
+      margin:0;
+      max-width:640px;
+      font-size:64px;
+      line-height:.96;
+      font-weight:800;
+      letter-spacing:.1px;
+      color:#fff;
+    }
+
+    .headline span{
+      display:block;
+      margin-top:10px;
+      font-size:25px;
+      line-height:1.25;
+      font-weight:700;
+      color:var(--white-muted);
+    }
+
+    .subhead{
+      max-width:590px;
+      margin:22px 0 0;
+      font-size:20px;
+      line-height:1.6;
+      color:var(--white-muted);
+    }
+
+    .button-group{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-top:28px;
+      position:relative;
+      z-index:2;
+    }
+
+    .btn{
+      min-height:50px;
+      padding:0 18px;
+      font-size:15px;
+      border:1px solid transparent;
+    }
+
+    .btn.primary{
+      background:var(--btn-light);
+      color:var(--btn-light-text);
+      border-color:rgba(255,255,255,.18);
+    }
+
+    .btn.primary:hover{
+      background:#f8fafc;
+    }
+
+    .btn.secondary{
+      background:rgba(255,255,255,.06);
+      color:#fff;
+      border-color:rgba(255,255,255,.14);
+    }
+
+    .btn.secondary:hover{
+      background:rgba(255,255,255,.10);
+    }
+
+    .hero-note{
+      margin-top:18px;
+      font-size:13px;
+      line-height:1.55;
+      color:var(--white-soft);
+    }
+
+    .hero-visual{
+      padding:28px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      gap:18px;
+      min-height:100%;
+    }
+
+    .visual-card{
+      padding:18px 18px;
+      border-radius:18px;
+      border:1px solid var(--card-border);
+      background:rgba(255,255,255,.04);
+    }
+
+    .visual-brand{
+      display:flex;
+      align-items:center;
+      gap:14px;
+      margin-bottom:14px;
+    }
+
+    .visual-brand img{
+      width:64px;
+      height:64px;
+      object-fit:contain;
+      flex:0 0 auto;
+    }
+
+    .visual-brand-title{
+      margin:0;
+      font-size:24px;
+      line-height:1.05;
+      font-weight:800;
+      color:#fff;
+    }
+
+    .visual-brand-sub{
+      margin:6px 0 0;
+      font-size:14px;
+      line-height:1.45;
+      color:var(--white-muted);
+    }
+
+    .visual-divider{
+      width:100%;
+      height:1px;
+      border:0;
+      margin:16px 0;
+      background:var(--line);
+    }
+
+    .visual-stat{
+      display:grid;
+      gap:14px;
+    }
+
+    .visual-stat-row{
+      padding:14px 16px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.03);
+    }
+
+    .visual-stat-title{
+      margin:0 0 6px;
+      font-size:15px;
+      font-weight:800;
+      color:#fff;
+    }
+
+    .visual-stat-copy{
+      margin:0;
+      font-size:14px;
+      line-height:1.55;
+      color:var(--white-muted);
+    }
+
+    .section{
+      margin-top:22px;
+    }
+
+    .section-grid{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:18px;
+    }
+
+    .info-card{
+      padding:22px 20px;
+      border-radius:20px;
+      border:1px solid var(--card-border);
+      background:rgba(255,255,255,.05);
+      box-shadow:0 14px 36px rgba(0,0,0,.16);
+    }
+
+    .info-title{
+      margin:0 0 10px;
+      font-size:22px;
+      line-height:1.1;
+      font-weight:800;
+      color:#fff;
+    }
+
+    .info-copy{
+      margin:0;
+      font-size:15px;
+      line-height:1.65;
+      color:var(--white-muted);
+    }
+
+    .cred-band{
+      margin-top:22px;
+      padding:18px 20px;
+      border-radius:18px;
+      border:1px solid var(--card-border);
+      background:rgba(255,255,255,.04);
+      color:var(--white-muted);
+      font-size:14px;
+      line-height:1.6;
+      text-align:center;
+    }
+
+    .footer{
+      margin-top:22px;
+      padding:18px 4px 6px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:14px;
+      flex-wrap:wrap;
+      color:var(--white-soft);
+      font-size:13px;
+      line-height:1.5;
+    }
+
+    .footer-links{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .footer-links a{
+      color:var(--white-muted);
+      text-decoration:none;
+    }
+
+    @media (max-width: 1080px){
+      .hero{
+        grid-template-columns:1fr;
+      }
+
+      .headline{
+        font-size:54px;
+      }
+
+      .headline span{
+        font-size:23px;
+      }
+
+      .section-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width: 640px){
+      .page{
+        padding:14px 12px 22px;
+      }
+
+      .topbar{
+        padding:12px 14px;
+        align-items:flex-start;
+        flex-direction:column;
+      }
+
+      .top-actions{
+        width:100%;
+      }
+
+      .top-link{
+        width:100%;
+      }
+
+      .hero{
+        margin-top:14px;
+        gap:14px;
+      }
+
+      .hero-copy,
+      .hero-visual{
+        border-radius:18px;
+      }
+
+      .hero-copy{
+        padding:22px 18px;
+      }
+
+      .hero-visual{
+        padding:18px;
+      }
+
+      .headline{
+        font-size:42px;
+        line-height:.98;
+      }
+
+      .headline span{
+        margin-top:12px;
+        font-size:20px;
+        line-height:1.3;
+      }
+
+      .subhead{
+        font-size:18px;
+      }
+
+      .button-group{
+        flex-direction:column;
+        align-items:stretch;
+      }
+
+      .btn{
+        width:100%;
+      }
+
+      .visual-brand{
+        align-items:flex-start;
+      }
+
+      .visual-brand img{
+        width:54px;
+        height:54px;
+      }
+
+      .visual-brand-title{
+        font-size:21px;
+      }
+
+      .info-card{
+        padding:18px 16px;
+        border-radius:18px;
+      }
+
+      .info-title{
+        font-size:20px;
+      }
+    }
   </style>
 </head>
 <body>
 
   <main class="page">
-    <section class="hero">
+    <div class="shell">
 
-      <!-- Anchor Line -->
-      <p class="anchor">
-        A governed execution decision system for leadership teams who need clarity at scale.
-      </p>
+      <header class="topbar">
+        <div class="brand">
+          <img
+            src="assets/restaurant-excellence-system.png"
+            alt="Restaurant Excellence System™ — Powered by FrontlineQSR"
+          />
+          <div class="brand-copy">
+            <p class="brand-title">FrontlineQSR</p>
+            <p class="brand-sub">Restaurant Excellence System™ | Governed execution for leadership teams</p>
+          </div>
+        </div>
 
-      <!-- Logo (NOT wrapped in link to prevent click conflicts) -->
-      <img
-        src="assets/restaurant-excellence-system.png"
-        alt="Restaurant Excellence System™ — Powered by FrontlineQSR"
-        class="logo"
-      />
+        <div class="top-actions">
+          <a class="top-link" href="./client-login.html">Client Login</a>
+        </div>
+      </header>
 
-      <!-- Buttons -->
-      <div class="button-group">
+      <section class="hero">
+        <section class="hero-copy">
+          <p class="eyebrow">Governed Execution</p>
 
-        <!-- Start a Conversation → Pilot System -->
-        <a class="btn primary" href="https://flqsr.com/">
-          Start a Conversation
-        </a>
+          <h1 class="headline">
+            Clarity Before Scale.
+            <span>Governed execution for leadership teams operating across stores, districts, and regions.</span>
+          </h1>
 
-        <!-- Client Login → Commercial Login Page -->
-        <a class="btn secondary" href="./client-login.html">
-          Client Login
-        </a>
+          <p class="subhead">
+            FrontlineQSR helps leadership teams identify where execution is shifting earlier, create stronger operational discipline, and maintain truth across the organization before the financial story is fully visible.
+          </p>
 
-      </div>
+          <div class="button-group">
+            <a class="btn primary" href="https://flqsr.com/">
+              Start a Conversation
+            </a>
 
-      <!-- Footer Line -->
-      <p class="fine">
-        Restaurant Excellence System™ is a governed execution decision system.
-        Access is issued directly to participating clients.
-      </p>
+            <a class="btn secondary" href="./client-login.html">
+              Client Login
+            </a>
+          </div>
 
-    </section>
+          <p class="hero-note">
+            Access is issued directly to participating clients and approved pilot partners.
+          </p>
+        </section>
+
+        <section class="hero-visual">
+          <div class="visual-card">
+            <div class="visual-brand">
+              <img
+                src="assets/restaurant-excellence-system.png"
+                alt="Restaurant Excellence System™"
+              />
+              <div>
+                <p class="visual-brand-title">Restaurant Excellence System™</p>
+                <p class="visual-brand-sub">Powered by FrontlineQSR</p>
+              </div>
+            </div>
+
+            <hr class="visual-divider" />
+
+            <div class="visual-stat">
+              <div class="visual-stat-row">
+                <p class="visual-stat-title">Governed execution</p>
+                <p class="visual-stat-copy">
+                  Approved truth remains separate from pending submissions and operational noise.
+                </p>
+              </div>
+
+              <div class="visual-stat-row">
+                <p class="visual-stat-title">Leadership alignment</p>
+                <p class="visual-stat-copy">
+                  Store, district, regional, and executive roles operate from the same decision framework.
+                </p>
+              </div>
+
+              <div class="visual-stat-row">
+                <p class="visual-stat-title">Clarity at scale</p>
+                <p class="visual-stat-copy">
+                  Designed for organizations that need earlier operational visibility before volatility compounds.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section class="section">
+        <div class="section-grid">
+          <article class="info-card">
+            <h2 class="info-title">Governed Execution</h2>
+            <p class="info-copy">
+              Approved data remains separate from pending submissions so leadership decisions stay grounded in governed execution truth.
+            </p>
+          </article>
+
+          <article class="info-card">
+            <h2 class="info-title">Role-Based Clarity</h2>
+            <p class="info-copy">
+              Store, district, regional, and executive views preserve the correct decision scope while aligning around the same core operational truth.
+            </p>
+          </article>
+
+          <article class="info-card">
+            <h2 class="info-title">Earlier Visibility</h2>
+            <p class="info-copy">
+              Identify where execution is shifting before the financial story is fully visible, allowing leadership teams to coach with more precision.
+            </p>
+          </article>
+        </div>
+
+        <div class="cred-band">
+          Restaurant Excellence System™ is a governed execution decision system for leadership teams who need clarity before scale.
+        </div>
+      </section>
+
+      <footer class="footer">
+        <div>
+          FrontlineQSR | Restaurant Excellence System™
+        </div>
+
+        <div class="footer-links">
+          <a href="https://flqsr.com/">Start a Conversation</a>
+          <a href="./client-login.html">Client Login</a>
+        </div>
+      </footer>
+
+    </div>
   </main>
 
 </body>
