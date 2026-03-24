@@ -1,4 +1,4 @@
-// /assets/commercial-dm.js (v11)
+// /assets/commercial-dm.js (v12)
 // District Manager page logic
 // ✅ Uses commercial-rollup-data.js for approved rollup truth
 // ✅ Uses commercial-db.js for store readiness + pending approvals
@@ -9,6 +9,8 @@
 // ✅ Adds pending approval queue on same page
 // ✅ DM can approve / reject pending weeks
 // ✅ Preserves scoped navigation
+// ✅ Adds district + store switching
+// ✅ DM can step into store view from selected store
 // 🚫 No KPI math changes
 
 import { loadCommercialRollupTruth } from "./commercial-rollup-data.js";
@@ -170,18 +172,208 @@ function msgInline(text, isErr = false) {
   root.style.color = isErr ? "#b91c1c" : "#065f46";
 }
 
+function scopeMsg(text, isErr = false) {
+  const root = $("scopeMsg");
+  if (!root) return;
+  root.textContent = text || "";
+  root.style.color = isErr ? "#b91c1c" : "#065f46";
+}
+
+function uniqueValues(items) {
+  return Array.from(new Set((items || []).filter(Boolean)));
+}
+
+/* =========================================================
+   Scope state
+========================================================= */
+
+let ALL_STORES = [];
+
+function currentScope() {
+  const params = getParams();
+  const session = readSession() || {};
+  return {
+    orgId: String(params.orgId || session.orgId || "").trim(),
+    districtId: normalizeId($("districtSelector")?.value || params.districtId || ""),
+    storeId: normalizeId($("storeSelector")?.value || params.storeId || ""),
+    regionId: normalizeId(params.regionId || "")
+  };
+}
+
+function updateUrlFromScope(scope = currentScope()) {
+  const next = new URL(window.location.href);
+
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  else next.searchParams.delete("org");
+
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  else next.searchParams.delete("region");
+
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  else next.searchParams.delete("district");
+
+  if (scope.storeId) next.searchParams.set("store", scope.storeId);
+  else next.searchParams.delete("store");
+
+  window.history.replaceState({}, "", next.toString());
+}
+
+function buildScopedUrl(path, scope = currentScope()) {
+  const next = new URL(path, window.location.href);
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  if (scope.storeId) next.searchParams.set("store", scope.storeId);
+  return next.toString();
+}
+
+function fillDistrictSelector(selected = "") {
+  const districts = uniqueValues(
+    ALL_STORES.map((s) => normalizeId(s.districtId)).filter(Boolean)
+  ).sort((a, b) => a.localeCompare(b));
+
+  const el = $("districtSelector");
+  if (!el) return;
+
+  el.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select district";
+  el.appendChild(blank);
+
+  districts.forEach((districtId) => {
+    const opt = document.createElement("option");
+    opt.value = districtId;
+    opt.textContent = prettyLabel(districtId);
+    if (districtId === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+function fillStoreSelector(districtId = "", selected = "") {
+  const stores = ALL_STORES
+    .filter((s) => !districtId || normalizeId(s.districtId) === normalizeId(districtId))
+    .sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id)));
+
+  const el = $("storeSelector");
+  if (!el) return;
+
+  el.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select store";
+  el.appendChild(blank);
+
+  stores.forEach((store) => {
+    const opt = document.createElement("option");
+    opt.value = normalizeId(store.id);
+    opt.textContent = prettyLabel(store.name || store.id);
+    if (normalizeId(store.id) === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+async function setupScopeSelectors() {
+  const session = readSession() || {};
+  const params = getParams();
+  const orgId = String(params.orgId || session.orgId || "").trim();
+
+  if (!orgId) {
+    scopeMsg("Missing org context.", true);
+    return;
+  }
+
+  const allStores = await listStores(orgId);
+  const activeStores = (allStores || []).filter((s) => s.active !== false);
+
+  const assignedStoreIds = Array.isArray(session.assigned_store_ids) ? session.assigned_store_ids.map(normalizeId) : [];
+  const assignedDistrictIds = Array.isArray(session.assigned_district_ids) ? session.assigned_district_ids.map(normalizeId) : [];
+  const role = String(session.role || "dm").toLowerCase();
+
+  let allowed = [...activeStores];
+
+  if (role === "dm" && assignedStoreIds.length) {
+    allowed = allowed.filter((s) => assignedStoreIds.includes(normalizeId(s.id)));
+  } else if (role === "dm" && assignedDistrictIds.length) {
+    allowed = allowed.filter((s) => assignedDistrictIds.includes(normalizeId(s.districtId)));
+  }
+
+  ALL_STORES = allowed;
+
+  const defaultDistrict =
+    params.districtId ||
+    assignedDistrictIds[0] ||
+    normalizeId(allowed[0]?.districtId || "");
+
+  fillDistrictSelector(defaultDistrict);
+  fillStoreSelector(defaultDistrict, params.storeId || normalizeId(allowed.find((s) => normalizeId(s.districtId) === defaultDistrict)?.id || ""));
+
+  if (!ALL_STORES.length) {
+    scopeMsg("No active stores available in current district scope.", true);
+    return;
+  }
+
+  const selectedDistrict = String($("districtSelector")?.value || "").trim();
+  const selectedStore = String($("storeSelector")?.value || "").trim();
+
+  if (selectedDistrict || selectedStore) {
+    updateUrlFromScope({
+      orgId,
+      regionId: params.regionId || "",
+      districtId: selectedDistrict,
+      storeId: selectedStore
+    });
+  }
+
+  scopeMsg(`✅ Scope loaded. ${ALL_STORES.length} active store(s) available.`);
+
+  $("districtSelector")?.addEventListener("change", async () => {
+    const districtId = String($("districtSelector")?.value || "").trim();
+    const firstStoreInDistrict = normalizeId(
+      ALL_STORES.find((s) => normalizeId(s.districtId) === districtId)?.id || ""
+    );
+
+    fillStoreSelector(districtId, firstStoreInDistrict);
+
+    updateUrlFromScope({
+      orgId,
+      regionId: params.regionId || "",
+      districtId,
+      storeId: String($("storeSelector")?.value || "").trim()
+    });
+
+    setDMHeaderContext();
+    await loadDistrictRollup();
+  });
+
+  $("storeSelector")?.addEventListener("change", async () => {
+    updateUrlFromScope({
+      orgId,
+      regionId: params.regionId || "",
+      districtId: String($("districtSelector")?.value || "").trim(),
+      storeId: String($("storeSelector")?.value || "").trim()
+    });
+
+    setDMHeaderContext();
+    await loadDistrictRollup();
+  });
+}
+
 /* =========================================================
    Header / nav
 ========================================================= */
 
 function setDMHeaderContext() {
   const s = readSession() || {};
-  const p = getParams();
+  const scope = currentScope();
 
   const role = String(s.role || "dm").toUpperCase();
-  const orgId = p.orgId || s.orgId || "N/A";
-  const selectedDistrict = p.districtId;
-  const selectedRegion = p.regionId;
+  const orgId = scope.orgId || "N/A";
+  const selectedDistrict = scope.districtId;
+  const selectedStore = scope.storeId;
+  const selectedRegion = scope.regionId;
+
+  setText("sessionInfo", `Signed in as: ${s.email || "Unknown user"}`);
 
   setText(
     "dmContext",
@@ -190,23 +382,20 @@ function setDMHeaderContext() {
     }`
   );
 
-  setText(
-    "activeDistrict",
-    selectedDistrict
-      ? `Selected District: ${prettyLabel(selectedDistrict)}${
-          selectedRegion ? ` | Region: ${prettyLabel(selectedRegion)}` : ""
-        }`
-      : `Selected District: All assigned districts${
-          selectedRegion ? ` | Region: ${prettyLabel(selectedRegion)}` : ""
-        }`
-  );
+  let active = selectedDistrict
+    ? `Selected District: ${prettyLabel(selectedDistrict)}`
+    : "Selected District: All assigned districts";
+
+  if (selectedStore) active += ` | Store: ${prettyLabel(selectedStore)}`;
+  if (selectedRegion) active += ` | Region: ${prettyLabel(selectedRegion)}`;
+
+  setText("activeDistrict", active);
 }
 
 function setupViewSelector() {
   const selector = $("viewSelector");
   if (!selector) return;
 
-  const p = getParams();
   selector.value = "dm";
 
   selector.addEventListener("change", (e) => {
@@ -221,13 +410,16 @@ function setupViewSelector() {
     const path = nextMap[view];
     if (!path) return;
 
-    const next = new URL(path, window.location.href);
-    if (p.orgId) next.searchParams.set("org", p.orgId);
-    if (p.regionId) next.searchParams.set("region", p.regionId);
-    if (p.districtId) next.searchParams.set("district", p.districtId);
-    if (p.storeId && view === "sm") next.searchParams.set("store", p.storeId);
+    window.location.href = buildScopedUrl(path);
+  });
+}
 
-    window.location.href = next.toString();
+function setupLogout() {
+  $("logoutBtn")?.addEventListener("click", () => {
+    try {
+      localStorage.removeItem("FLQSR_COMM_SESSION");
+    } catch {}
+    window.location.href = "./commercial-login.html";
   });
 }
 
@@ -345,7 +537,7 @@ async function loadDistrictStoreStatuses(orgId, districtId) {
       else if (ws?.latestApprovedWeek) readiness = "APPROVED";
 
       return {
-        storeId: store.id,
+        storeId: normalizeId(store.id),
         storeName: store.name || store.id,
         pendingWeek: ws?.pendingWeek || null,
         latestApprovedWeek: ws?.latestApprovedWeek || null,
@@ -382,6 +574,7 @@ function renderLocked(title, line1, line2 = "") {
 }
 
 function renderLiveDistrict(truth, storeStatuses) {
+  const scope = currentScope();
   const current = truth.latestWeekKpis || {};
   const prev = truth.previousWeekKpis || null;
   const base = truth.baselineWeeklyKpis || {};
@@ -443,12 +636,20 @@ function renderLiveDistrict(truth, storeStatuses) {
     const salesVsBase = k ? pctDelta(k.sales, b.sales) : NaN;
     const txVsBase = k ? pctDelta(k.transactions, b.transactions) : NaN;
     const hasLive = !!k;
-    const meta = storeMeta[row.key] || null;
+    const meta = storeMeta[normalizeId(row.key)] || null;
     const readiness = meta?.readiness || (hasLive ? "APPROVED" : "ACTION_NEEDED");
+    const rowStoreId = normalizeId(row.key);
 
     return `
       <tr>
-        <td><span class="cdm-text-strong">${prettyLabel(row.label)}</span></td>
+        <td>
+          <div class="cdm-text-strong">${prettyLabel(row.label)}</div>
+          <div style="margin-top:6px;">
+            <button class="btn secondary" type="button" data-open-store="${rowStoreId}">
+              Open Store
+            </button>
+          </div>
+        </td>
         <td>${statusBadge(readiness)}</td>
         <td>${hasLive ? fmtMoney(k.sales) : "—"}</td>
         <td>${hasLive ? fmtNumber(k.transactions) : "—"}</td>
@@ -467,10 +668,27 @@ function renderLiveDistrict(truth, storeStatuses) {
     `;
   }).join("");
 
+  const selectedStoreBlock = scope.storeId
+    ? `
+      <div class="card">
+        <h3 class="section-title cdm-subtitle">Selected Store</h3>
+        <p class="section-sub">
+          Current store scope:
+          <span class="cdm-text-strong">${prettyLabel(scope.storeId)}</span>
+        </p>
+        <div style="margin-top:10px;">
+          <button class="btn secondary" type="button" data-open-store="${scope.storeId}">
+            Open Store Dashboard
+          </button>
+        </div>
+      </div>
+    `
+    : "";
+
   setHtml(ROOT_ID, `
     <section class="cdm-stack">
       <div class="card">
-        <h2 class="section-title">District Rollup — ${prettyLabel(truth.scopeDistrictId || "Selected District")}</h2>
+        <h2 class="section-title">District Rollup — ${prettyLabel(truth.scopeDistrictId || scope.districtId || "Selected District")}</h2>
         <p class="section-sub">
           Latest approved district performance is aggregated across active stores in scope.
         </p>
@@ -480,6 +698,8 @@ function renderLiveDistrict(truth, storeStatuses) {
           Latest Week: <span class="cdm-text-strong">${latestWeekLabel}</span>
         </p>
       </div>
+
+      ${selectedStoreBlock}
 
       <div class="kpi-grid cdm-kpi-grid">
         ${metricCard(
@@ -635,12 +855,12 @@ function renderLiveDistrict(truth, storeStatuses) {
 async function handleApproveWeek(storeId, weekId) {
   try {
     const session = readSession() || {};
-    const p = getParams();
+    const scope = currentScope();
 
     msgInline("Approving week…");
 
     await approveStoreWeek({
-      orgId: p.orgId,
+      orgId: scope.orgId,
       storeId,
       weekId,
       approvedByUid: session.uid || null,
@@ -657,12 +877,12 @@ async function handleApproveWeek(storeId, weekId) {
 async function handleRejectWeek(storeId, weekId) {
   try {
     const session = readSession() || {};
-    const p = getParams();
+    const scope = currentScope();
 
     msgInline("Rejecting week…");
 
     await rejectStoreWeek({
-      orgId: p.orgId,
+      orgId: scope.orgId,
       storeId,
       weekId,
       rejectedByUid: session.uid || null,
@@ -677,6 +897,16 @@ async function handleRejectWeek(storeId, weekId) {
   }
 }
 
+function openStoreView(storeId) {
+  const scope = currentScope();
+  const next = new URL("./commercial-portal.html", window.location.href);
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  if (storeId) next.searchParams.set("store", normalizeId(storeId));
+  window.location.href = next.toString();
+}
+
 function setupGovernanceActions() {
   const root = $(ROOT_ID);
   if (!root) return;
@@ -685,7 +915,7 @@ function setupGovernanceActions() {
     const approveBtn = e.target.closest("[data-approve-week]");
     if (approveBtn) {
       const weekId = String(approveBtn.getAttribute("data-approve-week") || "").trim();
-      const storeId = String(approveBtn.getAttribute("data-store-id") || "").trim();
+      const storeId = normalizeId(approveBtn.getAttribute("data-store-id"));
       if (!weekId || !storeId) return;
       await handleApproveWeek(storeId, weekId);
       return;
@@ -694,9 +924,17 @@ function setupGovernanceActions() {
     const rejectBtn = e.target.closest("[data-reject-week]");
     if (rejectBtn) {
       const weekId = String(rejectBtn.getAttribute("data-reject-week") || "").trim();
-      const storeId = String(rejectBtn.getAttribute("data-store-id") || "").trim();
+      const storeId = normalizeId(rejectBtn.getAttribute("data-store-id"));
       if (!weekId || !storeId) return;
       await handleRejectWeek(storeId, weekId);
+      return;
+    }
+
+    const openStoreBtn = e.target.closest("[data-open-store]");
+    if (openStoreBtn) {
+      const storeId = normalizeId(openStoreBtn.getAttribute("data-open-store"));
+      if (!storeId) return;
+      openStoreView(storeId);
     }
   });
 }
@@ -707,10 +945,20 @@ function setupGovernanceActions() {
 
 async function loadDistrictRollup() {
   try {
-    const p = getParams();
+    const scope = currentScope();
+
+    if (!scope.orgId) {
+      renderLocked("District Rollup", "Missing org context.");
+      return;
+    }
+
+    if (!scope.districtId) {
+      renderLocked("District Rollup", "Select a district to load district rollup.");
+      return;
+    }
 
     const truth = await loadCommercialRollupTruth();
-    const storeStatuses = await loadDistrictStoreStatuses(p.orgId || truth.orgId || "", p.districtId || truth.scopeDistrictId || "");
+    const storeStatuses = await loadDistrictStoreStatuses(scope.orgId, scope.districtId);
 
     if (truth.state === "missing_context") {
       renderLocked("District Rollup", "Missing org context.");
@@ -727,7 +975,7 @@ async function loadDistrictRollup() {
 
     if (truth.state === "missing_baseline") {
       renderLocked(
-        `District Rollup — ${prettyLabel(truth.scopeDistrictId || "Selected District")}`,
+        `District Rollup — ${prettyLabel(scope.districtId || truth.scopeDistrictId || "Selected District")}`,
         "No approved baseline found in this district scope."
       );
       return;
@@ -735,7 +983,7 @@ async function loadDistrictRollup() {
 
     if (truth.state === "baseline_only") {
       renderLocked(
-        `District Rollup — ${prettyLabel(truth.scopeDistrictId || "Selected District")}`,
+        `District Rollup — ${prettyLabel(scope.districtId || truth.scopeDistrictId || "Selected District")}`,
         "Approved baselines found, but no approved weekly uploads exist yet in this district scope."
       );
       return;
@@ -753,8 +1001,10 @@ async function loadDistrictRollup() {
 ========================================================= */
 
 window.addEventListener("DOMContentLoaded", async () => {
-  setDMHeaderContext();
+  setupLogout();
   setupViewSelector();
   setupGovernanceActions();
+  await setupScopeSelectors();
+  setDMHeaderContext();
   await loadDistrictRollup();
 });
