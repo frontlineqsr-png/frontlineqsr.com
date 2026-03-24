@@ -201,6 +201,57 @@
       box-shadow:0 0 0 3px rgba(15,23,42,.08);
     }
 
+    .scope-card{
+      padding:16px;
+      border-radius:14px;
+      background:rgba(15,23,42,.03);
+      border:1px solid rgba(15,23,42,.08);
+      margin-bottom:18px;
+    }
+
+    .scope-grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:14px;
+      align-items:end;
+    }
+
+    .scope-label{
+      display:block;
+      margin:0 0 6px;
+      font-size:12px;
+      font-weight:700;
+      color:var(--muted);
+      letter-spacing:.2px;
+    }
+
+    .scope-input{
+      width:100%;
+      box-sizing:border-box;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      color:#111827;
+      font-weight:700;
+      font-size:14px;
+      outline:none;
+      cursor:pointer;
+    }
+
+    .scope-input:focus{
+      border-color:rgba(15,23,42,.28);
+      box-shadow:0 0 0 3px rgba(15,23,42,.08);
+    }
+
+    .scope-msg{
+      margin-top:12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+      white-space:pre-wrap;
+    }
+
     @media (max-width:640px){
       .hero{ padding:22px 14px 44px; }
       .brand-bar{ justify-content:flex-start; }
@@ -213,6 +264,12 @@
         width:100%;
         box-sizing:border-box;
         text-align:center;
+      }
+      .scope-grid{
+        grid-template-columns:1fr;
+      }
+      .scope-input{
+        width:100%;
       }
     }
   </style>
@@ -275,12 +332,37 @@
 
           <div class="hr"></div>
 
+          <div class="scope-card">
+            <h3 style="margin:0 0 10px 0;font-size:22px;">District Scope</h3>
+            <p class="sub" style="margin-bottom:14px;">
+              Switch between stores in the active district to inspect status, coach execution, and step in when a store manager is unavailable.
+            </p>
+
+            <div class="scope-grid">
+              <div>
+                <label class="scope-label" for="districtSelector">District</label>
+                <select id="districtSelector" class="scope-input">
+                  <option value="">Select district</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="scope-label" for="storeSelector">Store</label>
+                <select id="storeSelector" class="scope-input">
+                  <option value="">Select store</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="scopeMsg" class="scope-msg"></div>
+          </div>
+
           <div id="commercialDmRoot"></div>
         </div>
       </div>
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-dm.js?v=11"></script>
+  <script type="module" src="assets/commercial-dm.js?v=12"></script>
 </body>
 </html>
