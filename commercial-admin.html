@@ -337,7 +337,7 @@
             <div>
               <h2 class="admin-title">Admin Hub</h2>
               <p class="admin-sub">
-                Manage organizations, stores, user access, baseline intake, weekly uploads, baseline governance, inspection views, and controlled store cleanup from one workspace.
+                Manage organizations, stores, user access, baseline intake, weekly uploads, weekly governance, baseline governance, inspection views, and controlled store cleanup from one workspace.
               </p>
               <p id="sessionInfo" class="admin-sub" style="margin-top:8px;">Loading session…</p>
               <p id="adminContext" class="admin-sub" style="margin-top:8px;"></p>
@@ -470,6 +470,41 @@
           <div class="hr"></div>
 
           <div class="panel">
+            <h3>Weekly Governance</h3>
+
+            <div class="grid-2">
+              <div>
+                <label class="small">Org Id</label>
+                <input class="input" id="resetOrgId" placeholder="Paste orgId" />
+              </div>
+
+              <div>
+                <label class="small">Store Id</label>
+                <input class="input" id="resetStoreId" placeholder="Paste storeId" />
+              </div>
+
+              <div>
+                <label class="small">Week Id / Week Start</label>
+                <input class="input" id="resetWeekId" placeholder="Example: 2026-03-16" />
+              </div>
+
+              <div>
+                <label class="small">Type DELETE to confirm cleanup only</label>
+                <input class="input" id="resetConfirmText" placeholder="DELETE" />
+              </div>
+            </div>
+
+            <div class="launch-grid" style="grid-template-columns:repeat(2, minmax(0, 1fr));">
+              <button class="btnx secondary" id="approveWeekBtn" type="button">Approve Pending Week</button>
+              <button class="btnx secondary" id="rejectWeekBtn" type="button">Reject Pending Week</button>
+            </div>
+
+            <div class="msg" id="resetMsg"></div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="panel">
             <h3>Baseline Governance</h3>
 
             <div class="grid-2">
@@ -501,35 +536,11 @@
               Super admin only. Use this to remove a bad week, clear a baseline, or fully reset one store’s uploaded test data without deleting the store itself.
             </p>
 
-            <div class="grid-2">
-              <div>
-                <label class="small">Org Id</label>
-                <input class="input" id="resetOrgId" placeholder="Paste orgId" />
-              </div>
-
-              <div>
-                <label class="small">Store Id</label>
-                <input class="input" id="resetStoreId" placeholder="Paste storeId" />
-              </div>
-
-              <div>
-                <label class="small">Week Id / Week Start (for single week delete)</label>
-                <input class="input" id="resetWeekId" placeholder="Example: 2026-03-16" />
-              </div>
-
-              <div>
-                <label class="small">Type DELETE to confirm</label>
-                <input class="input" id="resetConfirmText" placeholder="DELETE" />
-              </div>
-            </div>
-
             <div class="launch-grid" style="grid-template-columns:repeat(3, minmax(0, 1fr));">
               <button class="btnx danger" id="deleteWeekBtn" type="button">Delete One Week</button>
               <button class="btnx danger" id="deleteBaselineBtn" type="button">Delete Baseline</button>
               <button class="btnx danger" id="resetStoreBtn" type="button">Full Store Reset</button>
             </div>
-
-            <div class="msg" id="resetMsg"></div>
           </div>
 
           <div class="hr"></div>
@@ -641,6 +652,6 @@
     </section>
   </main>
 
-<script type="module" src="assets/commercial-admin.js?v=12"></script>
+  <script type="module" src="assets/commercial-admin.js?v=14"></script>
 </body>
 </html>
