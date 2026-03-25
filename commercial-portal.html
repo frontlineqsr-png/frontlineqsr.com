@@ -67,6 +67,38 @@
 
           <div class="hr"></div>
 
+          <div class="scope-card">
+            <h2 class="section-title" style="margin-bottom:8px;">Store Scope</h2>
+            <p class="section-sub" style="margin-bottom:14px;">
+              DM and above can switch into a specific store to review approved truth, inspect readiness, and step in when local coverage is needed.
+            </p>
+
+            <div class="scope-grid">
+              <div>
+                <label class="small" for="regionSelector">Region</label>
+                <select id="regionSelector" class="input">
+                  <option value="">Select region</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="small" for="districtSelector">District</label>
+                <select id="districtSelector" class="input">
+                  <option value="">Select district</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="small" for="storeSelector">Store</label>
+                <select id="storeSelector" class="input">
+                  <option value="">Select store</option>
+                </select>
+              </div>
+            </div>
+
+            <p id="scopeMsg" class="section-sub" style="margin-top:12px;"></p>
+          </div>
+
           <div class="tabs">
             <button class="tab-btn active" data-tab="kpis" type="button">KPIs</button>
             <button class="tab-btn" data-tab="weekly" type="button">Weekly Upload</button>
@@ -147,6 +179,6 @@
     </section>
   </main>
 
-  <script type="module" src="assets/commercial-portal.js?v=7"></script>
+  <script type="module" src="assets/commercial-portal.js?v=8"></script>
 </body>
 </html>
