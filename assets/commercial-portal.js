@@ -1,6 +1,6 @@
-// /assets/commercial-portal.js (v11)
+// /assets/commercial-portal.js (v12)
 // Store Manager portal logic
-// Shared auth/session/logout is handled by commercial-page-boot.js
+// Shared auth/session is handled by commercial-page-boot.js
 // Reads live commercial baseline + approved weekly truth from Firestore
 // Uses shared KPI engine and keeps KPI math unchanged
 // ✅ Tabs route to the real live commercial pages
@@ -8,11 +8,15 @@
 // ✅ Uses approved weekly truth only
 // ✅ Shows pending approval messaging when weekly upload exists but is not approved
 // ✅ Adds Weekly Upload tab route
+// ✅ Adds region / district / store switching
+// ✅ DM and above can move store scope without snapping back
+// ✅ Preserves scoped navigation across views
 // 🚫 No KPI math changes
 
 import {
   getStoreBaselineStatus,
-  getStoreWeekStatus
+  getStoreWeekStatus,
+  listStores
 } from "./commercial-db.js";
 
 import {
@@ -25,6 +29,10 @@ import {
 } from "./core-kpi-engine.js";
 
 const $ = (id) => document.getElementById(id);
+
+/* =========================================================
+   Session / params
+========================================================= */
 
 function readSession() {
   try {
@@ -42,6 +50,16 @@ function getParams() {
     districtId: String(params.get("district") || "").trim(),
     regionId: String(params.get("region") || "").trim()
   };
+}
+
+function normalizeId(v) {
+  return String(v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_");
 }
 
 function prettyLabel(value) {
@@ -67,49 +85,323 @@ function setDelta(id, text, tone = "pending") {
   setClass(id, `kpi-delta ${tone}`);
 }
 
-function buildScopedUrl(path) {
+function scopeMsg(text, isErr = false) {
+  const el = $("scopeMsg");
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.color = isErr ? "#b91c1c" : "#065f46";
+}
+
+/* =========================================================
+   Scope helpers
+========================================================= */
+
+let ALL_STORES = [];
+
+function uniqueValues(items) {
+  return Array.from(new Set((items || []).filter(Boolean)));
+}
+
+function currentScope() {
   const params = getParams();
+  const session = readSession() || {};
+  return {
+    orgId: String(params.orgId || session.orgId || "").trim(),
+    regionId: String($("regionSelector")?.value || params.regionId || "").trim(),
+    districtId: String($("districtSelector")?.value || params.districtId || "").trim(),
+    storeId: String($("storeSelector")?.value || params.storeId || "").trim()
+  };
+}
+
+function updateUrlFromScope(scope = currentScope()) {
+  const next = new URL(window.location.href);
+
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  else next.searchParams.delete("org");
+
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  else next.searchParams.delete("region");
+
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  else next.searchParams.delete("district");
+
+  if (scope.storeId) next.searchParams.set("store", scope.storeId);
+  else next.searchParams.delete("store");
+
+  window.history.replaceState({}, "", next.toString());
+}
+
+function buildScopedUrl(path, scope = currentScope()) {
   const next = new URL(path, window.location.href);
 
-  if (params.orgId) next.searchParams.set("org", params.orgId);
-  if (params.storeId) next.searchParams.set("store", params.storeId);
-  if (params.districtId) next.searchParams.set("district", params.districtId);
-  if (params.regionId) next.searchParams.set("region", params.regionId);
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  if (scope.storeId) next.searchParams.set("store", scope.storeId);
 
   return next.toString();
 }
 
+function fillRegionSelector(selected = "") {
+  const regions = uniqueValues(
+    ALL_STORES.map((s) => String(s.regionId || "").trim()).filter(Boolean)
+  ).sort((a, b) => a.localeCompare(b));
+
+  const el = $("regionSelector");
+  if (!el) return;
+
+  el.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select region";
+  el.appendChild(blank);
+
+  regions.forEach((regionId) => {
+    const opt = document.createElement("option");
+    opt.value = regionId;
+    opt.textContent = prettyLabel(regionId);
+    if (regionId === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+function fillDistrictSelector(regionId = "", selected = "") {
+  const districts = uniqueValues(
+    ALL_STORES
+      .filter((s) => !regionId || String(s.regionId || "").trim() === regionId)
+      .map((s) => String(s.districtId || "").trim())
+      .filter(Boolean)
+  ).sort((a, b) => a.localeCompare(b));
+
+  const el = $("districtSelector");
+  if (!el) return;
+
+  el.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select district";
+  el.appendChild(blank);
+
+  districts.forEach((districtId) => {
+    const opt = document.createElement("option");
+    opt.value = districtId;
+    opt.textContent = prettyLabel(districtId);
+    if (districtId === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+function fillStoreSelector(regionId = "", districtId = "", selected = "") {
+  const stores = ALL_STORES
+    .filter((s) => !regionId || String(s.regionId || "").trim() === regionId)
+    .filter((s) => !districtId || String(s.districtId || "").trim() === districtId)
+    .sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id)));
+
+  const el = $("storeSelector");
+  if (!el) return;
+
+  el.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select store";
+  el.appendChild(blank);
+
+  stores.forEach((store) => {
+    const opt = document.createElement("option");
+    opt.value = String(store.id || "").trim();
+    opt.textContent = prettyLabel(store.name || store.id);
+    if (String(store.id || "").trim() === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+async function setupScopeSelectors() {
+  const session = readSession() || {};
+  const params = getParams();
+  const orgId = String(params.orgId || session.orgId || "").trim();
+
+  if (!orgId) {
+    scopeMsg("Missing org context.", true);
+    return;
+  }
+
+  const allStores = await listStores(orgId);
+  const activeStores = (allStores || []).filter((s) => s.active !== false);
+
+  const role = String(session.role || "sm").toLowerCase();
+  const assignedStoreIds = Array.isArray(session.assigned_store_ids) ? session.assigned_store_ids.map((x) => String(x).trim()) : [];
+  const assignedDistrictIds = Array.isArray(session.assigned_district_ids) ? session.assigned_district_ids.map((x) => String(x).trim()) : [];
+  const assignedRegionIds = Array.isArray(session.assigned_region_ids) ? session.assigned_region_ids.map((x) => String(x).trim()) : [];
+
+  let allowed = [...activeStores];
+
+  if (role === "sm" && assignedStoreIds.length) {
+    allowed = allowed.filter((s) => assignedStoreIds.includes(String(s.id || "").trim()));
+  } else if (role === "dm") {
+    if (assignedStoreIds.length) {
+      allowed = allowed.filter((s) => assignedStoreIds.includes(String(s.id || "").trim()));
+    } else if (assignedDistrictIds.length) {
+      allowed = allowed.filter((s) => assignedDistrictIds.includes(String(s.districtId || "").trim()));
+    }
+  } else if (role === "rm" && assignedRegionIds.length) {
+    allowed = allowed.filter((s) => assignedRegionIds.includes(String(s.regionId || "").trim()));
+  }
+
+  ALL_STORES = allowed;
+
+  if (!ALL_STORES.length) {
+    scopeMsg("No active stores available in current scope.", true);
+    return;
+  }
+
+  const defaultRegion =
+    params.regionId ||
+    (role === "rm" && assignedRegionIds[0]) ||
+    String(ALL_STORES[0]?.regionId || "").trim();
+
+  fillRegionSelector(defaultRegion);
+
+  const defaultDistrict =
+    params.districtId ||
+    (role === "dm" && assignedDistrictIds[0]) ||
+    String(
+      ALL_STORES.find((s) => String(s.regionId || "").trim() === defaultRegion)?.districtId || ""
+    ).trim();
+
+  fillDistrictSelector(defaultRegion, defaultDistrict);
+
+  const defaultStore =
+    params.storeId ||
+    (role === "sm" && assignedStoreIds[0]) ||
+    String(
+      ALL_STORES.find(
+        (s) =>
+          String(s.regionId || "").trim() === defaultRegion &&
+          String(s.districtId || "").trim() === defaultDistrict
+      )?.id || ""
+    ).trim();
+
+  fillStoreSelector(defaultRegion, defaultDistrict, defaultStore);
+
+  updateUrlFromScope({
+    orgId,
+    regionId: String($("regionSelector")?.value || "").trim(),
+    districtId: String($("districtSelector")?.value || "").trim(),
+    storeId: String($("storeSelector")?.value || "").trim()
+  });
+
+  scopeMsg(`✅ Scope loaded. ${ALL_STORES.length} active store(s) available.`);
+
+  $("regionSelector")?.addEventListener("change", async () => {
+    const regionId = String($("regionSelector")?.value || "").trim();
+
+    const firstDistrict = String(
+      ALL_STORES.find((s) => String(s.regionId || "").trim() === regionId)?.districtId || ""
+    ).trim();
+
+    fillDistrictSelector(regionId, firstDistrict);
+
+    const firstStore = String(
+      ALL_STORES.find(
+        (s) =>
+          String(s.regionId || "").trim() === regionId &&
+          String(s.districtId || "").trim() === firstDistrict
+      )?.id || ""
+    ).trim();
+
+    fillStoreSelector(regionId, firstDistrict, firstStore);
+
+    updateUrlFromScope({
+      orgId,
+      regionId,
+      districtId: String($("districtSelector")?.value || "").trim(),
+      storeId: String($("storeSelector")?.value || "").trim()
+    });
+
+    setSMHeaderContext();
+    await loadCommercialKpiStatus();
+  });
+
+  $("districtSelector")?.addEventListener("change", async () => {
+    const regionId = String($("regionSelector")?.value || "").trim();
+    const districtId = String($("districtSelector")?.value || "").trim();
+
+    const firstStore = String(
+      ALL_STORES.find(
+        (s) =>
+          String(s.regionId || "").trim() === regionId &&
+          String(s.districtId || "").trim() === districtId
+      )?.id || ""
+    ).trim();
+
+    fillStoreSelector(regionId, districtId, firstStore);
+
+    updateUrlFromScope({
+      orgId,
+      regionId,
+      districtId,
+      storeId: String($("storeSelector")?.value || "").trim()
+    });
+
+    setSMHeaderContext();
+    await loadCommercialKpiStatus();
+  });
+
+  $("storeSelector")?.addEventListener("change", async () => {
+    updateUrlFromScope({
+      orgId,
+      regionId: String($("regionSelector")?.value || "").trim(),
+      districtId: String($("districtSelector")?.value || "").trim(),
+      storeId: String($("storeSelector")?.value || "").trim()
+    });
+
+    setSMHeaderContext();
+    await loadCommercialKpiStatus();
+  });
+}
+
+/* =========================================================
+   Header / nav / tabs
+========================================================= */
+
 function setSMHeaderContext() {
   const s = readSession();
-  const params = getParams();
+  const scope = currentScope();
 
   const role = String(s?.role || "sm").toUpperCase();
-  const orgId = params.orgId || s?.orgId || "N/A";
-  const stores = Array.isArray(s?.assigned_store_ids) ? s.assigned_store_ids : [];
-
-  const selectedStore = params.storeId;
-  const selectedDistrict = params.districtId;
-  const selectedRegion = params.regionId;
+  const orgId = scope.orgId || s?.orgId || "N/A";
 
   const extra = $("smContext");
   if (extra) {
     extra.textContent =
       `Org: ${orgId} | Role: ${role} | Store Scope: ${
-        selectedStore
-          ? prettyLabel(selectedStore)
-          : (stores.length ? stores.join(", ") : "Assigned store access")
+        scope.storeId ? prettyLabel(scope.storeId) : "Select a store"
       }`;
   }
 
   const activeStore = $("activeStore");
   if (activeStore) {
-    const districtText = selectedDistrict ? ` | District: ${prettyLabel(selectedDistrict)}` : "";
-    const regionText = selectedRegion ? ` | Region: ${prettyLabel(selectedRegion)}` : "";
+    const districtText = scope.districtId ? ` | District: ${prettyLabel(scope.districtId)}` : "";
+    const regionText = scope.regionId ? ` | Region: ${prettyLabel(scope.regionId)}` : "";
 
-    activeStore.textContent = selectedStore
-      ? `Selected Store: ${prettyLabel(selectedStore)}${districtText}${regionText}`
-      : `Selected Store: All assigned stores${districtText}${regionText}`;
+    activeStore.textContent = scope.storeId
+      ? `Selected Store: ${prettyLabel(scope.storeId)}${districtText}${regionText}`
+      : `Selected Store: None selected${districtText}${regionText}`;
   }
+
+  const sessionInfo = $("sessionInfo");
+  if (sessionInfo) {
+    sessionInfo.textContent = `Signed in as: ${s?.email || "Unknown user"}`;
+  }
+}
+
+function setupLogout() {
+  $("logoutBtn")?.addEventListener("click", () => {
+    try {
+      localStorage.removeItem("FLQSR_COMM_SESSION");
+    } catch {}
+    window.location.href = "./commercial-login.html";
+  });
 }
 
 function setupViewSelector() {
@@ -118,39 +410,24 @@ function setupViewSelector() {
 
   selector.addEventListener("change", (e) => {
     const view = String(e.target.value || "").trim();
-    const params = getParams();
 
     if (view === "vp") {
-      const next = new URL("./commercial-vp.html", window.location.href);
-      if (params.orgId) next.searchParams.set("org", params.orgId);
-      window.location.href = next.toString();
+      window.location.href = buildScopedUrl("./commercial-vp.html");
       return;
     }
 
     if (view === "rm") {
-      const next = new URL("./commercial-rm.html", window.location.href);
-      if (params.orgId) next.searchParams.set("org", params.orgId);
-      if (params.regionId) next.searchParams.set("region", params.regionId);
-      window.location.href = next.toString();
+      window.location.href = buildScopedUrl("./commercial-rm.html");
       return;
     }
 
     if (view === "dm") {
-      const next = new URL("./commercial-dm.html", window.location.href);
-      if (params.orgId) next.searchParams.set("org", params.orgId);
-      if (params.districtId) next.searchParams.set("district", params.districtId);
-      if (params.regionId) next.searchParams.set("region", params.regionId);
-      window.location.href = next.toString();
+      window.location.href = buildScopedUrl("./commercial-dm.html");
       return;
     }
 
     if (view === "sm") {
-      const next = new URL("./commercial-portal.html", window.location.href);
-      if (params.orgId) next.searchParams.set("org", params.orgId);
-      if (params.storeId) next.searchParams.set("store", params.storeId);
-      if (params.districtId) next.searchParams.set("district", params.districtId);
-      if (params.regionId) next.searchParams.set("region", params.regionId);
-      window.location.href = next.toString();
+      window.location.href = buildScopedUrl("./commercial-portal.html");
     }
   });
 }
@@ -190,6 +467,10 @@ function setupTabs() {
     });
   });
 }
+
+/* =========================================================
+   KPI state
+========================================================= */
 
 function setBasePendingState(storeName) {
   setText("kpiSalesValue", "—");
@@ -249,12 +530,16 @@ function applyKpiValues({ baselineWeekly, latestWeekKpis }) {
   );
 }
 
+/* =========================================================
+   Data load
+========================================================= */
+
 async function loadCommercialKpiStatus() {
   const session = readSession();
-  const params = getParams();
+  const scope = currentScope();
 
-  const orgId = String(params.orgId || session?.orgId || "").trim();
-  const selectedStore = String(params.storeId || "").trim();
+  const orgId = String(scope.orgId || session?.orgId || "").trim();
+  const selectedStore = String(scope.storeId || "").trim();
   const storeName = selectedStore ? prettyLabel(selectedStore) : "selected store";
 
   setBasePendingState(storeName);
@@ -263,6 +548,10 @@ async function loadCommercialKpiStatus() {
     setText(
       "baselineStatusText",
       "Missing org or selected store context. Select a store to view commercial KPI status."
+    );
+    setText(
+      "weeklyStatusText",
+      "Select a store to load approved weekly truth."
     );
     return;
   }
@@ -358,9 +647,15 @@ async function loadCommercialKpiStatus() {
   }
 }
 
+/* =========================================================
+   Init
+========================================================= */
+
 window.addEventListener("DOMContentLoaded", async () => {
-  setSMHeaderContext();
+  setupLogout();
   setupViewSelector();
   setupTabs();
+  await setupScopeSelectors();
+  setSMHeaderContext();
   await loadCommercialKpiStatus();
 });
