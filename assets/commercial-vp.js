@@ -1,4 +1,4 @@
-// /assets/commercial-vp.js (v9)
+// /assets/commercial-vp.js (v10)
 // VP / Owner page logic
 // ✅ Uses commercial-rollup-data.js for approved rollup truth
 // ✅ Uses commercial-db.js for region readiness summary
@@ -9,6 +9,8 @@
 // ✅ Adds executive readiness rollup
 // ✅ Uses outcome-based executive language
 // ✅ Preserves scoped navigation
+// ✅ Adds region / district / store switching
+// ✅ VP can drill to region, district, and store directly
 // 🚫 No KPI math changes
 
 import { loadCommercialRollupTruth } from "./commercial-rollup-data.js";
@@ -154,31 +156,278 @@ function statusBadge(status) {
   return `<span class="status-pill ${statusTone(status)}">${String(status || "ACTION_NEEDED").replace(/_/g, " ")}</span>`;
 }
 
+function scopeMsg(text, isErr = false) {
+  const el = $("scopeMsg");
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.color = isErr ? "#b91c1c" : "#065f46";
+}
+
+function uniqueValues(items) {
+  return Array.from(new Set((items || []).filter(Boolean)));
+}
+
+/* =========================================================
+   Scope state
+========================================================= */
+
+let ALL_STORES = [];
+
+function currentScope() {
+  const params = getParams();
+  const session = readSession() || {};
+  return {
+    orgId: String(params.orgId || session.orgId || "").trim(),
+    regionId: normalizeId($("regionSelector")?.value || params.regionId || ""),
+    districtId: normalizeId($("districtSelector")?.value || params.districtId || ""),
+    storeId: normalizeId($("storeSelector")?.value || params.storeId || "")
+  };
+}
+
+function updateUrlFromScope(scope = currentScope()) {
+  const next = new URL(window.location.href);
+
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  else next.searchParams.delete("org");
+
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  else next.searchParams.delete("region");
+
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  else next.searchParams.delete("district");
+
+  if (scope.storeId) next.searchParams.set("store", scope.storeId);
+  else next.searchParams.delete("store");
+
+  window.history.replaceState({}, "", next.toString());
+}
+
+function buildScopedUrl(path, scope = currentScope()) {
+  const next = new URL(path, window.location.href);
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  if (scope.storeId) next.searchParams.set("store", scope.storeId);
+  return next.toString();
+}
+
+function fillRegionSelector(selected = "") {
+  const regions = uniqueValues(
+    ALL_STORES.map((s) => normalizeId(s.regionId)).filter(Boolean)
+  ).sort((a, b) => a.localeCompare(b));
+
+  const el = $("regionSelector");
+  if (!el) return;
+
+  el.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select region";
+  el.appendChild(blank);
+
+  regions.forEach((regionId) => {
+    const opt = document.createElement("option");
+    opt.value = regionId;
+    opt.textContent = prettyLabel(regionId);
+    if (regionId === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+function fillDistrictSelector(regionId = "", selected = "") {
+  const districts = uniqueValues(
+    ALL_STORES
+      .filter((s) => !regionId || normalizeId(s.regionId) === normalizeId(regionId))
+      .map((s) => normalizeId(s.districtId))
+      .filter(Boolean)
+  ).sort((a, b) => a.localeCompare(b));
+
+  const el = $("districtSelector");
+  if (!el) return;
+
+  el.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select district";
+  el.appendChild(blank);
+
+  districts.forEach((districtId) => {
+    const opt = document.createElement("option");
+    opt.value = districtId;
+    opt.textContent = prettyLabel(districtId);
+    if (districtId === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+function fillStoreSelector(regionId = "", districtId = "", selected = "") {
+  const stores = ALL_STORES
+    .filter((s) => !regionId || normalizeId(s.regionId) === normalizeId(regionId))
+    .filter((s) => !districtId || normalizeId(s.districtId) === normalizeId(districtId))
+    .sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id)));
+
+  const el = $("storeSelector");
+  if (!el) return;
+
+  el.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select store";
+  el.appendChild(blank);
+
+  stores.forEach((store) => {
+    const opt = document.createElement("option");
+    opt.value = normalizeId(store.id);
+    opt.textContent = prettyLabel(store.name || store.id);
+    if (normalizeId(store.id) === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+async function setupScopeSelectors() {
+  const session = readSession() || {};
+  const params = getParams();
+  const orgId = String(params.orgId || session.orgId || "").trim();
+
+  if (!orgId) {
+    scopeMsg("Missing org context.", true);
+    return;
+  }
+
+  const allStores = await listStores(orgId);
+  const activeStores = (allStores || []).filter((s) => s.active !== false);
+
+  ALL_STORES = activeStores;
+
+  const defaultRegion =
+    params.regionId ||
+    normalizeId(activeStores[0]?.regionId || "");
+
+  fillRegionSelector(defaultRegion);
+
+  const defaultDistrict =
+    params.districtId ||
+    normalizeId(activeStores.find((s) => normalizeId(s.regionId) === defaultRegion)?.districtId || "");
+
+  fillDistrictSelector(defaultRegion, defaultDistrict);
+
+  const defaultStore =
+    params.storeId ||
+    normalizeId(
+      activeStores.find(
+        (s) =>
+          normalizeId(s.regionId) === defaultRegion &&
+          normalizeId(s.districtId) === defaultDistrict
+      )?.id || ""
+    );
+
+  fillStoreSelector(defaultRegion, defaultDistrict, defaultStore);
+
+  if (!ALL_STORES.length) {
+    scopeMsg("No active stores available in enterprise scope.", true);
+    return;
+  }
+
+  updateUrlFromScope({
+    orgId,
+    regionId: String($("regionSelector")?.value || "").trim(),
+    districtId: String($("districtSelector")?.value || "").trim(),
+    storeId: String($("storeSelector")?.value || "").trim()
+  });
+
+  scopeMsg(`✅ Scope loaded. ${ALL_STORES.length} active store(s) available.`);
+
+  $("regionSelector")?.addEventListener("change", async () => {
+    const regionId = String($("regionSelector")?.value || "").trim();
+    const firstDistrict = normalizeId(
+      ALL_STORES.find((s) => normalizeId(s.regionId) === regionId)?.districtId || ""
+    );
+
+    fillDistrictSelector(regionId, firstDistrict);
+
+    const firstStore = normalizeId(
+      ALL_STORES.find(
+        (s) =>
+          normalizeId(s.regionId) === regionId &&
+          normalizeId(s.districtId) === firstDistrict
+      )?.id || ""
+    );
+
+    fillStoreSelector(regionId, firstDistrict, firstStore);
+
+    updateUrlFromScope({
+      orgId,
+      regionId,
+      districtId: String($("districtSelector")?.value || "").trim(),
+      storeId: String($("storeSelector")?.value || "").trim()
+    });
+
+    setVPHeaderContext();
+    await loadExecutiveRollup();
+  });
+
+  $("districtSelector")?.addEventListener("change", async () => {
+    const regionId = String($("regionSelector")?.value || "").trim();
+    const districtId = String($("districtSelector")?.value || "").trim();
+
+    const firstStore = normalizeId(
+      ALL_STORES.find(
+        (s) =>
+          normalizeId(s.regionId) === regionId &&
+          normalizeId(s.districtId) === districtId
+      )?.id || ""
+    );
+
+    fillStoreSelector(regionId, districtId, firstStore);
+
+    updateUrlFromScope({
+      orgId,
+      regionId,
+      districtId,
+      storeId: String($("storeSelector")?.value || "").trim()
+    });
+
+    setVPHeaderContext();
+    await loadExecutiveRollup();
+  });
+
+  $("storeSelector")?.addEventListener("change", async () => {
+    updateUrlFromScope({
+      orgId,
+      regionId: String($("regionSelector")?.value || "").trim(),
+      districtId: String($("districtSelector")?.value || "").trim(),
+      storeId: String($("storeSelector")?.value || "").trim()
+    });
+
+    setVPHeaderContext();
+    await loadExecutiveRollup();
+  });
+}
+
 /* =========================================================
    Header / nav
 ========================================================= */
 
 function setVPHeaderContext() {
   const s = readSession() || {};
-  const p = getParams();
+  const scope = currentScope();
 
   const role = String(s.role || "vp").toUpperCase();
-  const orgId = p.orgId || s.orgId || "N/A";
-  const regions = Array.isArray(s.assigned_region_ids) ? s.assigned_region_ids : [];
+  const orgId = scope.orgId || "N/A";
 
-  setText(
-    "vpContext",
-    `Org: ${orgId} | Role: ${role} | Executive Scope: ${
-      regions.length ? regions.map(prettyLabel).join(", ") : "Enterprise visibility"
-    }`
-  );
+  let label = `Org: ${orgId} | Role: ${role} | Executive Scope: Enterprise visibility`;
+  if (scope.regionId) label += ` | Region: ${prettyLabel(scope.regionId)}`;
+  if (scope.districtId) label += ` | District: ${prettyLabel(scope.districtId)}`;
+  if (scope.storeId) label += ` | Store: ${prettyLabel(scope.storeId)}`;
+
+  setText("sessionInfo", `Signed in as: ${s.email || "Unknown user"}`);
+  setText("vpContext", label);
 }
 
 function setupViewSelector() {
   const selector = $("viewSelector");
   if (!selector) return;
 
-  const p = getParams();
   selector.value = "vp";
 
   selector.addEventListener("change", (e) => {
@@ -193,19 +442,16 @@ function setupViewSelector() {
     const path = nextMap[view];
     if (!path) return;
 
-    const next = new URL(path, window.location.href);
-    if (p.orgId) next.searchParams.set("org", p.orgId);
-    if (p.regionId && (view === "rm" || view === "dm" || view === "sm")) {
-      next.searchParams.set("region", p.regionId);
-    }
-    if (p.districtId && (view === "dm" || view === "sm")) {
-      next.searchParams.set("district", p.districtId);
-    }
-    if (p.storeId && view === "sm") {
-      next.searchParams.set("store", p.storeId);
-    }
+    window.location.href = buildScopedUrl(path);
+  });
+}
 
-    window.location.href = next.toString();
+function setupLogout() {
+  $("logoutBtn")?.addEventListener("click", () => {
+    try {
+      localStorage.removeItem("FLQSR_COMM_SESSION");
+    } catch {}
+    window.location.href = "./commercial-login.html";
   });
 }
 
@@ -376,6 +622,7 @@ function renderLocked(title, line1, line2 = "") {
 }
 
 function renderLiveOrg(truth, regionReadinessMap) {
+  const scope = currentScope();
   const current = truth.latestWeekKpis || {};
   const prev = truth.previousWeekKpis || null;
   const base = truth.baselineWeeklyKpis || {};
@@ -399,6 +646,23 @@ function renderLiveOrg(truth, regionReadinessMap) {
   const avgTicketCls = deltaClass(avgTicketDelta, "up");
 
   const latestWeekLabel = truth.latestWeekLabel || "Latest approved week";
+
+  const selectedStoreBlock = scope.storeId
+    ? `
+      <div class="card">
+        <h3 class="section-title cvp-subtitle">Selected Store</h3>
+        <p class="section-sub">
+          Current store scope:
+          <span class="cvp-text-strong">${prettyLabel(scope.storeId)}</span>
+        </p>
+        <div style="margin-top:10px;">
+          <button class="btn secondary" type="button" data-open-store="${scope.storeId}">
+            Open Store Dashboard
+          </button>
+        </div>
+      </div>
+    `
+    : "";
 
   const rowsHtml = (truth.childRows || []).map((row) => {
     const k = row.latestWeekKpis || null;
@@ -443,7 +707,7 @@ function renderLiveOrg(truth, regionReadinessMap) {
         <td class="${isFinite(txVsBase) ? (txVsBase >= 0 ? "good" : "bad") : "pending"}">
           ${isFinite(txVsBase) ? txVsBase.toFixed(1) + "%" : "—"}
         </td>
-        <td>
+        <td style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn cvp-drill-btn" type="button" data-region-id="${row.key}">Open Region</button>
         </td>
       </tr>
@@ -463,6 +727,8 @@ function renderLiveOrg(truth, regionReadinessMap) {
           Latest Week: <span class="cvp-text-strong">${latestWeekLabel}</span>
         </p>
       </div>
+
+      ${selectedStoreBlock}
 
       <div class="kpi-grid cvp-kpi-grid">
         ${metricCard(
@@ -590,9 +856,15 @@ function renderLiveOrg(truth, regionReadinessMap) {
 
 async function loadExecutiveRollup() {
   try {
+    const scope = currentScope();
+
+    if (!scope.orgId) {
+      renderLocked("Executive Rollup", "Missing org context.");
+      return;
+    }
+
     const truth = await loadCommercialRollupTruth();
-    const p = getParams();
-    const regionReadinessMap = await loadOrgRegionReadiness(p.orgId || truth.orgId || "");
+    const regionReadinessMap = await loadOrgRegionReadiness(scope.orgId || truth.orgId || "");
 
     if (truth.state === "missing_context") {
       renderLocked("Executive Rollup", "Missing org context.");
@@ -621,7 +893,7 @@ async function loadExecutiveRollup() {
     }
 
     renderLiveOrg(truth, regionReadinessMap);
-    setupVPRegionActions();
+    setupVPActions();
   } catch (e) {
     console.error("[commercial-vp] load failed:", e);
     renderLocked("Executive Rollup", "Unable to load executive rollup right now.");
@@ -632,24 +904,45 @@ async function loadExecutiveRollup() {
    Drill-down table actions
 ========================================================= */
 
-function setupVPRegionActions() {
-  const table = document.querySelector("[data-vp-region-table]");
-  if (!table) return;
+function openRegionView(regionId) {
+  const scope = currentScope();
+  const next = new URL("./commercial-rm.html", window.location.href);
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  if (regionId) next.searchParams.set("region", normalizeId(regionId));
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  if (scope.storeId) next.searchParams.set("store", scope.storeId);
+  window.location.href = next.toString();
+}
 
-  const p = getParams();
+function openStoreView(storeId) {
+  const scope = currentScope();
+  const next = new URL("./commercial-portal.html", window.location.href);
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  if (storeId) next.searchParams.set("store", normalizeId(storeId));
+  window.location.href = next.toString();
+}
 
-  table.addEventListener("click", (e) => {
-    const trigger = e.target.closest("[data-region-id]");
-    if (!trigger) return;
+function setupVPActions() {
+  const root = $(ROOT_ID);
+  if (!root) return;
 
-    const regionId = String(trigger.getAttribute("data-region-id") || "").trim();
-    if (!regionId) return;
+  root.addEventListener("click", (e) => {
+    const regionBtn = e.target.closest("[data-region-id]");
+    if (regionBtn) {
+      const regionId = String(regionBtn.getAttribute("data-region-id") || "").trim();
+      if (!regionId) return;
+      openRegionView(regionId);
+      return;
+    }
 
-    const next = new URL("./commercial-rm.html", window.location.href);
-    if (p.orgId) next.searchParams.set("org", p.orgId);
-    next.searchParams.set("region", regionId);
-
-    window.location.href = next.toString();
+    const storeBtn = e.target.closest("[data-open-store]");
+    if (storeBtn) {
+      const storeId = String(storeBtn.getAttribute("data-open-store") || "").trim();
+      if (!storeId) return;
+      openStoreView(storeId);
+    }
   });
 }
 
@@ -658,7 +951,9 @@ function setupVPRegionActions() {
 ========================================================= */
 
 window.addEventListener("DOMContentLoaded", async () => {
-  setVPHeaderContext();
+  setupLogout();
   setupViewSelector();
+  await setupScopeSelectors();
+  setVPHeaderContext();
   await loadExecutiveRollup();
 });
