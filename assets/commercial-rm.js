@@ -1,4 +1,4 @@
-// /assets/commercial-rm.js (v9)
+// /assets/commercial-rm.js (v10)
 // Regional Manager page logic
 // ✅ Uses commercial-rollup-data.js for approved rollup truth
 // ✅ Uses commercial-db.js for district readiness summary
@@ -8,6 +8,8 @@
 // ✅ Adds Estimated Labor Impact
 // ✅ Adds district readiness rollup
 // ✅ Preserves scoped navigation
+// ✅ Adds region / district / store switching
+// ✅ RM can open district and store directly
 // 🚫 No KPI math changes
 
 import { loadCommercialRollupTruth } from "./commercial-rollup-data.js";
@@ -153,17 +155,279 @@ function statusBadge(status) {
   return `<span class="status-pill ${statusTone(status)}">${String(status || "ACTION_NEEDED").replace(/_/g, " ")}</span>`;
 }
 
+function scopeMsg(text, isErr = false) {
+  const el = $("scopeMsg");
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.color = isErr ? "#b91c1c" : "#065f46";
+}
+
+function uniqueValues(items) {
+  return Array.from(new Set((items || []).filter(Boolean)));
+}
+
+/* =========================================================
+   Scope state
+========================================================= */
+
+let ALL_STORES = [];
+
+function currentScope() {
+  const params = getParams();
+  const session = readSession() || {};
+  return {
+    orgId: String(params.orgId || session.orgId || "").trim(),
+    regionId: normalizeId($("regionSelector")?.value || params.regionId || ""),
+    districtId: normalizeId($("districtSelector")?.value || params.districtId || ""),
+    storeId: normalizeId($("storeSelector")?.value || params.storeId || "")
+  };
+}
+
+function updateUrlFromScope(scope = currentScope()) {
+  const next = new URL(window.location.href);
+
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  else next.searchParams.delete("org");
+
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  else next.searchParams.delete("region");
+
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  else next.searchParams.delete("district");
+
+  if (scope.storeId) next.searchParams.set("store", scope.storeId);
+  else next.searchParams.delete("store");
+
+  window.history.replaceState({}, "", next.toString());
+}
+
+function buildScopedUrl(path, scope = currentScope()) {
+  const next = new URL(path, window.location.href);
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  if (scope.storeId) next.searchParams.set("store", scope.storeId);
+  return next.toString();
+}
+
+function fillRegionSelector(selected = "") {
+  const regions = uniqueValues(
+    ALL_STORES.map((s) => normalizeId(s.regionId)).filter(Boolean)
+  ).sort((a, b) => a.localeCompare(b));
+
+  const el = $("regionSelector");
+  if (!el) return;
+
+  el.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select region";
+  el.appendChild(blank);
+
+  regions.forEach((regionId) => {
+    const opt = document.createElement("option");
+    opt.value = regionId;
+    opt.textContent = prettyLabel(regionId);
+    if (regionId === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+function fillDistrictSelector(regionId = "", selected = "") {
+  const districts = uniqueValues(
+    ALL_STORES
+      .filter((s) => !regionId || normalizeId(s.regionId) === normalizeId(regionId))
+      .map((s) => normalizeId(s.districtId))
+      .filter(Boolean)
+  ).sort((a, b) => a.localeCompare(b));
+
+  const el = $("districtSelector");
+  if (!el) return;
+
+  el.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select district";
+  el.appendChild(blank);
+
+  districts.forEach((districtId) => {
+    const opt = document.createElement("option");
+    opt.value = districtId;
+    opt.textContent = prettyLabel(districtId);
+    if (districtId === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+function fillStoreSelector(regionId = "", districtId = "", selected = "") {
+  const stores = ALL_STORES
+    .filter((s) => !regionId || normalizeId(s.regionId) === normalizeId(regionId))
+    .filter((s) => !districtId || normalizeId(s.districtId) === normalizeId(districtId))
+    .sort((a, b) => String(a.name || a.id).localeCompare(String(b.name || b.id)));
+
+  const el = $("storeSelector");
+  if (!el) return;
+
+  el.innerHTML = "";
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "Select store";
+  el.appendChild(blank);
+
+  stores.forEach((store) => {
+    const opt = document.createElement("option");
+    opt.value = normalizeId(store.id);
+    opt.textContent = prettyLabel(store.name || store.id);
+    if (normalizeId(store.id) === selected) opt.selected = true;
+    el.appendChild(opt);
+  });
+}
+
+async function setupScopeSelectors() {
+  const session = readSession() || {};
+  const params = getParams();
+  const orgId = String(params.orgId || session.orgId || "").trim();
+
+  if (!orgId) {
+    scopeMsg("Missing org context.", true);
+    return;
+  }
+
+  const allStores = await listStores(orgId);
+  const activeStores = (allStores || []).filter((s) => s.active !== false);
+
+  const assignedRegionIds = Array.isArray(session.assigned_region_ids) ? session.assigned_region_ids.map(normalizeId) : [];
+  const role = String(session.role || "rm").toLowerCase();
+
+  let allowed = [...activeStores];
+
+  if (role === "rm" && assignedRegionIds.length) {
+    allowed = allowed.filter((s) => assignedRegionIds.includes(normalizeId(s.regionId)));
+  }
+
+  ALL_STORES = allowed;
+
+  const defaultRegion =
+    params.regionId ||
+    assignedRegionIds[0] ||
+    normalizeId(allowed[0]?.regionId || "");
+
+  fillRegionSelector(defaultRegion);
+
+  const defaultDistrict =
+    params.districtId ||
+    normalizeId(allowed.find((s) => normalizeId(s.regionId) === defaultRegion)?.districtId || "");
+
+  fillDistrictSelector(defaultRegion, defaultDistrict);
+
+  const defaultStore =
+    params.storeId ||
+    normalizeId(
+      allowed.find(
+        (s) =>
+          normalizeId(s.regionId) === defaultRegion &&
+          normalizeId(s.districtId) === defaultDistrict
+      )?.id || ""
+    );
+
+  fillStoreSelector(defaultRegion, defaultDistrict, defaultStore);
+
+  if (!ALL_STORES.length) {
+    scopeMsg("No active stores available in current regional scope.", true);
+    return;
+  }
+
+  updateUrlFromScope({
+    orgId,
+    regionId: String($("regionSelector")?.value || "").trim(),
+    districtId: String($("districtSelector")?.value || "").trim(),
+    storeId: String($("storeSelector")?.value || "").trim()
+  });
+
+  scopeMsg(`✅ Scope loaded. ${ALL_STORES.length} active store(s) available.`);
+
+  $("regionSelector")?.addEventListener("change", async () => {
+    const regionId = String($("regionSelector")?.value || "").trim();
+    const firstDistrict = normalizeId(
+      ALL_STORES.find((s) => normalizeId(s.regionId) === regionId)?.districtId || ""
+    );
+
+    fillDistrictSelector(regionId, firstDistrict);
+
+    const firstStore = normalizeId(
+      ALL_STORES.find(
+        (s) =>
+          normalizeId(s.regionId) === regionId &&
+          normalizeId(s.districtId) === firstDistrict
+      )?.id || ""
+    );
+
+    fillStoreSelector(regionId, firstDistrict, firstStore);
+
+    updateUrlFromScope({
+      orgId,
+      regionId,
+      districtId: String($("districtSelector")?.value || "").trim(),
+      storeId: String($("storeSelector")?.value || "").trim()
+    });
+
+    setRMHeaderContext();
+    await loadRegionRollup();
+  });
+
+  $("districtSelector")?.addEventListener("change", async () => {
+    const regionId = String($("regionSelector")?.value || "").trim();
+    const districtId = String($("districtSelector")?.value || "").trim();
+
+    const firstStore = normalizeId(
+      ALL_STORES.find(
+        (s) =>
+          normalizeId(s.regionId) === regionId &&
+          normalizeId(s.districtId) === districtId
+      )?.id || ""
+    );
+
+    fillStoreSelector(regionId, districtId, firstStore);
+
+    updateUrlFromScope({
+      orgId,
+      regionId,
+      districtId,
+      storeId: String($("storeSelector")?.value || "").trim()
+    });
+
+    setRMHeaderContext();
+    await loadRegionRollup();
+  });
+
+  $("storeSelector")?.addEventListener("change", async () => {
+    updateUrlFromScope({
+      orgId,
+      regionId: String($("regionSelector")?.value || "").trim(),
+      districtId: String($("districtSelector")?.value || "").trim(),
+      storeId: String($("storeSelector")?.value || "").trim()
+    });
+
+    setRMHeaderContext();
+    await loadRegionRollup();
+  });
+}
+
 /* =========================================================
    Header / nav
 ========================================================= */
 
 function setRMHeaderContext() {
   const s = readSession() || {};
-  const p = getParams();
+  const scope = currentScope();
 
   const role = String(s.role || "rm").toUpperCase();
-  const orgId = p.orgId || s.orgId || "N/A";
-  const selectedRegion = p.regionId;
+  const orgId = scope.orgId || "N/A";
+  const selectedRegion = scope.regionId;
+  const selectedDistrict = scope.districtId;
+  const selectedStore = scope.storeId;
+
+  setText("sessionInfo", `Signed in as: ${s.email || "Unknown user"}`);
 
   setText(
     "rmContext",
@@ -172,19 +436,20 @@ function setRMHeaderContext() {
     }`
   );
 
-  setText(
-    "activeRegion",
-    selectedRegion
-      ? `Selected Region: ${prettyLabel(selectedRegion)}`
-      : "Selected Region: All assigned regions"
-  );
+  let active = selectedRegion
+    ? `Selected Region: ${prettyLabel(selectedRegion)}`
+    : "Selected Region: All assigned regions";
+
+  if (selectedDistrict) active += ` | District: ${prettyLabel(selectedDistrict)}`;
+  if (selectedStore) active += ` | Store: ${prettyLabel(selectedStore)}`;
+
+  setText("activeRegion", active);
 }
 
 function setupViewSelector() {
   const selector = $("viewSelector");
   if (!selector) return;
 
-  const p = getParams();
   selector.value = "rm";
 
   selector.addEventListener("change", (e) => {
@@ -199,13 +464,16 @@ function setupViewSelector() {
     const path = nextMap[view];
     if (!path) return;
 
-    const next = new URL(path, window.location.href);
-    if (p.orgId) next.searchParams.set("org", p.orgId);
-    if (p.regionId) next.searchParams.set("region", p.regionId);
-    if (p.districtId && view !== "vp") next.searchParams.set("district", p.districtId);
-    if (p.storeId && view === "sm") next.searchParams.set("store", p.storeId);
+    window.location.href = buildScopedUrl(path);
+  });
+}
 
-    window.location.href = next.toString();
+function setupLogout() {
+  $("logoutBtn")?.addEventListener("click", () => {
+    try {
+      localStorage.removeItem("FLQSR_COMM_SESSION");
+    } catch {}
+    window.location.href = "./commercial-login.html";
   });
 }
 
@@ -381,6 +649,7 @@ function renderLocked(title, line1, line2 = "") {
 }
 
 function renderLiveRegion(truth, districtReadinessMap) {
+  const scope = currentScope();
   const current = truth.latestWeekKpis || {};
   const prev = truth.previousWeekKpis || null;
   const base = truth.baselineWeeklyKpis || {};
@@ -404,6 +673,23 @@ function renderLiveRegion(truth, districtReadinessMap) {
   const avgTicketCls = deltaClass(avgTicketDelta, "up");
 
   const latestWeekLabel = truth.latestWeekLabel || "Latest approved week";
+
+  const selectedStoreBlock = scope.storeId
+    ? `
+      <div class="card">
+        <h3 class="section-title crm-subtitle">Selected Store</h3>
+        <p class="section-sub">
+          Current store scope:
+          <span class="crm-text-strong">${prettyLabel(scope.storeId)}</span>
+        </p>
+        <div style="margin-top:10px;">
+          <button class="btn secondary" type="button" data-open-store="${scope.storeId}">
+            Open Store Dashboard
+          </button>
+        </div>
+      </div>
+    `
+    : "";
 
   const rowsHtml = (truth.childRows || []).map((row) => {
     const k = row.latestWeekKpis || null;
@@ -448,7 +734,7 @@ function renderLiveRegion(truth, districtReadinessMap) {
         <td class="${isFinite(txVsBase) ? (txVsBase >= 0 ? "good" : "bad") : "pending"}">
           ${isFinite(txVsBase) ? txVsBase.toFixed(1) + "%" : "—"}
         </td>
-        <td>
+        <td style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn crm-drill-btn" type="button" data-district-id="${row.key}">Open District</button>
         </td>
       </tr>
@@ -458,7 +744,7 @@ function renderLiveRegion(truth, districtReadinessMap) {
   setHtml(ROOT_ID, `
     <section class="crm-stack">
       <div class="card">
-        <h2 class="section-title">Region Rollup — ${prettyLabel(truth.scopeRegionId || "Selected Region")}</h2>
+        <h2 class="section-title">Region Rollup — ${prettyLabel(scope.regionId || truth.scopeRegionId || "Selected Region")}</h2>
         <p class="section-sub">
           Latest approved regional performance is aggregated from all active stores in scope.
         </p>
@@ -468,6 +754,8 @@ function renderLiveRegion(truth, districtReadinessMap) {
           Latest Week: <span class="crm-text-strong">${latestWeekLabel}</span>
         </p>
       </div>
+
+      ${selectedStoreBlock}
 
       <div class="kpi-grid crm-kpi-grid">
         ${metricCard(
@@ -595,11 +883,22 @@ function renderLiveRegion(truth, districtReadinessMap) {
 
 async function loadRegionRollup() {
   try {
+    const scope = currentScope();
+
+    if (!scope.orgId) {
+      renderLocked("Region Rollup", "Missing org context.");
+      return;
+    }
+
+    if (!scope.regionId) {
+      renderLocked("Region Rollup", "Select a region to load regional rollup.");
+      return;
+    }
+
     const truth = await loadCommercialRollupTruth();
-    const p = getParams();
     const districtReadinessMap = await loadRegionDistrictReadiness(
-      p.orgId || truth.orgId || "",
-      p.regionId || truth.scopeRegionId || ""
+      scope.orgId || truth.orgId || "",
+      scope.regionId || truth.scopeRegionId || ""
     );
 
     if (truth.state === "missing_context") {
@@ -617,7 +916,7 @@ async function loadRegionRollup() {
 
     if (truth.state === "missing_baseline") {
       renderLocked(
-        `Region Rollup — ${prettyLabel(truth.scopeRegionId || "Selected Region")}`,
+        `Region Rollup — ${prettyLabel(scope.regionId || truth.scopeRegionId || "Selected Region")}`,
         "No approved baseline found in this region scope."
       );
       return;
@@ -625,14 +924,14 @@ async function loadRegionRollup() {
 
     if (truth.state === "baseline_only") {
       renderLocked(
-        `Region Rollup — ${prettyLabel(truth.scopeRegionId || "Selected Region")}`,
+        `Region Rollup — ${prettyLabel(scope.regionId || truth.scopeRegionId || "Selected Region")}`,
         "Approved baselines found, but no approved weekly uploads exist yet in this region scope."
       );
       return;
     }
 
     renderLiveRegion(truth, districtReadinessMap);
-    setupRMDistrictActions();
+    setupRMActions();
   } catch (e) {
     console.error("[commercial-rm] load failed:", e);
     renderLocked("Region Rollup", "Unable to load region rollup right now.");
@@ -643,25 +942,44 @@ async function loadRegionRollup() {
    Drill-down table actions
 ========================================================= */
 
-function setupRMDistrictActions() {
-  const table = document.querySelector("[data-rm-district-table]");
-  if (!table) return;
+function openDistrictView(districtId) {
+  const scope = currentScope();
+  const next = new URL("./commercial-dm.html", window.location.href);
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  if (districtId) next.searchParams.set("district", normalizeId(districtId));
+  window.location.href = next.toString();
+}
 
-  const p = getParams();
+function openStoreView(storeId) {
+  const scope = currentScope();
+  const next = new URL("./commercial-portal.html", window.location.href);
+  if (scope.orgId) next.searchParams.set("org", scope.orgId);
+  if (scope.regionId) next.searchParams.set("region", scope.regionId);
+  if (scope.districtId) next.searchParams.set("district", scope.districtId);
+  if (storeId) next.searchParams.set("store", normalizeId(storeId));
+  window.location.href = next.toString();
+}
 
-  table.addEventListener("click", (e) => {
-    const trigger = e.target.closest("[data-district-id]");
-    if (!trigger) return;
+function setupRMActions() {
+  const root = $(ROOT_ID);
+  if (!root) return;
 
-    const districtId = String(trigger.getAttribute("data-district-id") || "").trim();
-    if (!districtId) return;
+  root.addEventListener("click", (e) => {
+    const districtBtn = e.target.closest("[data-district-id]");
+    if (districtBtn) {
+      const districtId = String(districtBtn.getAttribute("data-district-id") || "").trim();
+      if (!districtId) return;
+      openDistrictView(districtId);
+      return;
+    }
 
-    const next = new URL("./commercial-dm.html", window.location.href);
-    if (p.orgId) next.searchParams.set("org", p.orgId);
-    if (p.regionId) next.searchParams.set("region", p.regionId);
-    next.searchParams.set("district", districtId);
-
-    window.location.href = next.toString();
+    const storeBtn = e.target.closest("[data-open-store]");
+    if (storeBtn) {
+      const storeId = String(storeBtn.getAttribute("data-open-store") || "").trim();
+      if (!storeId) return;
+      openStoreView(storeId);
+    }
   });
 }
 
@@ -670,7 +988,9 @@ function setupRMDistrictActions() {
 ========================================================= */
 
 window.addEventListener("DOMContentLoaded", async () => {
-  setRMHeaderContext();
+  setupLogout();
   setupViewSelector();
+  await setupScopeSelectors();
+  setRMHeaderContext();
   await loadRegionRollup();
 });
