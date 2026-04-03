@@ -1,1 +1,549 @@
-shell
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FrontlineQSR | Commercial Inventory Mix</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+  <meta name="robots" content="noindex" />
+
+  <style>
+    :root{
+      --bg-1:#0b1220;
+      --bg-2:#0a1020;
+      --bg-3:#070b14;
+      --card-bg:rgba(255,255,255,.95);
+      --card-border:rgba(15,23,42,.12);
+      --text:#0f172a;
+      --muted:rgba(15,23,42,.74);
+      --line:rgba(15,23,42,.10);
+      --shadow:0 18px 50px rgba(0,0,0,.35);
+      --radius:16px;
+      --brand-glow:rgba(80,200,255,.18);
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      color:#fff;
+      background:
+        radial-gradient(1200px 700px at 50% 0%, rgba(255,255,255,0.10), rgba(0,0,0,0) 60%),
+        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 55%, var(--bg-3) 100%);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .page{ min-height:100vh; }
+    .hero{ padding:28px 16px 56px; }
+    .shell{ max-width:1140px; margin:0 auto; }
+
+    .brand-bar{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      margin-bottom:18px;
+      padding:12px 16px;
+      border-radius:14px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 10px 30px rgba(0,0,0,.20);
+      backdrop-filter:blur(6px);
+    }
+
+    .brand-mark{
+      width:48px;
+      height:48px;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      background:rgba(255,255,255,.10);
+      box-shadow:0 0 24px var(--brand-glow);
+      flex:0 0 auto;
+    }
+
+    .brand-mark img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+
+    .brand-title{
+      margin:0;
+      font-size:18px;
+      font-weight:800;
+      color:#fff;
+      line-height:1.1;
+    }
+
+    .brand-sub{
+      margin:3px 0 0;
+      font-size:12px;
+      color:rgba(255,255,255,.76);
+    }
+
+    .anchor{
+      text-align:center;
+      letter-spacing:.2px;
+      font-weight:800;
+      opacity:.86;
+      margin:0 0 14px;
+      font-size:13px;
+    }
+
+    .page-card{
+      margin:0 auto;
+      padding:24px;
+      border-radius:var(--radius);
+      background:var(--card-bg);
+      border:1px solid var(--card-border);
+      box-shadow:var(--shadow);
+      color:var(--text);
+    }
+
+    .header-row{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:18px;
+    }
+
+    .title{
+      margin:0 0 10px 0;
+      font-weight:900;
+      font-size:30px;
+      line-height:1.1;
+    }
+
+    .sub{
+      margin:0;
+      color:var(--muted);
+      line-height:1.5;
+      font-size:15px;
+    }
+
+    .status-wrap{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:14px;
+    }
+
+    .status-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(15,23,42,.06);
+      border:1px solid rgba(15,23,42,.08);
+      color:var(--muted);
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .status-dot{
+      width:8px;
+      height:8px;
+      border-radius:999px;
+      background:#22c55e;
+    }
+
+    .hr{
+      height:1px;
+      background:var(--line);
+      border:0;
+      margin:18px 0;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .btnx{
+      padding:12px 16px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#111827;
+      color:#fff;
+      cursor:pointer;
+      font-weight:800;
+      font-size:14px;
+    }
+
+    .btnx.secondary{
+      background:#fff;
+      color:#111827;
+    }
+
+    .view-select{
+      min-width:220px;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      color:#111827;
+      font-weight:800;
+      font-size:14px;
+      outline:none;
+      cursor:pointer;
+    }
+
+    .view-select:focus{
+      border-color:rgba(15,23,42,.28);
+      box-shadow:0 0 0 3px rgba(15,23,42,.08);
+    }
+
+    .scope-card{
+      padding:16px;
+      border-radius:14px;
+      background:rgba(15,23,42,.03);
+      border:1px solid rgba(15,23,42,.08);
+      margin-bottom:18px;
+    }
+
+    .scope-grid{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:14px;
+      align-items:end;
+    }
+
+    .scope-label{
+      display:block;
+      margin:0 0 6px;
+      font-size:12px;
+      font-weight:700;
+      color:var(--muted);
+      letter-spacing:.2px;
+    }
+
+    .scope-input{
+      width:100%;
+      box-sizing:border-box;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      color:#111827;
+      font-weight:700;
+      font-size:14px;
+      outline:none;
+      cursor:pointer;
+    }
+
+    .scope-input:focus{
+      border-color:rgba(15,23,42,.28);
+      box-shadow:0 0 0 3px rgba(15,23,42,.08);
+    }
+
+    .scope-msg{
+      margin-top:12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+      white-space:pre-wrap;
+    }
+
+    .cinv-kpi-grid{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:14px;
+      margin-bottom:14px;
+    }
+
+    .cinv-grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:14px;
+    }
+
+    .cinv-bullet-stack{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.5;
+    }
+
+    .cinv-strong{
+      color:var(--text);
+      font-weight:800;
+    }
+
+    .cinv-table{
+      min-width:760px;
+    }
+
+    .cinv-note{
+      font-size:12px;
+      line-height:1.45;
+      color:rgba(15,23,42,.62);
+      margin-top:8px;
+    }
+
+    @media (max-width:980px){
+      .cinv-kpi-grid{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+      }
+
+      .cinv-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width:640px){
+      .hero{ padding:22px 14px 44px; }
+      .brand-bar{ justify-content:flex-start; }
+      .page-card{ padding:18px; }
+      .title{ font-size:26px; }
+      .header-row{ flex-direction:column; }
+      .actions{ width:100%; }
+      .actions .btnx,
+      .actions .view-select{
+        width:100%;
+        box-sizing:border-box;
+        text-align:center;
+      }
+      .scope-grid{
+        grid-template-columns:1fr;
+      }
+      .scope-input{
+        width:100%;
+      }
+      .cinv-kpi-grid{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+
+  <script type="module">
+    import { bootCommercialPage } from "./assets/commercial-page-boot.js";
+
+    bootCommercialPage({
+      allowRoles: ["sm","dm","rm","vp","owner","admin","super_admin"],
+      requireOrg: true
+    });
+  </script>
+</head>
+
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="shell">
+        <div class="brand-bar">
+          <div class="brand-mark">
+            <img src="assets/restaurant-excellence-system.png" alt="Restaurant Excellence System logo" onerror="this.style.display='none'; this.parentElement.textContent='R'; this.parentElement.style.fontWeight='900'; this.parentElement.style.fontSize='18px';" />
+          </div>
+          <div>
+            <p class="brand-title">Restaurant Excellence System™</p>
+            <p class="brand-sub">Powered by FrontlineQSR — Commercial leadership workspace</p>
+          </div>
+        </div>
+
+        <p class="anchor">Commercial — Inventory Mix</p>
+
+        <div class="page-card">
+          <div class="header-row">
+            <div>
+              <h2 class="title">Inventory Mix</h2>
+              <p id="sessionInfo" class="sub">Loading session…</p>
+              <p id="inventoryContext" class="sub" style="margin-top:8px;"></p>
+              <p id="activeScope" class="sub" style="margin-top:8px;"></p>
+
+              <div class="status-wrap">
+                <div class="status-pill">
+                  <span class="status-dot"></span>
+                  Commercial inventory layer active
+                </div>
+                <div class="status-pill">Store → District → Region → Company</div>
+                <div class="status-pill">Margin Volatility Shell</div>
+                <div class="status-pill">Hierarchy Aggregation Ready</div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <select id="viewSelector" class="view-select" aria-label="View selector">
+                <option value="vp">Enterprise View</option>
+                <option value="rm" selected>Region View</option>
+                <option value="dm">District View</option>
+                <option value="sm">Store View</option>
+              </select>
+
+              <button class="btnx secondary" id="logoutBtn" type="button">Logout</button>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="scope-card">
+            <h3 style="margin:0 0 10px 0;font-size:22px;">Inventory Scope</h3>
+            <p class="sub" style="margin-bottom:14px;">
+              Inventory Mix should roll through every level of the commercial hierarchy. Use the selectors below to inspect store-level margin volatility or aggregate it upward into district, regional, and enterprise context.
+            </p>
+
+            <div class="scope-grid">
+              <div>
+                <label class="scope-label" for="regionSelector">Region</label>
+                <select id="regionSelector" class="scope-input">
+                  <option value="">Select region</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="scope-label" for="districtSelector">District</label>
+                <select id="districtSelector" class="scope-input">
+                  <option value="">Select district</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="scope-label" for="storeSelector">Store</label>
+                <select id="storeSelector" class="scope-input">
+                  <option value="">Select store</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="scopeMsg" class="scope-msg"></div>
+          </div>
+
+          <div id="commercialInventoryRoot">
+            <section class="cinv-stack">
+              <div class="cinv-kpi-grid">
+                <div class="kpi-card">
+                  <div class="kpi-label">Total Waste</div>
+                  <div class="kpi-value" id="inventoryWasteValue">—</div>
+                  <div class="kpi-sub" id="inventoryWasteSub">Awaiting inventory scope</div>
+                </div>
+
+                <div class="kpi-card">
+                  <div class="kpi-label">Total Remakes</div>
+                  <div class="kpi-value" id="inventoryRemakesValue">—</div>
+                  <div class="kpi-sub" id="inventoryRemakesSub">Awaiting inventory scope</div>
+                </div>
+
+                <div class="kpi-card">
+                  <div class="kpi-label">Total Refunds</div>
+                  <div class="kpi-value" id="inventoryRefundsValue">—</div>
+                  <div class="kpi-sub" id="inventoryRefundsSub">Awaiting inventory scope</div>
+                </div>
+
+                <div class="kpi-card">
+                  <div class="kpi-label">Volatility Exposure</div>
+                  <div class="kpi-value" id="inventoryVolatilityValue">—</div>
+                  <div class="kpi-sub" id="inventoryVolatilitySub">Awaiting inventory scope</div>
+                </div>
+              </div>
+
+              <div class="cinv-grid">
+                <div class="card">
+                  <h3 class="section-title">Inventory Interpretation</h3>
+                  <p class="section-sub">
+                    Inventory Mix on commercial is intended to show where margin volatility is building through the hierarchy, not just what is happening inside one store.
+                  </p>
+
+                  <div class="cinv-bullet-stack" id="inventoryInterpretationList">
+                    <div>• Scope narrative will render once live commercial logic is attached.</div>
+                    <div>• Inventory pressure attribution will render here.</div>
+                    <div>• Hierarchy-based interpretation will render here.</div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <h3 class="section-title">Financial Context</h3>
+                  <p class="section-sub">
+                    Commercial inventory should translate waste, remakes, and refunds into leadership-level visibility around margin exposure.
+                  </p>
+
+                  <div class="cinv-bullet-stack" id="inventoryFinancialList">
+                    <div>• Estimated margin pressure will render here.</div>
+                    <div>• Current scope volatility opportunity will render here.</div>
+                    <div>• Top financial interpretation will render here.</div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <h3 class="section-title">Primary Volatility Source</h3>
+                  <p class="section-sub">
+                    This section should identify which child unit is currently contributing the greatest inventory-related volatility inside the selected scope.
+                  </p>
+
+                  <div class="cinv-bullet-stack" id="inventoryDriverList">
+                    <div>• Primary driver pending.</div>
+                    <div>• Secondary driver pending.</div>
+                    <div>• Leadership note pending.</div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <h3 class="section-title">Hierarchy Logic</h3>
+                  <p class="section-sub">
+                    Inventory originates at the store, then aggregates upward through district, region, and company. Commercial view should preserve that logic instead of flattening it.
+                  </p>
+
+                  <div class="cinv-bullet-stack" id="inventoryHierarchyList">
+                    <div>• Store = direct margin volatility</div>
+                    <div>• District = aggregated store volatility</div>
+                    <div>• Region = aggregated district volatility</div>
+                    <div>• Enterprise = aggregated regional volatility</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card" style="margin-top:14px;">
+                <h3 class="section-title">Scope Inventory Breakdown</h3>
+                <p class="section-sub">
+                  This table is where commercial inventory will isolate which unit is driving the strongest current volatility inside the selected scope.
+                </p>
+
+                <div class="table-wrap">
+                  <table class="table cinv-table">
+                    <thead>
+                      <tr>
+                        <th>Unit</th>
+                        <th>Level</th>
+                        <th>Waste</th>
+                        <th>Remakes</th>
+                        <th>Refunds</th>
+                        <th>Total Volatility</th>
+                        <th>Pressure Signal</th>
+                      </tr>
+                    </thead>
+                    <tbody id="inventoryBreakdownBody">
+                      <tr>
+                        <td colspan="7">Inventory scope breakdown will render once the JS shell is attached.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="cinv-note">
+                  This first shell is intentionally focused on structure, scope, and commercial interpretation. Live commercial inventory rollup logic plugs in next.
+                </div>
+              </div>
+
+              <div class="card" style="margin-top:14px;">
+                <h3 class="section-title">Executive Note</h3>
+                <p class="section-sub" id="inventoryExecutiveNote">
+                  Inventory Mix on commercial is intended to help leadership understand where execution-related margin volatility is originating, how that volatility accumulates through the hierarchy, and where intervention could improve stability before larger scaling decisions are made.
+                </p>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="assets/commercial-inventory.js?v=1"></script>
+</body>
+</html>
