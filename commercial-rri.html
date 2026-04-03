@@ -1,1 +1,682 @@
-shell
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FrontlineQSR | Commercial RRI</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+  <meta name="robots" content="noindex" />
+
+  <style>
+    :root{
+      --bg-1:#0b1220;
+      --bg-2:#0a1020;
+      --bg-3:#070b14;
+      --card-bg:rgba(255,255,255,.95);
+      --card-border:rgba(15,23,42,.12);
+      --text:#0f172a;
+      --muted:rgba(15,23,42,.74);
+      --line:rgba(15,23,42,.10);
+      --shadow:0 18px 50px rgba(0,0,0,.35);
+      --radius:16px;
+      --brand-glow:rgba(80,200,255,.18);
+    }
+
+    *{ box-sizing:border-box; }
+
+    body{
+      margin:0;
+      color:#fff;
+      background:
+        radial-gradient(1200px 700px at 50% 0%, rgba(255,255,255,0.10), rgba(0,0,0,0) 60%),
+        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 55%, var(--bg-3) 100%);
+      font-family: Georgia, "Times New Roman", serif;
+    }
+
+    .page{ min-height:100vh; }
+    .hero{ padding:28px 16px 56px; }
+    .shell{ max-width:1140px; margin:0 auto; }
+
+    .brand-bar{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      margin-bottom:18px;
+      padding:12px 16px;
+      border-radius:14px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 10px 30px rgba(0,0,0,.20);
+      backdrop-filter:blur(6px);
+    }
+
+    .brand-mark{
+      width:48px;
+      height:48px;
+      border-radius:12px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      background:rgba(255,255,255,.10);
+      box-shadow:0 0 24px var(--brand-glow);
+      flex:0 0 auto;
+    }
+
+    .brand-mark img{
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+
+    .brand-title{
+      margin:0;
+      font-size:18px;
+      font-weight:800;
+      color:#fff;
+      line-height:1.1;
+    }
+
+    .brand-sub{
+      margin:3px 0 0;
+      font-size:12px;
+      color:rgba(255,255,255,.76);
+    }
+
+    .anchor{
+      text-align:center;
+      letter-spacing:.2px;
+      font-weight:800;
+      opacity:.86;
+      margin:0 0 14px;
+      font-size:13px;
+    }
+
+    .page-card{
+      margin:0 auto;
+      padding:24px;
+      border-radius:var(--radius);
+      background:var(--card-bg);
+      border:1px solid var(--card-border);
+      box-shadow:var(--shadow);
+      color:var(--text);
+    }
+
+    .header-row{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:18px;
+    }
+
+    .title{
+      margin:0 0 10px 0;
+      font-weight:900;
+      font-size:30px;
+      line-height:1.1;
+    }
+
+    .sub{
+      margin:0;
+      color:var(--muted);
+      line-height:1.5;
+      font-size:15px;
+    }
+
+    .status-wrap{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:14px;
+    }
+
+    .status-pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:rgba(15,23,42,.06);
+      border:1px solid rgba(15,23,42,.08);
+      color:var(--muted);
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .status-dot{
+      width:8px;
+      height:8px;
+      border-radius:999px;
+      background:#22c55e;
+    }
+
+    .hr{
+      height:1px;
+      background:var(--line);
+      border:0;
+      margin:18px 0;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .btnx{
+      padding:12px 16px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#111827;
+      color:#fff;
+      cursor:pointer;
+      font-weight:800;
+      font-size:14px;
+    }
+
+    .btnx.secondary{
+      background:#fff;
+      color:#111827;
+    }
+
+    .view-select{
+      min-width:220px;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      color:#111827;
+      font-weight:800;
+      font-size:14px;
+      outline:none;
+      cursor:pointer;
+    }
+
+    .view-select:focus{
+      border-color:rgba(15,23,42,.28);
+      box-shadow:0 0 0 3px rgba(15,23,42,.08);
+    }
+
+    .scope-card{
+      padding:16px;
+      border-radius:14px;
+      background:rgba(15,23,42,.03);
+      border:1px solid rgba(15,23,42,.08);
+      margin-bottom:18px;
+    }
+
+    .scope-grid{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:14px;
+      align-items:end;
+    }
+
+    .scope-label{
+      display:block;
+      margin:0 0 6px;
+      font-size:12px;
+      font-weight:700;
+      color:var(--muted);
+      letter-spacing:.2px;
+    }
+
+    .scope-input{
+      width:100%;
+      box-sizing:border-box;
+      padding:12px 14px;
+      border-radius:12px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      color:#111827;
+      font-weight:700;
+      font-size:14px;
+      outline:none;
+      cursor:pointer;
+    }
+
+    .scope-input:focus{
+      border-color:rgba(15,23,42,.28);
+      box-shadow:0 0 0 3px rgba(15,23,42,.08);
+    }
+
+    .scope-msg{
+      margin-top:12px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+      white-space:pre-wrap;
+    }
+
+    .crri-total-card{
+      display:grid;
+      grid-template-columns:minmax(0, 1fr) 260px;
+      gap:14px;
+      margin-bottom:14px;
+    }
+
+    .crri-total-box{
+      padding:18px;
+      border-radius:16px;
+      border:1px solid rgba(15,23,42,.08);
+      background:rgba(15,23,42,.03);
+    }
+
+    .crri-total-label{
+      margin:0 0 8px 0;
+      font-size:13px;
+      font-weight:700;
+      color:var(--muted);
+    }
+
+    .crri-total-value{
+      margin:0;
+      font-size:42px;
+      line-height:1;
+      font-weight:900;
+      color:var(--text);
+    }
+
+    .crri-total-sub{
+      margin:10px 0 0 0;
+      font-size:14px;
+      color:var(--muted);
+    }
+
+    .crri-status-box{
+      padding:18px;
+      border-radius:16px;
+      border:1px solid rgba(15,23,42,.08);
+      background:rgba(15,23,42,.03);
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+    }
+
+    .crri-status-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:40px;
+      padding:8px 12px;
+      border-radius:999px;
+      font-size:13px;
+      font-weight:800;
+      width:max-content;
+      border:1px solid rgba(15,23,42,.10);
+      background:rgba(15,23,42,.06);
+      color:var(--text);
+    }
+
+    .crri-status-ready{
+      background:rgba(22,101,52,.08);
+      color:#166534;
+      border-color:rgba(22,101,52,.16);
+    }
+
+    .crri-status-moderate{
+      background:rgba(180,83,9,.08);
+      color:#92400e;
+      border-color:rgba(180,83,9,.16);
+    }
+
+    .crri-status-progress{
+      background:rgba(15,23,42,.06);
+      color:#334155;
+      border-color:rgba(15,23,42,.12);
+    }
+
+    .crri-status-risk{
+      background:rgba(185,28,28,.08);
+      color:#991b1b;
+      border-color:rgba(185,28,28,.14);
+    }
+
+    .crri-pillars{
+      display:grid;
+      grid-template-columns:repeat(5, minmax(0, 1fr));
+      gap:14px;
+      margin-bottom:14px;
+    }
+
+    .crri-pillar{
+      padding:16px;
+      border-radius:14px;
+      border:1px solid rgba(15,23,42,.08);
+      background:rgba(15,23,42,.03);
+    }
+
+    .crri-pillar-label{
+      margin:0 0 8px 0;
+      font-size:13px;
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .crri-pillar-value{
+      margin:0;
+      font-size:30px;
+      line-height:1;
+      font-weight:900;
+      color:var(--text);
+    }
+
+    .crri-pillar-sub{
+      margin:10px 0 0 0;
+      font-size:12px;
+      line-height:1.4;
+      color:var(--muted);
+    }
+
+    .crri-grid{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:14px;
+    }
+
+    .crri-table{
+      min-width:760px;
+    }
+
+    .crri-bullet-stack{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.5;
+    }
+
+    .crri-strong{
+      color:var(--text);
+      font-weight:800;
+    }
+
+    .crri-mono{
+      font-variant-numeric: tabular-nums;
+    }
+
+    @media (max-width:980px){
+      .crri-pillars{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+      }
+
+      .crri-total-card{
+        grid-template-columns:1fr;
+      }
+
+      .crri-grid{
+        grid-template-columns:1fr;
+      }
+    }
+
+    @media (max-width:640px){
+      .hero{ padding:22px 14px 44px; }
+      .brand-bar{ justify-content:flex-start; }
+      .page-card{ padding:18px; }
+      .title{ font-size:26px; }
+      .header-row{ flex-direction:column; }
+      .actions{ width:100%; }
+      .actions .btnx,
+      .actions .view-select{
+        width:100%;
+        box-sizing:border-box;
+        text-align:center;
+      }
+      .scope-grid{
+        grid-template-columns:1fr;
+      }
+      .scope-input{
+        width:100%;
+      }
+      .crri-pillars{
+        grid-template-columns:1fr;
+      }
+    }
+  </style>
+
+  <script type="module">
+    import { bootCommercialPage } from "./assets/commercial-page-boot.js";
+
+    bootCommercialPage({
+      allowRoles: ["vp","owner","rm","admin","super_admin"],
+      requireOrg: true
+    });
+  </script>
+</head>
+
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="shell">
+        <div class="brand-bar">
+          <div class="brand-mark">
+            <img src="assets/restaurant-excellence-system.png" alt="Restaurant Excellence System logo" onerror="this.style.display='none'; this.parentElement.textContent='R'; this.parentElement.style.fontWeight='900'; this.parentElement.style.fontSize='18px';" />
+          </div>
+          <div>
+            <p class="brand-title">Restaurant Excellence System™</p>
+            <p class="brand-sub">Powered by FrontlineQSR — Commercial leadership workspace</p>
+          </div>
+        </div>
+
+        <p class="anchor">Commercial — Retail Readiness</p>
+
+        <div class="page-card">
+          <div class="header-row">
+            <div>
+              <h2 class="title">Retail Readiness Index</h2>
+              <p id="sessionInfo" class="sub">Loading session…</p>
+              <p id="rriContext" class="sub" style="margin-top:8px;"></p>
+              <p id="activeScope" class="sub" style="margin-top:8px;"></p>
+
+              <div class="status-wrap">
+                <div class="status-pill">
+                  <span class="status-dot"></span>
+                  RM+ access active
+                </div>
+                <div class="status-pill">Executive Readiness Layer</div>
+                <div class="status-pill">Volatility Attribution Shell</div>
+                <div class="status-pill">Regional / Enterprise Scope</div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <select id="viewSelector" class="view-select" aria-label="View selector">
+                <option value="vp">Enterprise View</option>
+                <option value="rm" selected>Region View</option>
+                <option value="dm">District View</option>
+                <option value="sm">Store View</option>
+              </select>
+
+              <button class="btnx secondary" id="logoutBtn" type="button">Logout</button>
+            </div>
+          </div>
+
+          <div class="hr"></div>
+
+          <div class="scope-card">
+            <h3 style="margin:0 0 10px 0;font-size:22px;">Readiness Scope</h3>
+            <p class="sub" style="margin-bottom:14px;">
+              Retail Readiness is intended for regional leadership and above. Use region, district, and store scope below to isolate where volatility is originating and where scale confidence is strongest.
+            </p>
+
+            <div class="scope-grid">
+              <div>
+                <label class="scope-label" for="regionSelector">Region</label>
+                <select id="regionSelector" class="scope-input">
+                  <option value="">Select region</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="scope-label" for="districtSelector">District</label>
+                <select id="districtSelector" class="scope-input">
+                  <option value="">Select district</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="scope-label" for="storeSelector">Store</label>
+                <select id="storeSelector" class="scope-input">
+                  <option value="">Select store</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="scopeMsg" class="scope-msg"></div>
+          </div>
+
+          <div id="commercialRriRoot">
+            <section class="cvrri-stack">
+              <div class="crri-total-card">
+                <div class="crri-total-box">
+                  <p class="crri-total-label">Overall Readiness</p>
+                  <p class="crri-total-value crri-mono" id="rriTotalValue">— / 100</p>
+                  <p class="crri-total-sub" id="rriTotalSub">
+                    Shell loading…
+                  </p>
+                </div>
+
+                <div class="crri-status-box">
+                  <p class="crri-total-label">Current Status</p>
+                  <div class="crri-status-pill crri-status-progress" id="rriStatusPill">Loading</div>
+                  <p class="crri-total-sub" id="rriStatusSub" style="margin-top:12px;">
+                    Waiting for readiness scope.
+                  </p>
+                </div>
+              </div>
+
+              <div class="crri-pillars">
+                <div class="crri-pillar">
+                  <p class="crri-pillar-label">Execution Stability</p>
+                  <p class="crri-pillar-value crri-mono" id="rriExecutionValue">— / 20</p>
+                  <p class="crri-pillar-sub" id="rriExecutionSub">Awaiting rollup context</p>
+                </div>
+
+                <div class="crri-pillar">
+                  <p class="crri-pillar-label">Action Responsiveness</p>
+                  <p class="crri-pillar-value crri-mono" id="rriActionValue">— / 20</p>
+                  <p class="crri-pillar-sub" id="rriActionSub">Awaiting rollup context</p>
+                </div>
+
+                <div class="crri-pillar">
+                  <p class="crri-pillar-label">Inventory Discipline</p>
+                  <p class="crri-pillar-value crri-mono" id="rriInventoryValue">— / 20</p>
+                  <p class="crri-pillar-sub" id="rriInventorySub">Awaiting rollup context</p>
+                </div>
+
+                <div class="crri-pillar">
+                  <p class="crri-pillar-label">Data Discipline</p>
+                  <p class="crri-pillar-value crri-mono" id="rriDataValue">— / 20</p>
+                  <p class="crri-pillar-sub" id="rriDataSub">Awaiting rollup context</p>
+                </div>
+
+                <div class="crri-pillar">
+                  <p class="crri-pillar-label">Financial Stability</p>
+                  <p class="crri-pillar-value crri-mono" id="rriFinancialValue">— / 20</p>
+                  <p class="crri-pillar-sub" id="rriFinancialSub">Awaiting rollup context</p>
+                </div>
+              </div>
+
+              <div class="crri-grid">
+                <div class="card">
+                  <h3 class="section-title">Scale Readiness Interpretation</h3>
+                  <p class="section-sub">
+                    This commercial layer is designed to show readiness at the regional and enterprise decision level, not just store-level performance.
+                  </p>
+
+                  <div class="crri-bullet-stack" id="rriInterpretationList">
+                    <div>• Readiness narrative will render once scope is loaded.</div>
+                    <div>• Volatility attribution will identify the current pressure source.</div>
+                    <div>• Financial context will translate readiness into leadership visibility.</div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <h3 class="section-title">Financial Context</h3>
+                  <p class="section-sub">
+                    Regional and enterprise leadership should be able to see how readiness translates into volatility exposure and savings opportunity.
+                  </p>
+
+                  <div class="crri-bullet-stack" id="rriFinancialContextList">
+                    <div>• Estimated savings opportunity will render here.</div>
+                    <div>• Margin volatility attribution will render here.</div>
+                    <div>• Leadership interpretation will render here.</div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <h3 class="section-title">Primary Volatility Driver</h3>
+                  <p class="section-sub">
+                    This section is meant to isolate the district, region, or store currently contributing the most instability to the selected scope.
+                  </p>
+
+                  <div class="crri-bullet-stack" id="rriVolatilityList">
+                    <div>• Driver attribution pending.</div>
+                    <div>• District / region source pending.</div>
+                    <div>• Follow-up interpretation pending.</div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <h3 class="section-title">Readiness Guardrails</h3>
+                  <p class="section-sub">
+                    This view is intentionally positioned for RM and above because readiness should support scale decisions, not day-to-day store coaching.
+                  </p>
+
+                  <div class="crri-bullet-stack" id="rriGuardrailList">
+                    <div>• Store-level execution remains in operator-facing pages.</div>
+                    <div>• RRI is meant to support leadership confidence and scaling judgment.</div>
+                    <div>• Inventory and readiness should be interpreted through hierarchy, not in isolation.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card" style="margin-top:14px;">
+                <h3 class="section-title">Scope Readiness Breakdown</h3>
+                <p class="section-sub">
+                  This table will let leadership isolate which child unit is creating the greatest readiness drag inside the selected scope.
+                </p>
+
+                <div class="table-wrap">
+                  <table class="table crri-table">
+                    <thead>
+                      <tr>
+                        <th>Unit</th>
+                        <th>Level</th>
+                        <th>Readiness</th>
+                        <th>Status</th>
+                        <th>Primary Pressure</th>
+                        <th>Volatility Impact</th>
+                        <th>Scale Signal</th>
+                      </tr>
+                    </thead>
+                    <tbody id="rriBreakdownBody">
+                      <tr>
+                        <td colspan="7">Readiness breakdown will render once scope is loaded.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="card" style="margin-top:14px;">
+                <h3 class="section-title">Executive Note</h3>
+                <p class="section-sub" id="rriExecutiveNote">
+                  Retail Readiness on commercial is positioned to help leadership understand where operational stability is strong enough to support scale, where volatility is still concentrated, and where intervention could improve confidence before expansion decisions are made.
+                </p>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="assets/commercial-rri.js?v=1"></script>
+</body>
+</html>
